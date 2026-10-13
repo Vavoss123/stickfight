@@ -1,0 +1,45 @@
+# Push a tag like v0.2.0 and this builds Stickfight.exe and publishes a GitHub Release.
+#
+#   git tag v0.2.0
+#   git push origin v0.2.0
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: pip install -r requirements.txt pyinstaller==6.11.1
+
+      - name: Test
+        run: python -m unittest discover tests
+
+      - name: Stamp version from tag
+        shell: bash
+        run: |
+          echo '"""The game'"'"'s version. Stamped by the release build."""' > version.py
+          echo "" >> version.py
+          echo "VERSION = \"${GITHUB_REF_NAME#v}\"" >> version.py
+          cat version.py
+
+      - name: Build exe
+        run: pyinstaller --onefile --windowed --name Stickfight main.py
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Stickfight.exe
+          generate_release_notes: true

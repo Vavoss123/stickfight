@@ -4,14 +4,25 @@ A turn based MMA game with stick figures. Both fighters pick a move in secret, t
 both moves play out at the same time. Read your opponent, manage your stamina, and win
 by knockout, submission or on the scorecards.
 
-## Running it
+## Download
+
+**Windows:** grab `Stickfight.exe` from the [latest release](https://github.com/Vavoss123/stickfight/releases/latest)
+and double-click it. No install needed.
+
+Windows may say "Windows protected your PC" because the exe isn't signed. Click
+**More info**, then **Run anyway**.
+
+The game checks for updates when it starts. When a new version is out, the menu says so
+and pressing **U** downloads it and restarts the game.
+
+## Running from source
 
 ```
 pip install -r requirements.txt
 python main.py
 ```
 
-Needs Python 3.10 or newer.
+Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
 
 ## Modes
 
@@ -101,3 +112,19 @@ python -m tools.cardsim --fights 1000
 ```
 python -m unittest discover tests
 ```
+
+## Releasing a new version
+
+Push a version tag and GitHub builds the exe and publishes the release:
+
+```
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The version number comes from the tag, and players on older versions get the update
+prompt the next time they start the game.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

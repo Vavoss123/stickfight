@@ -4,10 +4,13 @@ import random
 
 import pygame
 
+import updater
 from engine.career import Career
+from version import VERSION
 
 from ..arena import Arena
-from ..common import W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, text, Button
+from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, panel,
+                      bar, Button)
 from ..choreo import SCALE
 from ..stickman import Figure
 from .base import Scene
@@ -79,6 +82,11 @@ class MenuScene(Scene):
                 self._go(self.buttons[self.focus].pick)
             elif e.key == pygame.K_ESCAPE:
                 self.app.running = False
+            elif e.key == pygame.K_u and updater.state["status"] in ("available", "failed"):
+                if updater.state["status"] == "failed":
+                    updater.state["status"] = "available"
+                self.app.sounds.play("click")
+                updater.start_update()
         for k, b in enumerate(self.buttons):
             b.selected = k == self.focus
             if b.hover:
@@ -113,3 +121,27 @@ class MenuScene(Scene):
         for b in self.buttons:
             b.draw(surf)
         text(surf, "M mutes sound, ESC pauses in a fight", (W - 20, H - 16), 14, GREY, "bottomright")
+        text(surf, f"v{VERSION}", (20, H - 16), 14, GREY, "bottomleft")
+        self._draw_update(surf)
+
+    def _draw_update(self, surf):
+        st = updater.state
+        status = st["status"]
+        if status not in ("available", "downloading", "restarting", "failed"):
+            return
+        r = panel(surf, (W - 380, 20, 360, 74), border=GOLD if status == "available" else None)
+        if status == "available":
+            text(surf, f"Update available: {st['latest']}", (r.x + 16, r.y + 12), 20, GOLD,
+                 bold=True)
+            how = "Press U to update and restart" if updater.FROZEN and st["asset"] \
+                else "Press U to open the download page"
+            text(surf, how, (r.x + 16, r.y + 42), 16, WHITE)
+        elif status == "downloading":
+            text(surf, f"Downloading {st['latest']}...", (r.x + 16, r.y + 12), 20, WHITE,
+                 bold=True)
+            bar(surf, (r.x + 16, r.y + 44, r.w - 32, 14), st["progress"], GREEN)
+        elif status == "restarting":
+            text(surf, "Restarting...", (r.x + 16, r.y + 24), 20, GREEN, bold=True)
+        else:
+            text(surf, "Update failed", (r.x + 16, r.y + 12), 20, RED, bold=True)
+            text(surf, "Press U to try again", (r.x + 16, r.y + 42), 16, WHITE)

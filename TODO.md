@@ -8,7 +8,7 @@
 ## Next
 
 - [ ] Settings: volume, fullscreen, faster animations
-- [ ] Windows .exe build so friends can play without Python
+- [x] Windows .exe build so friends can play without Python (GitHub release + in-game updater)
 - [ ] Career story: a rival who calls you out, a training camp before title fights,
       retirement and a hall of fame
 - [ ] Tournament mode: 8 fighter bracket in one night, injuries carry over

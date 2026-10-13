@@ -10,15 +10,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pygame
 
+import updater
 from ui.common import W, H
 from ui.sound import Sounds, RATE
+from version import VERSION
 
 
 class App:
     def __init__(self):
+        updater.cleanup_old()
+        updater.check_async()
         pygame.mixer.pre_init(RATE, -16, 1, 512)
         pygame.init()
-        pygame.display.set_caption("Stickfight")
+        pygame.display.set_caption(f"Stickfight {VERSION}")
         self.screen = pygame.display.set_mode((W, H), pygame.SCALED | pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
@@ -40,6 +44,9 @@ class App:
             self.scene.update(dt)
             self.scene.draw(self.screen)
             pygame.display.flip()
+            if updater.state["status"] == "restarting":
+                updater.relaunch()
+                self.running = False
         pygame.quit()
 
 
