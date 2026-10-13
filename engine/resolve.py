@@ -6,7 +6,7 @@ kit, so signature cards and perks apply.
 """
 
 from .cards import ESCAPES
-from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, SUB, DEFEND,
+from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, SUB, DEFEND, FEINT,
                         SUB_TAP, SUB_START, HEAD, BODY, LEGS, TIRED_DAMAGE)
 from .moves import matchup, base_class
 from .weights import SIZE_DAMAGE, SIZE_GRAPPLE, SIZE_TOUGH
@@ -36,6 +36,22 @@ BOO_DRAIN = 15
 SURGE_ACC = 0.15
 SURGE_DMG = 1.3
 SURGE_GRAPPLE = 0.15
+
+
+# Openings for the next strike: (accuracy, speed, damage). A read comes from a feint
+# that froze them, a follow up from landing clean the exchange before.
+OPENINGS = {"read": (0.15, 2, 1.1), "follow": (0.05, 1, 1.0)}
+FEINT_PUNISH = 0.1      # a feinter is this much easier to hit, and a bit harder to take down
+
+
+# Fouls: a small chance on every strike thrown, more when gassed. The first is a
+# warning, every one after that costs a point. The victim gets a breather.
+FOUL_CHANCE = 0.015
+FOUL_GASSED = 0.02
+FOUL_REST = 12
+FOULS = {"head": "Eye poke", "legs": "Low blow", "body": "Low blow", "ground": "Shot to the back of the head"}
+# The referee stands them up after this many quiet exchanges
+IDLE_LIMIT = {CLINCH: 2, GUARD: 4, MOUNT: 4, BACK: 4}
 
 
 # How much harder an escape from the bottom is when the top fighter's strike lands on
@@ -71,6 +87,12 @@ class Exchange:
         self.combo = [0, 0]             # strikes in a row fighter i has landed
         self.effort = [1.0, 1.0]        # below 1 when fighter i could not pay for the move
         self.gassed = [False, False]
+        self.stamina_before = [f.stamina for f in st.f]
+        self.opening = [f.opening for f in st.f]   # read / follow / None, see OPENINGS
+        self.foul = None                # (fighter, what, "warning" or "point")
+        self.ref_break = None           # "clinch" or "ground" when the referee resets them
+        self.feinted = [False, False]   # fighter i's feint froze the other
+        self.frozen = [False, False]    # fighter i bit on a feint
         self.surging = [False, False]   # fighter i went all in with full momentum
         self.surge_ready = [False, False]  # fighter i's momentum just filled up
         self.booed = [False, False]     # the crowd is on fighter i for stalling
@@ -153,12 +175,33 @@ def _damage_mult(st, i):
     return m
 
 
+def _foul(st, ex, i, move, rng):
+    """Did that strike go somewhere it should not? Returns True if it was a foul."""
+    a, d = st.f[i], st.f[1 - i]
+    p = FOUL_CHANCE + (FOUL_GASSED if ex.gassed[i] else 0.0)
+    if ex.foul or rng.random() >= p:
+        return False
+    a.fouls += 1
+    where = "ground" if st.pos not in (STANDING, CLINCH) else move.target
+    ex.foul = (i, FOULS[where], "warning" if a.fouls == 1 else "point")
+    d.stamina = min(100.0, d.stamina + FOUL_REST)
+    d.rocked = 0
+    st.pos, st.top = STANDING, None   # the referee restarts them on the feet
+    return True
+
+
 def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     if st.f[i].hp <= 0:
         return  # knocked out by the other shot
+    if _foul(st, ex, i, move, rng):
+        ex.missed[i] = True
+        return
     a, d = st.f[i], st.f[1 - i]
     p = move.acc + bonus_acc + (a.stat(move.stat) - d.stat(move.stat)) * 0.025
     p += a.wc["speed"]   # lighter classes are quicker
+    op = OPENINGS.get(ex.opening[i])
+    if op:
+        p += op[0]
     if ex.surging[i]:
         p += SURGE_ACC
     p *= 0.55 + 0.45 * a.stamina_factor()
@@ -175,6 +218,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
     dmg *= 0.5 + 0.5 * ex.effort[i]
     dmg *= _power(a, d)
+    if op:
+        dmg *= op[2]
     if ex.surging[i]:
         dmg *= SURGE_DMG
     dmg *= _damage_mult(st, i)
@@ -362,6 +407,8 @@ def _end_of_exchange(st, ex, rocked_before):
             f.rocked = max(0, f.rocked - 1)
         # Strikes landed in a row
         m = ex.moves[i]
+        clean = m is not None and base_class(m) == STRIKE and ex.landed[i] and not ex.countered[1 - i]
+        f.opening = "read" if ex.feinted[i] else "follow" if clean and not ex.finish else None
         if m is not None and base_class(m) == STRIKE and ex.landed[i]:
             f.combo = min(3, f.combo + 1)
         elif not ex.countered[i]:
@@ -384,8 +431,21 @@ def _end_of_exchange(st, ex, rocked_before):
             else:
                 ex.finish = (w, "TKO", "Punches" if "elbow" not in name else "Elbows")
     _momentum(st, ex)
+    _referee(st, ex)
     ex.pos = st.pos
     ex.top = st.top
+
+
+def _referee(st, ex):
+    """Stand them up when nothing is happening in the clinch or on the ground."""
+    if ex.finish or st.sub or st.pos == STANDING or ex.foul:
+        st.idle = 0
+        return
+    busy = ex.transition is not None or sum(ex.dmg) >= 3 or ex.sub_start is not None or ex.in_sub
+    st.idle = 0 if busy else st.idle + 1
+    if st.idle >= IDLE_LIMIT.get(st.pos, 99):
+        ex.ref_break = "clinch" if st.pos == CLINCH else "ground"
+        st.pos, st.top, st.idle = STANDING, None, 0
 
 
 def _momentum(st, ex):
@@ -431,8 +491,13 @@ def resolve(st, picks, rng):
     for i in (0, 1):
         ex.effort[i] = st.f[i].effort(moves[i])
         ex.gassed[i] = ex.effort[i] < 1.0
-        ex.surging[i] = st.f[i].surge and base_class(moves[i]) != DEFEND
+        ex.surging[i] = st.f[i].surge and base_class(moves[i]) not in (DEFEND, FEINT)
         st.f[i].spend(moves[i].cost)
+
+    if FEINT in (moves[0].cls, moves[1].cls):
+        _feint(st, ex, moves, rng)
+        _end_of_exchange(st, ex, rocked_before)
+        return ex
 
     rel = matchup(moves[0], moves[1])
     if rel != 0:
@@ -447,11 +512,11 @@ def resolve(st, picks, rng):
                 ex.caught[l] = True
                 st.f[l].spend(3)
             _strike(st, ex, w, mw, rng, bonus_acc=0.12, mult=mw.catch if caught else 1.2)
-            if ex.missed[w] and st.f[l].hp > 0 and base_class(ml) != DEFEND:
+            if ex.missed[w] and not ex.foul and st.f[l].hp > 0 and base_class(ml) != DEFEND:
                 # Punch missed, so the shot can still get through
                 ex.caught[l] = False
                 _grapple_uncontested(st, ex, l, ml, rng, bonus=-0.2)
-            elif (ex.landed[w] and st.top == w and ml.cls == GRAPPLE and not ex.finish
+            elif (ex.landed[w] and not ex.foul and st.top == w and ml.cls == GRAPPLE and not ex.finish
                   and st.f[l].hp > 0 and ex.knockdown is None):
                 # Eating shots on the bottom but still scrambling out
                 _grapple_uncontested(st, ex, l, ml, rng, bonus=SCRAMBLE)
@@ -473,7 +538,9 @@ def resolve(st, picks, rng):
             # The faster strike lands first and disrupts the slower one.
             # Equal speed means a true trade, in random order so neither corner has an edge.
             # A gassed strike is slower than anything
-            s0, s1 = [-1 if ex.gassed[i] else moves[i].speed for i in (0, 1)]
+            s0, s1 = [-1 if ex.gassed[i] else
+                      moves[i].speed + (OPENINGS[ex.opening[i]][1] if ex.opening[i] else 0)
+                      for i in (0, 1)]
             if s0 == s1:
                 order = (0, 1) if rng.random() < 0.5 else (1, 0)
                 bonus = {0: 0.0, 1: 0.0}
@@ -505,6 +572,29 @@ def resolve(st, picks, rng):
 
     _end_of_exchange(st, ex, rocked_before)
     return ex
+
+
+def _feint(st, ex, moves, rng):
+    """A fake. Someone blocking freezes; anything else catches the feinter open."""
+    if moves[0].cls == moves[1].cls:
+        ex.stall = True
+        ex.success = [True, True]
+        return
+    i = 0 if moves[0].cls == FEINT else 1
+    o = 1 - i
+    mo = moves[o]
+    c = base_class(mo)
+    if c == DEFEND:
+        # They bit: stuck behind the guard, no rest, and you have read them
+        st.f[o].stamina = min(st.f[o].stamina, ex.stamina_before[o])
+        ex.feinted[i] = True
+        ex.frozen[o] = True
+        ex.success[i] = True
+    elif c == STRIKE:
+        _strike(st, ex, o, mo, rng, bonus_acc=FEINT_PUNISH)
+    else:
+        # You see the shot coming a little early
+        _grapple_uncontested(st, ex, o, mo, rng, bonus=-FEINT_PUNISH)
 
 
 def _resolve_sub(st, picks, rng):

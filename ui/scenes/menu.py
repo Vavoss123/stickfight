@@ -54,13 +54,14 @@ class MenuScene(Scene):
             ("Local 2 player", "Same keyboard, hidden picks", "versus"),
             ("Career", "Continue your career" if has_save else "Start from the bottom", "career"),
             ("Tournament", "Eight fighters, one night", "tournament"),
+            ("Challenges", "Daily challenge and achievements", "challenges"),
             ("How to play", "Tutorial, rules and controls", "help"),
             ("Settings", "Sound, screen and speed", "settings"),
             ("Quit", "", "quit"),
         ]
         self.buttons = []
         for k, (label, sub, pick) in enumerate(items):
-            b = Button((60, 226 + k * 64, 340, 56), label, sub=sub, size=22,
+            b = Button((60, 222 + k * 58, 340, 52), label, sub=sub, size=21,
                        color=(150, 40, 40) if k == 0 else (40, 44, 62))
             b.pick = pick
             self.buttons.append(b)
@@ -81,6 +82,9 @@ class MenuScene(Scene):
         elif pick == "tournament":
             from .tournament import TournamentSetupScene
             self.app.goto(TournamentSetupScene(self.app))
+        elif pick == "challenges":
+            from .challenges import ChallengesScene
+            self.app.goto(ChallengesScene(self.app))
         elif pick == "help":
             from .howto import HowToScene
             self.app.goto(HowToScene(self.app))

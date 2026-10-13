@@ -6,7 +6,7 @@ from engine import personality
 from engine.ai import AI
 from engine.commentary import describe, finish_line
 from engine.corner import advice
-from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, SUB_ATTACK_LABELS,
+from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, FEINT, SUB_ATTACK_LABELS,
                               SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
@@ -21,18 +21,19 @@ from ..stickman import Figure
 from .base import Scene
 
 CLASS_COLOR = {STRIKE: (196, 70, 62), GRAPPLE: (58, 110, 205), SUB: (150, 80, 205),
-               DEFEND: (56, 160, 100)}
-CLASS_NAME = {STRIKE: "Strike", GRAPPLE: "Grapple", SUB: "Submission", DEFEND: "Defend"}
+               DEFEND: (56, 160, 100), FEINT: (176, 128, 52)}
+CLASS_NAME = {STRIKE: "Strike", GRAPPLE: "Grapple", SUB: "Submission", DEFEND: "Defend",
+              FEINT: "Feint"}
 SUB_COLOR = (150, 80, 205)
 HYPE_COLOR = (190, 110, 255)
 
 KEYS_P1 = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r,
-           pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f]
+           pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_z]
 KEYS_P2 = [pygame.K_u, pygame.K_i, pygame.K_o, pygame.K_p,
-           pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON]
-KEYS_SOLO = [[getattr(pygame, f"K_{n + 1}"), KEYS_P1[n]] for n in range(8)]
-LABEL_P1 = "QWERASDF"
-LABEL_P2 = "UIOPJKL;"
+           pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON, pygame.K_m]
+KEYS_SOLO = [[getattr(pygame, f"K_{n + 1}"), KEYS_P1[n]] for n in range(9)]
+LABEL_P1 = "QWERASDFZ"
+LABEL_P2 = "UIOPJKL;M"
 
 POS_NAME = {STANDING: "Standing", CLINCH: "Clinch", GUARD: "Guard", MOUNT: "Mount",
             BACK: "Back control"}
@@ -91,6 +92,7 @@ class FightScene(Scene):
         self.last_ex = None
         self.can_continue = False
         self.time_scale = 1.0
+        self.slowmo = 0.0      # seconds of slow motion left after a big shot
         self.corner_tips = None
         self.snap = None
         self.saved_banner = None
@@ -181,6 +183,10 @@ class FightScene(Scene):
             dim = tuple(int(c * 0.5) for c in CLASS_COLOR[m.cls])
             return m.name, "Too tired, weak and slow", dim
         cost = f"{abs(int(m.cost))} stamina" if m.cost > 0 else f"+{abs(int(m.cost))} stamina"
+        opening = st.f[i].opening
+        if opening and m.cls == STRIKE:
+            return m.name, ("You read them: faster" if opening == "read" else "Follow up: faster"), \
+                tuple(min(255, int(c * 1.25)) for c in CLASS_COLOR[m.cls])
         return m.name, f"{CLASS_NAME[m.cls]}, {cost}", CLASS_COLOR[m.cls]
 
     def _build_buttons(self):
@@ -202,14 +208,15 @@ class FightScene(Scene):
             for i in (0, 1):
                 opts = self.fight.options(i)
                 x0 = 20 if i == 0 else W // 2 + 10
-                bw, bh = 146, 36
+                per_row = 4 if len(opts) <= 8 else 5
+                bw, bh = (W // 2 - 30 - 6 * (per_row - 1)) // per_row, 36
                 keys = LABEL_P1 if i == 0 else LABEL_P2
                 if self._pad_for(i) is not None:
                     keys = gamepad.PICK_LABELS
                 for j, k in enumerate(opts):
                     label, sub, color = self._option_label(i, k)
-                    b = Button((x0 + (j % 4) * (bw + 6), 632 + (j // 4) * (bh + 6), bw, bh),
-                               label, key=keys[j], color=color, size=17)
+                    b = Button((x0 + (j % per_row) * (bw + 6), 632 + (j // per_row) * (bh + 6), bw, bh),
+                               label, key=keys[j], color=color, size=16)
                     b.pick = k
                     b.badge = self._badge(i, k)
                     self.buttons[i].append(b)
@@ -328,6 +335,7 @@ class FightScene(Scene):
         self._faces = faces
         figs = self.figs
         self._momentum_popups(ex)
+        self._referee_moments(ex)
 
         if ex.in_sub:
             a = ex.sub_att
@@ -432,9 +440,36 @@ class FightScene(Scene):
             line = random.choice(personality.PERSONALITIES[self.ai.personality]["taunts"])
             self.say(f'{self.names[1]}: "{line}"')
 
+    def _referee_moments(self, ex):
+        """Fouls, breaks, and a moment of slow motion when something big lands."""
+        if ex.foul:
+            i, what, result = ex.foul
+            o = 1 - i
+            self.at(0.3, lambda: (self.popup(o, "FOUL!", (255, 90, 80), 30, dy=-130),
+                                  self.snd("boo", 0.7), self._ref_in()))
+            label = "WARNING" if result == "warning" else "POINT DEDUCTED"
+            self.at(0.6, lambda: self.popup(i, label, (255, 170, 60), 24, dy=-100))
+        if ex.ref_break:
+            self.at(0.45, lambda: (self.popup(0, "BREAK!", WHITE, 26, dy=-140), self._ref_in()))
+        big = ex.knockdown is not None or (any(ex.rocked) and max(ex.dmg) >= 9)
+        if big and self.phase != "replay":
+            m = ex.moves[ex.dmg.index(max(ex.dmg))]
+            at = IMPACT.get(m.anim, 0.15) if m else 0.15
+            self.at(max(0.0, at - 0.05), lambda: setattr(self, "slowmo", 0.45))
+
+    def _ref_in(self):
+        """The referee steps in, then gets back out of the way."""
+        self.ref.move_to(CX, dur=0.25)
+        self.ref.play([("ref_stop", 0.2), ("ref_stop", 0.5)], idle="ref")
+        self.at(0.9, lambda: self.ref.move_to(CX + 300, dur=0.4))
+
     def _momentum_popups(self, ex):
-        """ALL IN when someone spends full momentum, MOMENTUM when it fills, boos for stalling."""
+        """Feints, ALL IN when someone spends full momentum, MOMENTUM when it fills, boos."""
         for i in (0, 1):
+            if ex.feinted[i]:
+                self.at(0.12, lambda i=i: (self.popup(i, "FEINT!", (230, 180, 90), 26, dy=-120),
+                                           self.popup(1 - i, "FROZEN!", (150, 220, 255), 24, dy=-90),
+                                           self.snd("whoosh", 0.7)))
             if ex.surging[i]:
                 self.at(0.0, lambda i=i: (self.popup(i, "ALL IN!", GOLD, 32, dy=-160),
                                           self.snd("roar", 0.6), self.arena.cheer(1.5)))
@@ -672,6 +707,9 @@ class FightScene(Scene):
             return
         real_dt = dt
         dt *= self.time_scale * self.app.settings.fight_speed
+        if self.slowmo > 0:
+            self.slowmo -= real_dt
+            dt *= 0.35
         self.t += dt
         self.phase_t += dt
         due = [ev for ev in self.events if ev[0] <= self.t]
@@ -836,7 +874,7 @@ class FightScene(Scene):
             panel(surf, (10, 604, W - 20, 112), (10, 11, 16), alpha=225)
             for b in self.buttons[0]:
                 b.draw(surf)
-            hint = "Pick a move with the number keys, QWER ASDF or the mouse"
+            hint = "Pick a move with the number keys, QWER ASDF Z or the mouse"
             if self._pad_for(0) is not None:
                 hint = "Pick a move: A B X Y, then the d-pad for 5 to 8"
             if st.sub:

@@ -16,8 +16,9 @@ except ImportError:   # very old pygame: no controllers, the game still runs
 B = pygame
 PICK_BUTTONS = [B.CONTROLLER_BUTTON_A, B.CONTROLLER_BUTTON_B, B.CONTROLLER_BUTTON_X,
                 B.CONTROLLER_BUTTON_Y, B.CONTROLLER_BUTTON_DPAD_UP, B.CONTROLLER_BUTTON_DPAD_RIGHT,
-                B.CONTROLLER_BUTTON_DPAD_DOWN, B.CONTROLLER_BUTTON_DPAD_LEFT] if controller else []
-PICK_LABELS = ["A", "B", "X", "Y", "Up", "Rt", "Dn", "Lt"]
+                B.CONTROLLER_BUTTON_DPAD_DOWN, B.CONTROLLER_BUTTON_DPAD_LEFT,
+                B.CONTROLLER_BUTTON_LEFTSHOULDER] if controller else []
+PICK_LABELS = ["A", "B", "X", "Y", "Up", "Rt", "Dn", "Lt", "LB"]
 
 AS_KEYS = {
     "dpad_up": pygame.K_UP, "dpad_down": pygame.K_DOWN, "dpad_left": pygame.K_LEFT,

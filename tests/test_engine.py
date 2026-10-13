@@ -202,7 +202,7 @@ class CardSystem(unittest.TestCase):
         opts = st.options(0)
         self.assertIn("superman", opts)
         self.assertNotIn("cross", opts)
-        self.assertEqual(len(opts), 8)
+        self.assertEqual(len(opts), 9)   # with the feint
 
     def test_levels_make_cards_better(self):
         from engine.cards import build_kit

@@ -81,6 +81,19 @@ def describe(ex, names):
         elif to == "back_top":
             lines.append(_pick(f"{n[by]} takes the back!", f"{n[by]} is on the back, hooks in!"))
 
+    if ex.foul:
+        i, what, result = ex.foul
+        lines.insert(0, f"{what}! The referee steps in.")
+        lines.insert(1, f"{n[i]} is warned." if result == "warning" else
+                     f"That is a point taken from {n[i]}!")
+        return lines[:2]
+    if ex.ref_break:
+        lines.append("The referee breaks them up." if ex.ref_break == "clinch" else
+                     "Nothing happening down there. The referee stands them up.")
+    for i in (0, 1):
+        if ex.feinted[i]:
+            lines.insert(0, _pick(f"{n[1 - i]} bites on the feint!", f"Nice feint from {n[i]}, "
+                                  f"{n[1 - i]} froze up."))
     for i in (0, 1):
         if len(lines) >= 2:
             break

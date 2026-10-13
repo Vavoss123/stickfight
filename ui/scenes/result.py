@@ -45,6 +45,9 @@ class ResultScene(Scene):
             self.buttons.append(b)
         if self.r.winner is not None:
             app.sounds.play("crowd", 0.8)
+        if cfg.mode == "ai" and hasattr(app, "award"):
+            from engine import achievements
+            app.award(achievements.for_fight(fight, 0, cfg.level, app.record))
 
     def _go(self, pick):
         if pick == "rematch":

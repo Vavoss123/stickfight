@@ -23,14 +23,16 @@ LEVELS = ["easy", "normal", "hard"]
 class TournamentSetupScene(Scene):
     def __init__(self, app):
         super().__init__(app)
-        self.roster = quick_fighters() + division()
+        from engine.roster import unlocked
+        self.roster = quick_fighters() + division() + unlocked(set(app.record.unlocked))
         self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
         apply_saved(self.roster, pool=app.settings["card_pool"])
         self.sel = 0
         self.level = 1
         self.list = []
+        step = min(34, 540 // len(self.roster))
         for k, p in enumerate(self.roster):
-            b = Button((40, 110 + k * 34, 300, 30), p.name, size=16)
+            b = Button((40, 110 + k * step, 300, step - 4), p.name, size=16 if step >= 30 else 14)
             b.pick = k
             self.list.append(b)
         self.levels = []
@@ -49,7 +51,8 @@ class TournamentSetupScene(Scene):
         me = copy.deepcopy(self.roster[self.sel])
         others = [copy.deepcopy(p) for k, p in enumerate(self.roster) if k != self.sel]
         # The other fighters keep their own preset decks
-        fresh = {p.name: p for p in quick_fighters() + division()}
+        from engine.roster import unlocked
+        fresh = {p.name: p for p in quick_fighters() + division() + unlocked(set(self.app.record.unlocked))}
         others = [fresh[p.name] for p in rng.sample(others, SIZE - 1)]
         t = Tournament(me, others, level=LEVELS[self.level], seed=rng.random())
         self.app.sounds.play("crowd", 0.6)
@@ -177,6 +180,7 @@ class BracketScene(Scene):
             if won and final:
                 msg = "TOURNAMENT CHAMPION! Three fights, three wins, one night."
                 app.sounds.play("roar")
+                app.award(["tournament"])
             elif won:
                 msg = f"Through to the {t.stage_name().lower()}. Mind the damage you are carrying."
             else:

@@ -16,7 +16,7 @@ from engine.roster import make
 from ..common import CX, GOLD, WHITE, GREY, GREEN, text, text_block, panel
 from .fight import FightScene, FightConfig
 
-CLASS_WORD = {STRIKE: "strike", GRAPPLE: "grapple", DEFEND: "defend"}
+CLASS_WORD = {STRIKE: "strike", GRAPPLE: "grapple", DEFEND: "defend", "feint": "feint"}
 
 # want: moves to highlight. opp: what the partner does. done(scene, ex): did it work.
 LESSONS = [

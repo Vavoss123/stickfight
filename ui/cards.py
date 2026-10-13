@@ -3,7 +3,7 @@
 import pygame
 
 from engine.cards import CARDS, group_of, perk_text, leveled
-from engine.constants import STRIKE, GRAPPLE, SUB, DEFEND
+from engine.constants import STRIKE, GRAPPLE, SUB, DEFEND, FEINT
 from engine.moves import MOVES
 
 from .choreo import ACTION
@@ -12,8 +12,9 @@ from .stickman import Figure
 
 RARITY_COLOR = {"common": (170, 175, 185), "rare": (80, 150, 255), "legendary": GOLD,
                 "basic": (90, 92, 104)}
-CLASS_BG = {STRIKE: (92, 36, 34), GRAPPLE: (30, 52, 100), SUB: (70, 36, 100), DEFEND: (26, 80, 52)}
-CLASS_WORD = {STRIKE: "strike", GRAPPLE: "grapple", SUB: "submission", DEFEND: "defence"}
+CLASS_BG = {STRIKE: (92, 36, 34), GRAPPLE: (30, 52, 100), SUB: (70, 36, 100), DEFEND: (26, 80, 52),
+            FEINT: (86, 64, 30)}
+CLASS_WORD = {STRIKE: "strike", GRAPPLE: "grapple", SUB: "submission", DEFEND: "defence", FEINT: "feint"}
 PERK_BG = (24, 74, 78)
 
 _fig = Figure(0, 0, 1, (200, 200, 210), glove=(200, 60, 60), scale=0.55)

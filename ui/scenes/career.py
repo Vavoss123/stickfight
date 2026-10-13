@@ -223,6 +223,8 @@ class HubScene(Scene):
                 from .legacy import RetireScene
                 entry = legacy.retire(self.c)
                 delete_save()
+                if entry["inducted"]:
+                    self.app.award(["hall"])
                 self.app.goto(RetireScene(self.app, entry))
             else:
                 self.confirm_retire = True
@@ -252,6 +254,8 @@ class HubScene(Scene):
             was_champ = c.is_champ()
             reward = c.record_result(opp, won, draw, r.method, r.detail, r.round)
             c.save()
+            from engine import achievements
+            app.award(achievements.for_career(c))
             after = c.rank_label()
             if c.is_champ() and not was_champ:
                 msg = "AND NEW! You are the champion of the world."

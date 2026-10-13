@@ -93,6 +93,35 @@ DIVISION = [
     ("Mateo Rojas", "El Toro", "Brawler", "Monterrey, Mexico", (10, 3), {"chin": -1}),
 ]
 
+# Secret fighters, unlocked by achievements: (achievement id, builder)
+UNLOCKABLES = [
+    ("champion", lambda: make("Walt Rivers", "Old Man", "Wrestler", "Tulsa, Oklahoma", (41, 6),
+                              {"striking": 2, "wrestling": 1, "grappling": 3, "cardio": 1, "chin": 2},
+                              color=COLORS[7], height="5'11\"", weight="Middleweight",
+                              personality="grinder",
+                              cards=({"takedown": "doubleleg", "pass": "smash"}, ["base", "ironlungs"], 3))),
+    ("ko10", lambda: make("Nia Brooks", "Kid Dynamite", "Brawler", "Philadelphia, Pennsylvania", (15, 0),
+                          {"striking": 3, "cardio": 1}, color=COLORS[5], height="5'6\"",
+                          weight="Lightweight", personality="pressure",
+                          cards=({"cross": "superman", "body": "liver"}, ["killer", "nevergiveup"], 3))),
+    ("tournament", lambda: make("Ren Takeda", "The Ghost", "BJJ", "Sapporo, Japan", (22, 2),
+                                {"striking": 2, "wrestling": 2, "grappling": 1, "cardio": 2},
+                                color=COLORS[6], height="6'0\"", weight="Welterweight",
+                                personality="counter",
+                                cards=({"triangle": "gogo", "rnc": "twister", "clinch": "imanari"},
+                                       ["subhunter"], 3))),
+    ("hall", lambda: make("Zara Kovac", "The Storm", "Striker", "Split, Croatia", (30, 1),
+                          {"striking": 2, "wrestling": 3, "grappling": 2, "cardio": 2, "chin": 3},
+                          color=COLORS[4], height="6'5\"", weight="Heavyweight", personality="showboat",
+                          cards=({"kick": "showtime", "cross": "spinfist"}, ["killer", "granite"], 3))),
+]
+
+
+def unlocked(have):
+    """The secret fighters for the achievements in `have` (a set of ids)."""
+    return [build() for aid, build in UNLOCKABLES if aid in have]
+
+
 _FIRST = ["Jordan", "Tyler", "Andre", "Nico", "Sam", "Luis", "Kai", "Ben", "Rico", "Max",
           "Leon", "Jamal", "Eli", "Owen", "Victor", "Dmitri", "Tariq", "Hugo"]
 _LAST = ["Grant", "Ortiz", "Novak", "Kane", "Mendes", "Clarke", "Burke", "Sato", "Ruiz",

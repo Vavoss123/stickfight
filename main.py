@@ -12,7 +12,10 @@ import pygame
 
 import updater
 from ui.common import W, H
+from engine import achievements
+from engine.roster import UNLOCKABLES
 from ui.feedback import Feedback
+from ui.toast import Toasts
 from ui import gamepad
 from ui.settings import Settings
 from ui.sound import Sounds, RATE
@@ -36,12 +39,22 @@ class App:
         self.focused = True
         self.minimized = False
         self.feedback = Feedback(self)
+        self.toasts = Toasts(self)
+        self.record = achievements.Record()
         self.pads = gamepad.Pads()
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
 
     def goto(self, scene):
         self.scene = scene
+
+    def award(self, aids):
+        """Unlock achievements and announce the new ones, and any fighter they unlock."""
+        for aid in self.record.give(list(aids)):
+            self.toasts.push("ACHIEVEMENT UNLOCKED", achievements.NAMES[aid])
+            for need, build in UNLOCKABLES:
+                if need == aid:
+                    self.toasts.push("NEW FIGHTER UNLOCKED", f"{build().name} joins the roster")
 
     def _pad(self, e):
         """Pads pick moves in a fight and stand in for the keyboard everywhere else."""
@@ -92,8 +105,10 @@ class App:
             if not self.feedback.open:
                 self.scene.update(dt)
             self.feedback.update(dt)
+            self.toasts.update(dt)
             if not self.minimized:
                 self.scene.draw(self.screen)
+                self.toasts.draw(self.screen)
                 self.feedback.draw(self.screen)
                 pygame.display.flip()
             if updater.state["status"] == "restarting":

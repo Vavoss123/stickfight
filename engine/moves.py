@@ -30,7 +30,7 @@ sub_fail  what happens when the hold is escaped: guard, bottom or stay
 from dataclasses import dataclass
 
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, NEUTRAL, TOP, BOTTOM,
-                        STRIKE, GRAPPLE, SUB, DEFEND, HEAD, BODY, LEGS)
+                        STRIKE, GRAPPLE, SUB, DEFEND, FEINT, HEAD, BODY, LEGS)
 
 
 @dataclass(frozen=True)
@@ -91,6 +91,9 @@ _ALL = [
          desc="Shoot for the legs. Beats jabs and kicks, eats power shots."),
     Move("clinch", "Clinch up", GRAPPLE, "wrestling", 5, to="clinch",
          desc="Tie up against the fence. Smothers power shots."),
+    Move("feint", "Feint", FEINT, "striking", 2, speed=3,
+         desc="Fake it. Freezes someone who is blocking and gives you a read for your next strike. "
+              "Leaves you open to anything else."),
 
     # Clinch
     Move("knees", "Knees", STRIKE, "striking", 8, dmg=9, acc=0.75, target=BODY,
@@ -170,7 +173,8 @@ _ALL = [
 MOVES = {m.key: m for m in _ALL}
 
 MOVESETS = {
-    (STANDING, NEUTRAL): ["jab", "cross", "body", "legkick", "kick", "block", "takedown", "clinch"],
+    (STANDING, NEUTRAL): ["jab", "cross", "body", "legkick", "kick", "block", "takedown", "clinch",
+                          "feint"],
     (CLINCH, NEUTRAL): ["knees", "dirty", "trip", "break", "frame", "guillotine"],
     (GUARD, TOP): ["gnp", "elbows", "pass", "posture", "standup"],
     (GUARD, BOTTOM): ["upkick", "sweep", "triangle", "getup", "cover"],
@@ -214,6 +218,11 @@ def matchup(a, b):
         return 1
     if _named(b.beats, a) or _named(a.loses_to, b):
         return -1
+    if a.cls == FEINT or b.cls == FEINT:
+        if a.cls == b.cls:
+            return 0
+        sign, other = (1, b) if a.cls == FEINT else (-1, a)
+        return sign if base_class(other) == DEFEND else -sign
     if (a.base, b.base) in OVERRIDES:
         return OVERRIDES[(a.base, b.base)]
     if (b.base, a.base) in OVERRIDES:

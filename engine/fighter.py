@@ -67,10 +67,11 @@ class FighterState:
     """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
 
     __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut", "kit",
-                 "combo", "wc", "hype", "surge", "passive")
+                 "combo", "wc", "hype", "surge", "passive", "opening", "fouls")
 
     def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0,
-                 cut=0.0, kit=None, combo=0, hype=0.0, surge=False, passive=0):
+                 cut=0.0, kit=None, combo=0, hype=0.0, surge=False, passive=0, opening=None,
+                 fouls=0):
         if kit is None:
             from .cards import build_kit
             kit = build_kit(profile)
@@ -88,10 +89,13 @@ class FighterState:
         self.hype = hype        # 0 to 100, the crowd behind them (see momentum in resolve.py)
         self.surge = surge      # full hype: the next attack goes all in
         self.passive = passive  # defensive picks in a row that did nothing
+        self.opening = opening  # "read" or "follow": the next strike is quicker
+        self.fouls = fouls      # fouls this fight: the first is a warning, then points go
 
     def clone(self):
         return FighterState(self.profile, self.hp, self.stamina, self.rocked, self.body, self.legs,
-                            self.cut, self.kit, self.combo, self.hype, self.surge, self.passive)
+                            self.cut, self.kit, self.combo, self.hype, self.surge, self.passive,
+                            self.opening, self.fouls)
 
     def perk(self, pid):
         return self.kit.perk(pid)

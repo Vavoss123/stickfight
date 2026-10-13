@@ -18,10 +18,12 @@ TOP = "top"
 BOTTOM = "bottom"
 
 # Move classes. Strike beats grapple, grapple beats defend, defend beats strike.
+# A feint beats a defend (they freeze) and loses to everything else.
 STRIKE = "strike"
 GRAPPLE = "grapple"
 SUB = "sub"
 DEFEND = "defend"
+FEINT = "feint"
 
 EXCHANGES_PER_ROUND = 8
 ROUND_SECONDS = 300

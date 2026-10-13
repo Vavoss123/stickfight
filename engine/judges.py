@@ -3,7 +3,7 @@
 
 class RoundStats:
     __slots__ = ("dmg", "landed", "thrown", "takedowns", "control", "sub_attempts",
-                 "knockdowns", "reversals")
+                 "knockdowns", "reversals", "deductions")
 
     def __init__(self):
         for k in self.__slots__:
@@ -26,7 +26,7 @@ class Judge:
         p1 = s1.points(self.w) + self.rng.uniform(-2, 2)
         diff = p0 - p1
         if abs(diff) < 0.15:
-            return (10, 10)
+            return (10 - s0.deductions, 10 - s1.deductions)
         win = 0 if diff > 0 else 1
         ws, ls = (s0, s1) if win == 0 else (s1, s0)
         # 10-8 is for real beatdowns: huge margin, or knockdowns on top of a big margin
@@ -34,7 +34,8 @@ class Judge:
         lose_score = 8 if big else 9
         if ls.knockdowns >= 1 and ws.knockdowns == 0:
             lose_score = 9
-        return (10, lose_score) if win == 0 else (lose_score, 10)
+        a, b = (10, lose_score) if win == 0 else (lose_score, 10)
+        return a - s0.deductions, b - s1.deductions
 
 
 def score_fight(rounds, rng):

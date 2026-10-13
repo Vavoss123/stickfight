@@ -23,10 +23,12 @@
 - [x] Interactive tutorial (press T on the menu)
 - [x] Momentum: hype meter, all in attacks, booing for stalling
 - [x] AI personalities with walkout quotes and taunts
-- [ ] Mind games: feints and follow up combos
-- [ ] Fight variety: fouls and point deductions, ref breaking up the clinch, slow motion on big shots
-- [ ] Reasons to come back: daily challenge, achievements, unlockable fighters
-- [ ] Get it seen: itch.io page, KO replay GIF in the README, Mac and Linux builds
+- [x] Mind games: feints and follow up combos
+- [x] Fight variety: fouls and point deductions, ref breaking up the clinch, slow motion on big shots
+- [x] Reasons to come back: daily challenge, achievements, unlockable fighters
+- [x] Get it seen: KO replay GIF in the README, Mac and Linux builds
+- [ ] Make the itch.io page and add the BUTLER_API_KEY secret (text is in docs/itch.md)
+- [ ] Try the Mac and Linux builds on a real machine
 
 ## Polish
 
@@ -40,6 +42,9 @@
 - [ ] Online multiplayer (needs a server)
 
 ## Balance notes
+
+- After feints, fouls and referee breaks (3600 fights on hard): Striker 54%, BJJ 48%,
+  Brawler 47%, Wrestler 46%. Strikers are a touch ahead again, worth a look after playtesting
 
 - Momentum fills about 1.3 times a fight between two hard AIs. Turning it off moves the
   styles by about 2 points, inside the noise

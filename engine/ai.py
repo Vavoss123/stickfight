@@ -9,7 +9,7 @@ import math
 import random
 from collections import defaultdict
 
-from .constants import STANDING, CLINCH, GUARD, MOUNT, BACK, TOP
+from .constants import STANDING, CLINCH, GUARD, MOUNT, BACK, TOP, FEINT
 from .moves import base_class
 from .personality import bias as style_bias
 from .resolve import resolve
@@ -43,6 +43,7 @@ def position_value(st, me):
 
 FINISH_VALUE = 400.0   # how much a finish is worth next to health and position
 REPEAT_COST = 14.0     # how much a smart AI avoids repeating itself
+OPENING_VALUE = {"read": 7.0, "follow": 2.5}   # a read or follow up is worth something next turn
 
 
 def evaluate(st, ex, me):
@@ -56,6 +57,7 @@ def evaluate(st, ex, me):
     if o.rocked:
         v += 8
     v += 0.05 * (m.hype - o.hype) + 6 * (m.surge - o.surge)
+    v += OPENING_VALUE.get(m.opening, 0) - OPENING_VALUE.get(o.opening, 0)
     if st.sub:
         sign = 1 if st.sub.att == me else -1
         v += sign * st.sub.lock * 18
@@ -69,7 +71,9 @@ def _class_prior(opts, kit):
         groups = defaultdict(list)
         for k in opts:
             groups[base_class(kit.moves[k])].append(k)
-        return {k: 1.0 / len(groups) / len(g) for g in groups.values() for k in g}
+        weight = {c: (0.2 if c == FEINT else 1.0) for c in groups}   # feints are rare
+        total = sum(weight.values())
+        return {k: weight[c] / total / len(g) for c, g in groups.items() for k in g}
     return {k: 1.0 / len(opts) for k in opts}
 
 

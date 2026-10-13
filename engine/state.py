@@ -16,17 +16,18 @@ class SubState:
 
 
 class FightState:
-    __slots__ = ("f", "pos", "top", "sub")
+    __slots__ = ("f", "pos", "top", "sub", "idle")
 
-    def __init__(self, fighters, pos=STANDING, top=None, sub=None):
+    def __init__(self, fighters, pos=STANDING, top=None, sub=None, idle=0):
         self.f = fighters
         self.pos = pos
         self.top = top
         self.sub = sub
+        self.idle = idle    # quiet exchanges in a row in the clinch or on the ground
 
     def clone(self):
         return FightState([self.f[0].clone(), self.f[1].clone()], self.pos, self.top,
-                          self.sub.clone() if self.sub else None)
+                          self.sub.clone() if self.sub else None, self.idle)
 
     def role(self, i):
         if self.pos in (STANDING, CLINCH):

@@ -22,7 +22,8 @@ class SelectScene(Scene):
     def __init__(self, app, mode):
         super().__init__(app)
         self.mode = mode
-        self.roster = quick_fighters() + division()
+        from engine.roster import unlocked
+        self.roster = quick_fighters() + division() + unlocked(set(app.record.unlocked))
         self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
         apply_saved(self.roster, pool=app.settings["card_pool"])
         self.sel = [0, 1]
@@ -35,8 +36,9 @@ class SelectScene(Scene):
         self.lists = [[], []]
         for side in (0, 1):
             x = 20 if side == 0 else W - 20 - 300
+            step = min(34, 560 // len(self.roster))
             for k, p in enumerate(self.roster):
-                b = Button((x, 96 + k * 34, 300, 30), f"{p.name}", size=16)
+                b = Button((x, 96 + k * step, 300, step - 4), f"{p.name}", size=16 if step >= 30 else 14)
                 b.pick = k
                 self.lists[side].append(b)
         self.opts = []
@@ -136,10 +138,10 @@ class SelectScene(Scene):
         title = "QUICK FIGHT" if self.mode == "ai" else "LOCAL 2 PLAYER"
         text(surf, title, (CX, 20), 44, WHITE, "midtop", display=True)
         sub = "You are red. Pick your opponent in blue." if self.mode == "ai" else \
-            "Red uses Q W E R A S D F, blue uses U I O P J K L ;"
+            "Red uses Q W E R A S D F Z, blue uses U I O P J K L ; M"
         if self.mode != "ai" and self.app.pads.count:
             sub = ("Controller 1 is red, controller 2 is blue" if self.app.pads.count >= 2 else
-                   "Red uses Q W E R A S D F, the controller plays blue")
+                   "Red uses Q W E R A S D F Z, the controller plays blue")
         a, b = self.roster[self.sel[0]], self.roster[self.sel[1]]
         if a.weight != b.weight:
             heavy = a if weight_gap(a.weight, b.weight) > 0 else b

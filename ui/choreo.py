@@ -49,6 +49,7 @@ ACTION = {
     "turnin": [("guard_bot", 0.25)],
     "bstand": [("getup", 0.25)],
     "imanari": [("shoot", 0.15), ("sweep", 0.2)],
+    "feint": [("cross_wind", 0.1), ("stance", 0.12), ("jab", 0.06), ("stance", 0.1)],
 }
 
 IMPACT = {"jab": 0.10, "cross": 0.24, "kick": 0.28, "knees": 0.14, "dirty": 0.1,

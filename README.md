@@ -4,16 +4,22 @@ A turn based MMA game with stick figures. Both fighters pick a move in secret, t
 both moves play out at the same time. Read your opponent, manage your stamina, and win
 by knockout, submission or on the scorecards.
 
+![A knockout and its slow motion replay](docs/ko.gif)
+
 ## Download
 
-**Windows:** grab `Stickfight.exe` from the [latest release](https://github.com/Vavoss123/stickfight/releases/latest)
-and double-click it. No install needed.
+Get it from the [latest release](https://github.com/Vavoss123/stickfight/releases/latest).
+Nothing to install.
 
-Windows may say "Windows protected your PC" because the exe isn't signed. Click
-**More info**, then **Run anyway**.
+- **Windows:** `Stickfight.exe`. Windows may say "Windows protected your PC" because the
+  exe isn't signed. Click **More info**, then **Run anyway**.
+- **macOS:** `Stickfight-macOS.zip` (Apple silicon). Unzip it, then right-click
+  Stickfight and choose **Open** the first time, because the app isn't signed.
+- **Linux:** `Stickfight-linux.tar.gz`. Unpack it and run `./Stickfight`.
 
 The game checks for updates when it starts. When a new version is out, the menu says so
-and pressing **U** downloads it and restarts the game.
+and pressing **U** downloads it and restarts the game (on Windows; macOS and Linux open
+the download page).
 
 ## Running from source
 
@@ -29,7 +35,7 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
 - **Tutorial**. New players get a prompt on the menu (press T), and it is also under
   How to play. A coach walks you through a first fight in five short lessons.
 - **Quick fight** against the computer on easy, normal or hard.
-- **Local 2 player** on one keyboard. Red uses Q W E R A S D F, blue uses U I O P J K L ;
+- **Local 2 player** on one keyboard. Red uses Q W E R A S D F Z, blue uses U I O P J K L ; M
   Picks stay hidden until both players have locked in.
 - **Career**. Create a fighter, beat two prospects to get ranked, climb the top 10,
   win the belt and defend it. Wins earn training points to spend on your stats.
@@ -43,6 +49,10 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
 - **Tournament**. Pick any fighter and win an eight fighter bracket in one night:
   quarterfinal, semifinal and final, three rounds each. About half the damage you take
   carries into your next fight, and cuts stay open.
+
+- **Challenges**. A daily challenge with the same fight and the same twist for everyone
+  that day (start the fight cut, face a heavyweight, finishes only, and more), with your
+  best score and a streak. Eighteen achievements, and four secret fighters to unlock.
 
 ### Weight classes
 
@@ -94,6 +104,17 @@ and tells you what the other guy keeps doing, what he is reading from you, and h
 round went.
 
 Knockouts get a slow motion replay.
+
+**Feints and follow ups.** A feint is cheap and beats a block: they freeze, get no rest,
+and you get a read that makes your next strike faster and more accurate. Feint into a
+strike or a takedown and you are the one caught. Landing clean gives you a follow up:
+your next strike comes a little faster. So after you land, do they block the follow up,
+or eat the feint?
+
+**The referee.** About one strike in a hundred is a foul (an eye poke, a low blow, a shot
+to the back of the head), more when someone is exhausted. The first is a warning, then
+it costs a point on every scorecard. The referee also breaks up a clinch that goes
+nowhere and stands up a ground fight where nothing is happening.
 
 **Momentum.** Landing shots, knockdowns, takedowns, reversals and submission attempts fill
 a fighter's hype meter (the purple bar under stamina). When it is full the crowd is on
@@ -163,6 +184,15 @@ fighter without it, to find cards that are too strong or too weak:
 python -m tools.cardsim --fights 1000
 ```
 
+## Making the README GIF
+
+```
+python -m tools.make_gif --out docs/ko.gif
+```
+
+Plays AI against AI fights until one ends in a knockout and saves the end of it with
+the replay. Needs Pillow (`pip install pillow`).
+
 ## Tests
 
 ```
@@ -179,7 +209,11 @@ git push origin v0.2.0
 ```
 
 The version number comes from the tag, and players on older versions get the update
-prompt the next time they start the game.
+prompt the next time they start the game. The workflow builds Windows, macOS and Linux.
+
+To also publish to itch.io, make the game page there, add a repository secret called
+`BUTLER_API_KEY` (itch.io, Settings, API keys) and check `ITCH_GAME` at the top of
+`.github/workflows/release.yml`. The text for the page is in `docs/itch.md`.
 
 ## License
 

@@ -1,7 +1,11 @@
-# Push a tag like v0.2.0 and this builds Stickfight.exe and publishes a GitHub Release.
+# Push a tag like v0.2.0 and this builds the game for Windows, macOS and Linux and
+# publishes a GitHub Release with all three.
 #
 #   git tag v0.2.0
 #   git push origin v0.2.0
+#
+# It can also upload to itch.io. Add a repository secret called BUTLER_API_KEY (from
+# itch.io > Settings > API keys) and set ITCH_GAME below to your user/game page.
 
 name: Release
 
@@ -12,9 +16,21 @@ on:
 permissions:
   contents: write
 
+env:
+  ITCH_GAME: vavoss123/stickfight
+
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-latest
+            name: mac
+          - os: ubuntu-latest
+            name: linux
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,6 +43,9 @@ jobs:
 
       - name: Test
         run: python -m unittest discover tests
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
 
       - name: Stamp version from tag
         shell: bash
@@ -36,10 +55,62 @@ jobs:
           echo "VERSION = \"${GITHUB_REF_NAME#v}\"" >> version.py
           cat version.py
 
-      - name: Build exe
-        run: pyinstaller --onefile --windowed --name Stickfight main.py
+      - name: Build (Windows)
+        if: matrix.name == 'windows'
+        run: |
+          pyinstaller --onefile --windowed --name Stickfight main.py
+          mkdir out
+          copy dist\Stickfight.exe out\Stickfight.exe
+
+      - name: Build (macOS)
+        if: matrix.name == 'mac'
+        run: |
+          pyinstaller --windowed --name Stickfight main.py
+          mkdir out
+          ditto -c -k --keepParent dist/Stickfight.app out/Stickfight-macOS.zip
+
+      - name: Build (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          pyinstaller --onefile --name Stickfight main.py
+          mkdir out
+          tar -czf out/Stickfight-linux.tar.gz -C dist Stickfight
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: out/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - run: ls -la out
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/Stickfight.exe
+          files: out/*
           generate_release_notes: true
+
+      - name: Upload to itch.io
+        if: ${{ env.BUTLER_API_KEY != '' }}
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+          V="${GITHUB_REF_NAME#v}"
+          mkdir -p itch/windows itch/linux
+          cp out/Stickfight.exe itch/windows/
+          tar -xzf out/Stickfight-linux.tar.gz -C itch/linux
+          ./butler/butler push itch/windows "$ITCH_GAME:windows" --userversion "$V"
+          ./butler/butler push out/Stickfight-macOS.zip "$ITCH_GAME:mac" --userversion "$V"
+          ./butler/butler push itch/linux "$ITCH_GAME:linux" --userversion "$V"
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

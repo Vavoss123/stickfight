@@ -94,11 +94,12 @@ class Fight:
         self.exchange = 0
         self.stats.append((RoundStats(), RoundStats()))
         st = self.state
-        st.pos, st.top, st.sub = STANDING, None, None
+        st.pos, st.top, st.sub, st.idle = STANDING, None, None, 0
         for f in st.f:
             f.rocked = 0
             gain = (ROUND_RECOVERY + f.stats.cardio * 2) * (1.0 - f.body / 200) + f.perk("secondwind")
             f.combo = 0
+            f.opening = None
             f.stamina = min(MAX_STAMINA, f.stamina + gain)
             f.hp = min(100.0, f.hp + 4)
             f.body *= 0.8
@@ -135,3 +136,5 @@ class Fight:
                 r.sub_attempts += 0.5
             if ex.top == i:
                 r.control += 1
+            if ex.foul and ex.foul[0] == i and ex.foul[2] == "point":
+                r.deductions += 1
