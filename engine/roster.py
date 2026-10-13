@@ -8,15 +8,15 @@ from .fighter import Profile, Stats
 ARCHETYPES = {
     "Striker":  dict(striking=8, wrestling=4, grappling=4, cardio=5, chin=5),
     "Wrestler": dict(striking=4, wrestling=9, grappling=6, cardio=8, chin=6),
-    "BJJ":      dict(striking=4, wrestling=6, grappling=10, cardio=6, chin=5),
-    "Brawler":  dict(striking=7, wrestling=4, grappling=3, cardio=4, chin=8),
+    "BJJ":      dict(striking=4, wrestling=6, grappling=9, cardio=6, chin=5),
+    "Brawler":  dict(striking=7, wrestling=4, grappling=3, cardio=6, chin=8),
 }
 
 ARCHETYPE_BLURB = {
     "Striker": "Sharp hands and kicks. Wants to keep it standing.",
     "Wrestler": "Takes you down and keeps you there. Great cardio.",
-    "BJJ": "Dangerous off the back. Hunts submissions everywhere.",
-    "Brawler": "Iron chin and heavy hands. Gasses if it goes long.",
+    "BJJ": "Pulls guard, shoots singles and hunts submissions everywhere.",
+    "Brawler": "Iron chin and heavy hands. Walks through shots to land bombs.",
 }
 
 COLORS = [

@@ -11,6 +11,10 @@ from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, S
 from .moves import matchup, base_class
 from .state import SubState
 
+# How much harder an escape from the bottom is when the top fighter's strike lands on
+# you at the same time. Without it, covering up was the only answer to ground and pound.
+SCRAMBLE = -0.5
+
 
 class Exchange:
     """What happened in one exchange. The UI animates from this, scoring reads it."""
@@ -371,6 +375,10 @@ def resolve(st, picks, rng):
                 # Punch missed, so the shot can still get through
                 ex.caught[l] = False
                 _grapple_uncontested(st, ex, l, ml, rng, bonus=-0.2)
+            elif (ex.landed[w] and st.top == w and ml.cls == GRAPPLE and not ex.finish
+                  and st.f[l].hp > 0 and ex.knockdown is None):
+                # Eating shots on the bottom but still scrambling out
+                _grapple_uncontested(st, ex, l, ml, rng, bonus=SCRAMBLE)
         elif cw == DEFEND:
             ex.blocked[w] = True
             ex.success[w] = True

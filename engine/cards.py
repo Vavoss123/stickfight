@@ -331,7 +331,7 @@ PRESETS = {
     "Striker": ({"cross": "superman", "legkick": "calfkick"}, ["combo"]),
     "Wrestler": ({"takedown": "doubleleg", "gnp": "hammer"}, ["heavytop"]),
     "BJJ": ({"body": "guardpull", "legkick": "singleleg", "triangle": "kimura",
-             "sweep": "butterfly"}, ["subhunter"]),
+             "sweep": "butterfly"}, []),
     "Brawler": ({"body": "liver", "dirty": "spinelbow"}, ["nevergiveup"]),
 }
 

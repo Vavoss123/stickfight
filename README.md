@@ -50,9 +50,10 @@ and slow its recovery, and enough of them can fold a fighter. Leg kicks take awa
 and wrestling, and a fighter past 60% leg damage starts limping.
 
 The fight moves between standing, the clinch, guard, mount and back control. Each
-position has its own moves. Covering up stops strikes from the top, but strikes open
-you up too: a triangle catches ground and pound, a sweep catches elbows, and under the
-mount a shrimp beats punches and a bridge beats elbows. A submission starts a contest: the attacker hides a side
+position has its own moves. Covering up stops strikes from the top, but it is not the
+only way out: in guard a sweep or get up can scramble out through the punches, under
+the mount a shrimp beats punches and a bridge beats elbows, and from the bottom of back
+control you can turn in while they punch. A submission starts a contest: the attacker hides a side
 and the defender escapes by matching it. The rear naked choke from the back is the most
 dangerous of them, and escaping it still leaves you with them on your back.
 

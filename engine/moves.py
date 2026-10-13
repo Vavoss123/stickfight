@@ -122,11 +122,11 @@ _ALL = [
     Move("upkick", "Strikes off back", STRIKE, "striking", 6, dmg=5, acc=0.7,
          desc="Upkicks and elbows from the bottom."),
     Move("sweep", "Sweep", GRAPPLE, "grappling", 10, to="guard_top",
-         desc="Flip them and come up on top. Best when they post up for elbows."),
+         desc="Flip them and come up on top. Can scramble through their punches."),
     Move("triangle", "Triangle choke", SUB, "grappling", 12,
-         desc="Lock a triangle from guard. Catches them punching down."),
+         desc="Lock a triangle from guard."),
     Move("getup", "Get up", GRAPPLE, "wrestling", 8, to="standing",
-         desc="Wall walk back to the feet."),
+         desc="Wall walk back to the feet. Can scramble through their punches."),
     Move("cover", "Cover up", DEFEND, "grappling", -5,
          desc="Tie them up and defend."),
 
@@ -189,10 +189,8 @@ OVERRIDES = {
     ("legkick", "takedown"): -1,  # kick gets caught
     ("body", "takedown"): -1,   # dipping to the body opens up the shot
     ("kick", "clinch"): -1,
-    # Off the bottom. Throwing strikes gives the bottom fighter something to work with,
-    # so covering up is not the only answer to ground and pound.
-    ("triangle", "gnp"): 1,     # they leave an arm in while punching
-    ("sweep", "elbows"): 1,     # posting up for elbows takes their base away
+    # Under mount and back control, throwing strikes gives the bottom fighter a way out.
+    # In guard, escapes can scramble out through the punches instead (see resolve.py).
     ("bridge", "melbows"): 1,   # sitting up high for elbows, bridge them off
     ("shrimp", "mgnp"): 1,      # hips out while they punch
     ("turnin", "bpunch"): 1,    # the hooks loosen when they punch from the back

@@ -2,8 +2,12 @@
 
 ## Now
 
-- [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder)
+- [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder).
+      Press F1 in game to write a note, they land in ~/.stickfight/feedback.txt
 - [ ] Check the Showtime Kick against wrestlers, it tests as neutral in mirror matches
+- [x] Edit decks before quick fight and 2 player
+- [x] Penalty for moves thrown with no stamina (GASSED)
+- [x] Ways out from under ground and pound besides covering up
 
 ## Next
 
@@ -13,6 +17,7 @@
       retirement and a hall of fame
 - [ ] Tournament mode: 8 fighter bracket in one night, injuries carry over
 - [ ] Shared card collection: use career cards to build decks for quick fight and 2 player
+      (quick fight decks exist now, with every card unlocked)
 
 ## Polish
 
@@ -27,7 +32,8 @@
 
 ## Balance notes
 
-- Striker is still the strongest style, around 54% against the field on hard
-- KOs end about 9 to 12% of fights, submissions about 20%
+- Styles on hard: BJJ 52%, Wrestler 51%, Striker 49%, Brawler 45% (Oct 2026)
+- KOs end about 8% of fights, submissions about 23%
+- Showtime Kick tests weak now (44% in mirror matches), a legendary should beat that
 - Run `python -m tools.simulate --fights 100 --level hard` and
   `python -m tools.cardsim --fights 1000` after changing any numbers

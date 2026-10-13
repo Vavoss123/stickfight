@@ -67,25 +67,32 @@ class Gassed(unittest.TestCase):
 
 class BottomEscapes(unittest.TestCase):
     def test_counters_to_strikes_from_the_top(self):
-        self.assertEqual(matchup(MOVES["triangle"], MOVES["gnp"]), 1)
-        self.assertEqual(matchup(MOVES["sweep"], MOVES["elbows"]), 1)
         self.assertEqual(matchup(MOVES["bridge"], MOVES["melbows"]), 1)
         self.assertEqual(matchup(MOVES["shrimp"], MOVES["mgnp"]), 1)
         self.assertEqual(matchup(MOVES["turnin"], MOVES["bpunch"]), 1)
-        # Cards inherit it
-        self.assertEqual(matchup(CARDS["kimura"].move, CARDS["hammer"].move), 1)
-        # Everything else stays as it was
-        self.assertEqual(matchup(MOVES["gnp"], MOVES["getup"]), 1)
-        self.assertEqual(matchup(MOVES["elbows"], MOVES["triangle"]), 1)
+        self.assertEqual(matchup(CARDS["granby"].move, MOVES["mgnp"]), 1)  # cards inherit it
+        # Guard is unchanged, escapes scramble out instead
+        self.assertEqual(matchup(MOVES["gnp"], MOVES["sweep"]), 1)
+        self.assertEqual(matchup(MOVES["gnp"], MOVES["triangle"]), 1)
 
-    def test_sweep_under_elbows_works(self):
-        swept = 0
-        for seed in range(200):
+    def test_scramble_out_from_under_ground_and_pound(self):
+        swept = hit = 0
+        for seed in range(400):
             st = fresh(GUARD, 0)
-            ex = resolve(st, ("elbows", "sweep"), random.Random(seed))
+            ex = resolve(st, ("gnp", "sweep"), random.Random(seed))
             swept += ex.reversal_by == 1
-            self.assertFalse(ex.landed[0])
-        self.assertGreater(swept, 100)
+            hit += ex.landed[0]
+        # Sometimes, not always, and they still eat the punches
+        self.assertGreater(swept, 20)
+        self.assertLess(swept, 200)
+        self.assertGreater(hit, 250)
+
+    def test_no_scramble_into_a_submission(self):
+        for seed in range(100):
+            st = fresh(GUARD, 0)
+            ex = resolve(st, ("gnp", "triangle"), random.Random(seed))
+            if ex.landed[0]:   # a missed punch lets anything through, as before
+                self.assertIsNone(ex.sub_start)
 
     def test_shrimp_under_punches_recovers_guard(self):
         out = 0
