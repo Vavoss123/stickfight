@@ -63,6 +63,9 @@ def describe(ex, names):
             lines.append(_pick(f"DOWN GOES {them.upper()}!", f"{me} drops {them}!"))
         elif ex.rocked[1 - i]:
             lines.append(_pick(f"{them} is hurt!", f"{them} is rocked!", f"That one wobbled {them}!"))
+        if ex.cut_opened[1 - i]:
+            lines.append(_pick(f"{them} is cut! There is blood everywhere.",
+                               f"That opened a cut on {them}!"))
         if ex.limping[1 - i]:
             lines.append(_pick(f"{them} is limping badly!", f"That leg is done, {them} can barely stand."))
 
@@ -108,6 +111,8 @@ def finish_line(result, names):
     w = names[result.winner]
     if result.method == "KO":
         return _pick(f"{w} wins by KO! Lights out!", f"Goodnight! {w} by knockout!")
+    if result.method == "TKO" and result.detail.startswith("Doctor"):
+        return f"The doctor has seen enough! {w} wins by TKO!"
     if result.method == "TKO":
         return f"The referee waves it off! {w} wins by TKO!"
     if result.method == "Submission":

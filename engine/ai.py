@@ -45,7 +45,7 @@ def evaluate(st, ex, me):
         return 1000.0 if ex.finish[0] == me else -1000.0
     m, o = st.f[me], st.f[1 - me]
     v = (m.hp - o.hp) + 0.15 * (m.stamina - o.stamina) + position_value(st, me)
-    v += 0.12 * (o.body + o.legs - m.body - m.legs)
+    v += 0.12 * (o.body + o.legs - m.body - m.legs) + 0.15 * (o.cut - m.cut)
     if m.rocked:
         v -= 8
     if o.rocked:

@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, field, asdict
 
-from .constants import MAX_HP, MAX_STAMINA, STAT_NAMES, STAT_MAX, STAT_MIN
+from .constants import (MAX_HP, MAX_STAMINA, STAT_NAMES, STAT_MAX, STAT_MIN, STAMINA_COST,
+                        STAMINA_FLOOR)
 
 
 @dataclass
@@ -59,9 +60,10 @@ class Profile:
 class FighterState:
     """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
 
-    __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs")
+    __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut")
 
-    def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0):
+    def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0,
+                 cut=0.0):
         self.profile = profile
         self.stats = profile.stats
         self.hp = hp
@@ -69,9 +71,11 @@ class FighterState:
         self.rocked = rocked
         self.body = body    # 0 to 100, body damage slows stamina recovery
         self.legs = legs    # 0 to 100, leg damage saps power and movement
+        self.cut = cut      # 0 to 100, blood in the eyes, the doctor may stop it
 
     def clone(self):
-        return FighterState(self.profile, self.hp, self.stamina, self.rocked, self.body, self.legs)
+        return FighterState(self.profile, self.hp, self.stamina, self.rocked, self.body, self.legs,
+                            self.cut)
 
     def mobility(self):
         """1.0 on fresh legs, down to 0.6 when the legs are gone."""
@@ -81,14 +85,14 @@ class FighterState:
         return self.stats.get(name)
 
     def stamina_factor(self):
-        """1.0 when fresh, 0.6 when empty."""
-        return 0.6 + 0.4 * (self.stamina / MAX_STAMINA)
+        """1.0 when fresh, STAMINA_FLOOR when empty."""
+        return STAMINA_FLOOR + (1 - STAMINA_FLOOR) * (self.stamina / MAX_STAMINA)
 
     def spend(self, amount):
         """Positive amount costs stamina, negative recovers it. Cardio scales both."""
         cardio = self.stats.cardio
         if amount > 0:
-            amount *= 1.3 - cardio * 0.06
+            amount *= (1.3 - cardio * 0.06) * STAMINA_COST
         else:
             amount *= (0.7 + cardio * 0.06) * (1.0 - self.body / 160)
         self.stamina = max(0.0, min(MAX_STAMINA, self.stamina - amount))

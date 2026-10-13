@@ -30,21 +30,22 @@ class Move:
     power: bool = False
     speed: int = 1
     target: str = HEAD
+    cuts: float = 0.0   # chance a clean head shot opens a cut
     to: str = None
     desc: str = ""
 
 
 _ALL = [
     # Standing
-    Move("jab", "Jab", STRIKE, "striking", 3, dmg=4.5, acc=0.88, speed=3,
+    Move("jab", "Jab", STRIKE, "striking", 3, dmg=4.5, acc=0.88, speed=3, cuts=0.03,
          desc="Quick and cheap. Beats power shots to the punch."),
-    Move("cross", "Power punch", STRIKE, "striking", 10, dmg=10.5, acc=0.62, power=True,
+    Move("cross", "Power punch", STRIKE, "striking", 10, dmg=10.5, acc=0.62, power=True, cuts=0.06,
          desc="Big right hand. Can drop them."),
     Move("body", "Body shot", STRIKE, "striking", 6, dmg=7, acc=0.78, target=BODY,
          desc="Hooks to the body. Drains their stamina."),
     Move("legkick", "Leg kick", STRIKE, "striking", 5, dmg=5, acc=0.8, speed=2, target=LEGS,
          desc="Goes under the guard. Chops down their power and movement."),
-    Move("kick", "Head kick", STRIKE, "striking", 11, dmg=13.5, acc=0.6, power=True, speed=0,
+    Move("kick", "Head kick", STRIKE, "striking", 11, dmg=13.5, acc=0.6, power=True, speed=0, cuts=0.06,
          desc="Fight ender, but a block, takedown or clinch stops it."),
     Move("block", "Block and counter", DEFEND, "striking", -7,
          desc="Beats strikes and fires back. Loses to grappling."),
@@ -56,7 +57,7 @@ _ALL = [
     # Clinch
     Move("knees", "Knees", STRIKE, "striking", 8, dmg=9, acc=0.75, target=BODY,
          desc="Knees to the body. Drains their stamina."),
-    Move("dirty", "Dirty boxing", STRIKE, "striking", 4, dmg=5.5, acc=0.85, speed=3,
+    Move("dirty", "Dirty boxing", STRIKE, "striking", 4, dmg=5.5, acc=0.85, speed=3, cuts=0.05,
          desc="Short shots in close."),
     Move("trip", "Trip", GRAPPLE, "wrestling", 10, to="guard_top",
          desc="Trip them to the mat."),
@@ -68,9 +69,9 @@ _ALL = [
          desc="Lock the neck. If it fails you end up on your back."),
 
     # Guard, top
-    Move("gnp", "Ground and pound", STRIKE, "wrestling", 6, dmg=7, acc=0.8, speed=2,
+    Move("gnp", "Ground and pound", STRIKE, "wrestling", 6, dmg=7, acc=0.8, speed=2, cuts=0.06,
          desc="Punches from the top."),
-    Move("elbows", "Elbows", STRIKE, "wrestling", 10, dmg=11, acc=0.65, power=True,
+    Move("elbows", "Elbows", STRIKE, "wrestling", 10, dmg=11, acc=0.65, power=True, cuts=0.16,
          desc="Nasty elbows. Opens cuts."),
     Move("pass", "Pass to mount", GRAPPLE, "grappling", 9, to="mount_top",
          desc="Pass the guard and take the mount."),
@@ -92,10 +93,10 @@ _ALL = [
          desc="Tie them up and defend."),
 
     # Mount, top
-    Move("mgnp", "Mounted punches", STRIKE, "wrestling", 6, dmg=9, acc=0.85, speed=2,
+    Move("mgnp", "Mounted punches", STRIKE, "wrestling", 6, dmg=9, acc=0.85, speed=2, cuts=0.06,
          desc="Rain down punches."),
-    Move("melbows", "Mounted elbows", STRIKE, "wrestling", 10, dmg=13, acc=0.7, power=True,
-         desc="Heavy elbows from mount."),
+    Move("melbows", "Mounted elbows", STRIKE, "wrestling", 10, dmg=13, acc=0.7, power=True, cuts=0.16,
+         desc="Heavy elbows from mount. Opens cuts."),
     Move("armtri", "Arm triangle", SUB, "grappling", 12,
          desc="Squeeze the arm triangle."),
     Move("mposture", "Hold mount", DEFEND, "grappling", -6,
@@ -104,7 +105,7 @@ _ALL = [
          desc="Slide behind them for the choke."),
 
     # Back control, top
-    Move("bpunch", "Punches from back", STRIKE, "wrestling", 6, dmg=7, acc=0.8, speed=2,
+    Move("bpunch", "Punches from back", STRIKE, "wrestling", 6, dmg=7, acc=0.8, speed=2, cuts=0.04,
          desc="Punch around the side of the head."),
     Move("rnc", "Rear naked choke", SUB, "grappling", 11,
          desc="The most dangerous choke there is."),

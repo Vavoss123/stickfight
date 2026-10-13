@@ -102,6 +102,7 @@ class Figure:
         self.flash = 0.0
         self.shake = 0.0
         self.visible = True
+        self.cut = 0.0
 
     # Control
 
@@ -177,6 +178,20 @@ class Figure:
         self.flash = max(0.0, self.flash - dt)
         self.shake = max(0.0, self.shake - dt * 30)
 
+    def _blood(self, surf, j):
+        """A gash over the eye and a trickle down the face, worse as the cut opens up."""
+        hx, hy = j["head"]
+        r = LEN["head_r"] * self.scale
+        sev = min(1.0, self.cut / 100)
+        ex = hx + self.facing * r * 0.45
+        ey = hy - r * 0.35
+        red = (170, 20, 20)
+        pygame.draw.circle(surf, red, (ex, ey), max(2, int(2 + 4 * sev)))
+        drip = r * (0.6 + 1.6 * sev)
+        pygame.draw.line(surf, red, (ex, ey), (ex + self.facing * 2, ey + drip), max(2, int(2 + 3 * sev)))
+        if sev > 0.5:
+            pygame.draw.circle(surf, red, (ex - self.facing * 4, ey + drip * 0.6), 3)
+
     def draw(self, surf):
         if not self.visible:
             return
@@ -202,6 +217,8 @@ class Figure:
         _line(surf, body, j["hip"], j["neck"], w + 1)
         _line(surf, body, j["neck"], j["head"], w - 1)
         pygame.draw.circle(surf, body, j["head"], int(LEN["head_r"] * self.scale))
+        if self.cut > 0:
+            self._blood(surf, j)
         # Front limbs
         _line(surf, body, j["hip"], j["fknee"], w)
         _line(surf, body, j["fknee"], j["ffoot"], w)

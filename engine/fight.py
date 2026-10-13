@@ -3,7 +3,7 @@
 import random
 
 from .constants import (EXCHANGES_PER_ROUND, ROUND_SECONDS, STANDING, MAX_STAMINA,
-                        STRIKE)
+                        STRIKE, ROUND_RECOVERY)
 from .fighter import FighterState
 from .judges import RoundStats, score_fight
 from .moves import MOVES
@@ -95,11 +95,12 @@ class Fight:
         st.pos, st.top, st.sub = STANDING, None, None
         for f in st.f:
             f.rocked = 0
-            gain = (28 + f.stats.cardio * 2.5) * (1.0 - f.body / 200)
+            gain = (ROUND_RECOVERY + f.stats.cardio * 2) * (1.0 - f.body / 200)
             f.stamina = min(MAX_STAMINA, f.stamina + gain)
             f.hp = min(100.0, f.hp + 4)
             f.body *= 0.8
             f.legs *= 0.85
+            f.cut = max(0.0, f.cut - 15)  # the cutman goes to work
 
     def _decision(self):
         winner, detail, cards = score_fight(self.stats, self.rng)

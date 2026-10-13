@@ -27,6 +27,10 @@ EXCHANGES_PER_ROUND = 8
 ROUND_SECONDS = 300
 MAX_HP = 100.0
 MAX_STAMINA = 100.0
+# Stamina tuning. Higher cost and lower recovery make every big move a decision.
+STAMINA_COST = 1.3        # multiplier on every move's stamina cost
+STAMINA_FLOOR = 0.5       # how hard an empty tank hits power and accuracy
+ROUND_RECOVERY = 22.0     # stamina back between rounds, plus 2 per cardio point
 
 STAT_NAMES = ("striking", "wrestling", "grappling", "cardio", "chin")
 STAT_MAX = 10

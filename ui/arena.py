@@ -94,6 +94,16 @@ class Arena:
         pygame.draw.rect(s, (12, 12, 16), (0, FENCE_BOTTOM - 6, W, 14))
         pygame.draw.line(s, (60, 60, 70), (0, FENCE_BOTTOM - 6), (W, FENCE_BOTTOM - 6), 2)
 
+    def blood(self, x, amount=1.0):
+        """Splash some blood on the canvas. It stays for the rest of the fight."""
+        for _ in range(int(2 + 4 * amount)):
+            bx = x + self.rng.uniform(-40, 40)
+            by = FENCE_BOTTOM + 60 + self.rng.uniform(40, 110)
+            w = self.rng.uniform(4, 12) * (0.6 + amount)
+            spot = pygame.Surface((int(w * 2), int(w)), pygame.SRCALPHA)
+            pygame.draw.ellipse(spot, (140, 10, 10, self.rng.randint(110, 180)), spot.get_rect())
+            self.bg.blit(spot, (bx - w, by - w / 2))
+
     def cheer(self, amount=1.0):
         self.excite = min(2.0, self.excite + amount)
 

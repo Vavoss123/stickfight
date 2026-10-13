@@ -133,6 +133,64 @@ class Targets(unittest.TestCase):
         self.assertGreater(st.f[0].stamina, st.f[1].stamina)
 
 
+class Cuts(unittest.TestCase):
+    def test_elbows_open_cuts(self):
+        cuts = 0
+        for seed in range(200):
+            st = fresh(GUARD, 0)
+            ex = resolve(st, ("elbows", "sweep"), random.Random(seed))
+            cuts += ex.cut_opened[1]
+        self.assertGreater(cuts, 10)
+
+    def test_bad_cut_can_bring_the_doctor(self):
+        stopped = 0
+        for seed in range(100):
+            st = fresh()
+            st.f[1].cut = 90
+            ex = resolve(st, ("jab", "cross"), random.Random(seed))
+            if ex.finish and ex.finish[2].startswith("Doctor"):
+                stopped += 1
+        self.assertGreater(stopped, 10)
+
+    def test_cutman_closes_the_cut_between_rounds(self):
+        r = quick_fighters()
+        f = Fight(r[0], r[1], seed=1)
+        f.state.f[0].cut = 40
+        f.between_rounds = True
+        f.start_next_round()
+        self.assertEqual(f.state.f[0].cut, 25)
+
+
+class Corner(unittest.TestCase):
+    def test_spots_an_opponent_who_keeps_shooting(self):
+        from engine.corner import advice
+        r = quick_fighters()
+        f = Fight(r[0], r[1], seed=3)
+        while not f.between_rounds and not f.over:
+            if f.state.pos != STANDING:
+                f.state.pos, f.state.top, f.state.sub = STANDING, None, None
+            f.play(("cross", "takedown"))
+        tips = advice(f, 0)
+        self.assertTrue(1 <= len(tips) <= 3)
+        self.assertTrue(any("shooting" in t for t in tips), tips)
+
+    def test_always_gives_advice(self):
+        from engine.corner import advice
+        r = quick_fighters()
+        f = Fight(r[2], r[3], seed=4)
+        f.play(("block", "block"))
+        self.assertTrue(advice(f, 0))
+        self.assertTrue(advice(f, 1))
+
+
+class Stamina(unittest.TestCase):
+    def test_spamming_power_shots_gasses_you_out(self):
+        st = fresh()
+        for seed in range(6):
+            resolve(st, ("cross", "block"), random.Random(seed))
+        self.assertLess(st.f[0].stamina, 30)
+
+
 class BackControl(unittest.TestCase):
     def test_take_the_back_from_mount(self):
         for seed in range(20):

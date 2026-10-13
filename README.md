@@ -43,6 +43,14 @@ position has its own moves. A submission starts a contest: the attacker hides a 
 and the defender escapes by matching it. The rear naked choke from the back is the most
 dangerous of them, and escaping it still leaves you with them on your back.
 
+Stamina is scarce. Every move costs it, the break between rounds only gives some back,
+and a tired fighter hits softer, misses more and gets taken down and submitted.
+
+Elbows and big shots can open cuts. Blood in the eyes hurts accuracy, and a bad enough
+cut gets the fight stopped by the doctor. Between rounds your corner reads the fight
+and tells you what the other guy keeps doing, what he is reading from you, and how the
+round went.
+
 Knockouts get a slow motion replay.
 
 Fights are 3 rounds of 8 exchanges (title fights are 5 rounds). Three judges score each

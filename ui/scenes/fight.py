@@ -4,6 +4,7 @@ import pygame
 
 from engine.ai import AI
 from engine.commentary import describe, finish_line
+from engine.corner import advice
 from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, SUB_ATTACK_LABELS,
                               SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
@@ -13,7 +14,7 @@ from engine.moves import MOVES
 from ..arena import Arena
 from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, panel,
-                      bar, Button, font)
+                      bar, Button, font, text_block)
 from ..stickman import Figure
 from .base import Scene
 
@@ -80,6 +81,7 @@ class FightScene(Scene):
         self.last_ex = None
         self.can_continue = False
         self.time_scale = 1.0
+        self.corner_tips = None
         self.snap = None
         self.saved_banner = None
         self.world = pygame.Surface((W, H))
@@ -274,6 +276,9 @@ class FightScene(Scene):
                                                self.snd("crowd", 0.7), self.arena.cheer(1.0)))
             if ex.rocked[o]:
                 self.at(impact + 0.08, lambda o=o: self.popup(o, "ROCKED!", GOLD, 30, dy=-34))
+            if ex.cut_opened[o]:
+                self.at(impact + 0.1, lambda o=o: (self.popup(o, "CUT!", (220, 40, 40), 30, dy=-64),
+                                                   self.arena.blood(self.figs[o].x, 1.5)))
             if ex.limping[o]:
                 self.at(impact + 0.1, lambda o=o: self.popup(o, "LIMPING!", (255, 170, 60), 28, dy=-34))
             if ex.knockdown == o:
@@ -321,6 +326,8 @@ class FightScene(Scene):
         if target != "head":
             self.popup(o, "BODY" if target == "body" else "LEG", (255, 170, 60), 18, dy=30)
         self.snd("punch" if dmg >= 8 else "jab")
+        if self.fight.state.f[o].cut > 0 and target == "head":
+            self.arena.blood(self.figs[o].x, min(1.5, dmg / 10))
         if dmg >= 9:
             self.shake = 8
             self.arena.cheer(0.9)
@@ -362,6 +369,7 @@ class FightScene(Scene):
 
     def _round_end(self):
         self.phase = "round_end"
+        self.corner_tips = [advice(self.fight, 0), advice(self.fight, 1)]
         self.snd("bell")
         self.at(0.25, lambda: self.snd("bell"))
         self.can_continue = False
@@ -520,7 +528,8 @@ class FightScene(Scene):
         self.events = [ev for ev in self.events if ev[0] > self.t]
         for ev in due:
             ev[1]()
-        for f in self.figs:
+        for i, f in enumerate(self.figs):
+            f.cut = self.fight.state.f[i].cut
             f.update(dt)
         self.ref.update(dt)
         self.arena.update(real_dt)
@@ -627,6 +636,8 @@ class FightScene(Scene):
                 tags.append(("BODY", fs.body))
             if fs.legs >= 10:
                 tags.append(("LEGS", fs.legs))
+            if fs.cut > 0:
+                tags.append(("CUT", fs.cut))
             tx = x + 16 if left else x + 484
             for label, v in tags:
                 c = (255, 200, 90) if v < 40 else (255, 140, 60) if v < 70 else (255, 80, 60)
@@ -642,7 +653,8 @@ class FightScene(Scene):
             text(surf, "TITLE FIGHT", (CX + 92, 76), 13, GOLD, "topleft", bold=True)
         # Commentary
         y = 128
-        for ln, age in self.lines[-2:]:
+        lines = [] if self.phase == "round_end" else self.lines[-2:]
+        for ln, age in lines:
             a = 255 if age < 6 else max(0, int(255 - (age - 6) * 120))
             if a > 0:
                 text(surf, ln, (CX, y), 20, WHITE, "midtop", alpha=a)
@@ -737,8 +749,11 @@ class FightScene(Scene):
 
     def _draw_round_summary(self, surf):
         f = self.fight
-        rect = panel(surf, (CX - 300, 180, 600, 330), (12, 13, 20), alpha=235, border=GOLD)
-        text(surf, f"END OF ROUND {f.round}", (CX, rect.y + 16), 34, GOLD, "midtop", display=True)
+        rect = panel(surf, (CX - 300 - 160, 160, 920, 380), (12, 13, 20), alpha=240, border=GOLD)
+        rect = pygame.Rect(rect.x, rect.y, 600, rect.h)
+        text(surf, f"END OF ROUND {f.round}", (CX - 160, rect.y + 16), 34, GOLD, "midtop", display=True)
+        self._draw_corner(surf, pygame.Rect(rect.right + 10, rect.y + 16, 300, rect.h - 32))
+        CXs = CX - 160
         s0, s1 = f.stats[-1]
         rows = [
             ("Strikes landed", f"{s0.landed}/{s0.thrown}", f"{s1.landed}/{s1.thrown}"),
@@ -753,12 +768,26 @@ class FightScene(Scene):
         y = rect.y + 100
         for label, a, b in rows:
             text(surf, a, (rect.x + 110, y), 20, WHITE, "midtop")
-            text(surf, label, (CX, y), 17, GREY, "midtop")
+            text(surf, label, (CXs, y), 17, GREY, "midtop")
             text(surf, b, (rect.right - 110, y), 20, WHITE, "midtop")
             y += 30
         if self.can_continue:
-            text(surf, f"Press SPACE for round {f.round + 1}", (CX, rect.bottom - 34), 18, WHITE,
+            text(surf, f"Press SPACE for round {f.round + 1}", (CXs, rect.bottom - 40), 18, WHITE,
                  "midtop", bold=True)
+
+    def _draw_corner(self, surf, rect):
+        pygame.draw.line(surf, (60, 60, 70), (rect.x - 6, rect.y), (rect.x - 6, rect.bottom), 2)
+        corners = [0] if self.cfg.mode == "ai" else [0, 1]
+        y = rect.y
+        for i in corners:
+            who = "YOUR CORNER" if self.cfg.mode == "ai" else f"{self.names[i].upper()}'S CORNER"
+            text(surf, who, (rect.x + 10, y), 18, CORNER[i], bold=True)
+            y += 32
+            tips = self.corner_tips[i] if self.corner_tips else []
+            for tip in tips[:3 if len(corners) == 1 else 2]:
+                pygame.draw.circle(surf, GOLD, (rect.x + 16, y + 10), 4)
+                y = text_block(surf, tip, (rect.x + 28, y), 16, rect.w - 34, WHITE, "topleft") + 8
+            y += 10
 
 
 def _ctrl(n):

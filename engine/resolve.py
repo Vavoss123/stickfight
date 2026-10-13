@@ -32,6 +32,7 @@ class Exchange:
         self.knockdown = None           # index of fighter knocked down
         self.target_hit = [None, None]  # head / body / legs that fighter i landed on
         self.limping = [False, False]   # fighter i's legs just went
+        self.cut_opened = [False, False]  # fighter i got cut this exchange
         self.transition = None          # (by, to)
         self.takedown_by = None
         self.reversal_by = None
@@ -104,6 +105,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         p -= 0.15
     if d.rocked:
         p += 0.12
+    if a.cut >= 40:
+        p -= 0.06  # blood in the eyes
     if rng.random() >= _clamp(p, 0.05, 0.97):
         ex.missed[i] = True
         return
@@ -146,6 +149,9 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         return
 
     d.take(dmg)
+    _cut(st, ex, i, move, dmg, rng)
+    if ex.finish:
+        return
     rock = max(0.0, (dmg - 5) * 0.045) * chin + (0.2 if d.hp < 30 else 0.0)
     if rng.random() < rock:
         d.rocked = 1
@@ -156,7 +162,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
 
     if move.power and standing:
         # A clean power shot can end it at any time, more likely when hurt
-        ko = _clamp(dmg / max(d.hp, 1.0) * 0.17 * chin, 0, 0.4)
+        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin, 0, 0.4)
         if was_rocked:
             ko *= 1.5
         if rng.random() < ko:
@@ -174,6 +180,18 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         # Referee steps in when a hurt fighter is not defending on the bottom
         if rng.random() < 0.25 + (40 - d.hp) / 100:
             ex.finish = (i, "TKO", "Referee stoppage, " + move.name.lower())
+
+
+def _cut(st, ex, i, move, dmg, rng):
+    """Head shots can open a cut. Once open, every head shot makes it worse."""
+    d = st.f[1 - i]
+    if d.cut > 0:
+        d.cut = min(100.0, d.cut + dmg * 0.9)
+    elif rng.random() < move.cuts:
+        d.cut = 15 + dmg * 1.5
+        ex.cut_opened[1 - i] = True
+    if d.cut >= 65 and rng.random() < (d.cut - 55) / 90:
+        ex.finish = (i, "TKO", "Doctor stoppage, cut")
 
 
 def _counter(st, ex, i, rng, open_shot=False):
@@ -356,7 +374,7 @@ def _resolve_sub(st, picks, rng):
         ex.sub_result = "defended"
         ex.success[d] = True
     else:
-        p = 0.58 + (A.stats.grappling - D.stats.grappling) * 0.05
+        p = 0.52 + (A.stats.grappling - D.stats.grappling) * 0.05
         p += 0.3 * (1 - D.stamina / 100) - 0.3 * (1 - A.stamina / 100)
         if D.rocked:
             p += 0.15
