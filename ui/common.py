@@ -1,5 +1,7 @@
 """Fonts, colours and small drawing helpers shared by every screen."""
 
+from collections import OrderedDict
+
 import pygame
 
 W, H = 1280, 720
@@ -17,6 +19,25 @@ GREEN = (70, 200, 110)
 CORNER = (RED, BLUE)
 
 _fonts = {}
+# Rendered text and panels are kept and reused instead of being rebuilt every frame.
+# Both are capped so long sessions do not keep growing.
+_text_cache = OrderedDict()
+_fit_cache = {}
+_panel_cache = OrderedDict()
+TEXT_CACHE_SIZE = 300
+PANEL_CACHE_SIZE = 40
+PANEL_CACHE_MAX_AREA = 300 * 300   # big overlays are cheap to fill and costly to keep
+
+
+def _cached(cache, key, limit, make):
+    hit = cache.get(key)
+    if hit is not None:
+        cache.move_to_end(key)
+        return hit
+    hit = cache[key] = make()
+    if len(cache) > limit:
+        cache.popitem(last=False)
+    return hit
 
 
 def font(size, bold=False, display=False):
@@ -33,17 +54,34 @@ def font(size, bold=False, display=False):
 def text(surf, s, pos, size=20, color=WHITE, anchor="topleft", bold=False, display=False,
          shadow=True, alpha=255, max_width=None):
     """Draw one line. With max_width the font shrinks until the line fits."""
+    s = str(s)
     if max_width:
-        while size > 10 and font(size, bold, display).size(str(s))[0] > max_width:
-            size -= 1
-    f = font(size, bold, display)
-    img = f.render(str(s), True, color)
+        key = (s, size, bold, display, max_width)
+        fit = _fit_cache.get(key)
+        if fit is None:
+            fit = size
+            while fit > 10 and font(fit, bold, display).size(s)[0] > max_width:
+                fit -= 1
+            if len(_fit_cache) > 2000:
+                _fit_cache.clear()
+            _fit_cache[key] = fit
+        size = fit
+
+    def make():
+        f = font(size, bold, display)
+        sh = f.render(s, True, (0, 0, 0))
+        sh.set_alpha(150)
+        return f.render(s, True, color), sh
+
+    img, sh = _cached(_text_cache, (s, size, tuple(color), bold, display), TEXT_CACHE_SIZE, make)
     if alpha < 255:
+        img = img.copy()
         img.set_alpha(alpha)
     r = img.get_rect(**{anchor: pos})
     if shadow:
-        sh = f.render(str(s), True, (0, 0, 0))
-        sh.set_alpha(int(150 * alpha / 255))
+        if alpha < 255:
+            sh = sh.copy()
+            sh.set_alpha(int(150 * alpha / 255))
         surf.blit(sh, r.move(2, 2))
     surf.blit(img, r)
     return r
@@ -77,11 +115,19 @@ def text_block(surf, s, pos, size, max_width, color=WHITE, anchor="midtop", bold
 
 def panel(surf, rect, color=PANEL, alpha=220, radius=10, border=None):
     rect = pygame.Rect(rect)
-    s = pygame.Surface(rect.size, pygame.SRCALPHA)
-    pygame.draw.rect(s, (*color, alpha), s.get_rect(), border_radius=radius)
-    if border:
-        pygame.draw.rect(s, (*border, 255), s.get_rect(), 2, border_radius=radius)
-    surf.blit(s, rect)
+
+    def make():
+        s = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(s, (*color, alpha), s.get_rect(), border_radius=radius)
+        if border:
+            pygame.draw.rect(s, (*border, 255), s.get_rect(), 2, border_radius=radius)
+        return s
+
+    if rect.w * rect.h > PANEL_CACHE_MAX_AREA:
+        surf.blit(make(), rect)
+        return rect
+    key = (rect.size, tuple(color), alpha, radius, tuple(border) if border else None)
+    surf.blit(_cached(_panel_cache, key, PANEL_CACHE_SIZE, make), rect)
     return rect
 
 

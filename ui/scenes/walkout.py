@@ -38,6 +38,13 @@ class WalkoutScene(Scene):
         self.shown = 0.0
         self.spot = None
         self.events = []
+        self.dim = pygame.Surface((W, H), pygame.SRCALPHA)
+        self.dim.fill((0, 0, 0, 120))
+        # The spotlight, drawn once and moved with whoever is walking out
+        self.cone = pygame.Surface((280, FLOOR_Y + 24), pygame.SRCALPHA)
+        pygame.draw.polygon(self.cone, (255, 245, 210, 40),
+                            [(110, 0), (170, 0), (280, FLOOR_Y + 10), (0, FLOOR_Y + 10)])
+        pygame.draw.ellipse(self.cone, (255, 245, 210, 60), (0, FLOOR_Y - 14, 280, 34))
         self._script()
         self.app.sounds.ambience(True)
         if app.settings["skip_walkouts"]:
@@ -98,17 +105,10 @@ class WalkoutScene(Scene):
 
     def draw(self, surf):
         self.arena.draw(surf)
-        dim = pygame.Surface((W, H), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 120))
-        surf.blit(dim, (0, 0))
+        surf.blit(self.dim, (0, 0))
         if self.spot is not None:
             f = self.figs[self.spot]
-            cone = pygame.Surface((W, H), pygame.SRCALPHA)
-            x = int(f.x)
-            pygame.draw.polygon(cone, (255, 245, 210, 40),
-                                [(x - 30, 0), (x + 30, 0), (x + 140, FLOOR_Y + 10), (x - 140, FLOOR_Y + 10)])
-            pygame.draw.ellipse(cone, (255, 245, 210, 60), (x - 140, FLOOR_Y - 14, 280, 34))
-            surf.blit(cone, (0, 0))
+            surf.blit(self.cone, (int(f.x) - 140, 0))
         self.ref.draw(surf)
         for f in self.figs:
             f.draw(surf)

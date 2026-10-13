@@ -25,6 +25,20 @@ SEQ = {
 }
 
 
+_shade = None
+
+
+def _menu_shade():
+    """The dark fade behind the buttons. Built once."""
+    global _shade
+    if _shade is None:
+        _shade = pygame.Surface((480, H), pygame.SRCALPHA)
+        for x in range(480):
+            a = int(200 * (1 - x / 480) ** 1.4)
+            pygame.draw.line(_shade, (0, 0, 0, a), (x, 0), (x, H))
+    return _shade
+
+
 class MenuScene(Scene):
     def __init__(self, app):
         super().__init__(app)
@@ -113,11 +127,7 @@ class MenuScene(Scene):
 
     def draw(self, surf):
         self.arena.draw(surf)
-        shade = pygame.Surface((480, H), pygame.SRCALPHA)
-        for x in range(480):
-            a = int(200 * (1 - x / 480) ** 1.4)
-            pygame.draw.line(shade, (0, 0, 0, a), (x, 0), (x, H))
-        surf.blit(shade, (0, 0))
+        surf.blit(_menu_shade(), (0, 0))
         for f in self.figs:
             f.draw(surf)
         text(surf, "STICKFIGHT", (56, 70), 96, WHITE, display=True)

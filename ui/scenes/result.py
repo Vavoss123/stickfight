@@ -71,9 +71,10 @@ class ResultScene(Scene):
 
     def draw(self, surf):
         self.arena.draw(surf)
-        dim = pygame.Surface((W, H), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 140))
-        surf.blit(dim, (0, 0))
+        if not hasattr(self, "dim"):
+            self.dim = pygame.Surface((W, H), pygame.SRCALPHA)
+            self.dim.fill((0, 0, 0, 140))
+        surf.blit(self.dim, (0, 0))
         for f in self.figs:
             f.draw(surf)
         r = self.r

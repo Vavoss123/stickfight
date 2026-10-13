@@ -32,6 +32,8 @@ class App:
         self.fullscreen = False
         self.apply_settings()
         self.running = True
+        self.focused = True
+        self.minimized = False
         self.feedback = Feedback(self)
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
@@ -51,10 +53,16 @@ class App:
 
     def run(self):
         while self.running:
-            dt = min(self.clock.tick(60) / 1000.0, 1 / 20)
+            # Full speed when playing, barely ticking over in the background
+            fps = 5 if self.minimized else 60 if self.focused else 15
+            dt = min(self.clock.tick(fps) / 1000.0, 1 / 20)
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     self.running = False
+                elif e.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWFOCUSGAINED):
+                    self.focused = e.type == pygame.WINDOWFOCUSGAINED
+                elif e.type in (pygame.WINDOWMINIMIZED, pygame.WINDOWRESTORED, pygame.WINDOWSHOWN):
+                    self.minimized = e.type == pygame.WINDOWMINIMIZED
                 elif e.type == pygame.KEYDOWN and e.key == pygame.K_F11:
                     self.settings["fullscreen"] = not self.settings["fullscreen"]
                     self.apply_settings()
@@ -64,9 +72,10 @@ class App:
             if not self.feedback.open:
                 self.scene.update(dt)
             self.feedback.update(dt)
-            self.scene.draw(self.screen)
-            self.feedback.draw(self.screen)
-            pygame.display.flip()
+            if not self.minimized:
+                self.scene.draw(self.screen)
+                self.feedback.draw(self.screen)
+                pygame.display.flip()
             if updater.state["status"] == "restarting":
                 updater.relaunch()
                 self.running = False
