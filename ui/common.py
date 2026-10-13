@@ -1,0 +1,150 @@
+"""Fonts, colours and small drawing helpers shared by every screen."""
+
+import pygame
+
+W, H = 1280, 720
+FLOOR_Y = 600
+CX = W // 2
+
+RED = (214, 48, 49)
+BLUE = (41, 128, 255)
+GOLD = (240, 196, 60)
+WHITE = (240, 240, 240)
+GREY = (150, 155, 165)
+DARK = (18, 20, 28)
+PANEL = (24, 27, 38)
+GREEN = (70, 200, 110)
+CORNER = (RED, BLUE)
+
+_fonts = {}
+
+
+def font(size, bold=False, display=False):
+    key = (size, bold, display)
+    if key not in _fonts:
+        if display:
+            names = "impact,arialblack,arial"
+        else:
+            names = "segoeui,arial,helvetica"
+        _fonts[key] = pygame.font.SysFont(names, size, bold=bold)
+    return _fonts[key]
+
+
+def text(surf, s, pos, size=20, color=WHITE, anchor="topleft", bold=False, display=False,
+         shadow=True, alpha=255, max_width=None):
+    """Draw one line. With max_width the font shrinks until the line fits."""
+    if max_width:
+        while size > 10 and font(size, bold, display).size(str(s))[0] > max_width:
+            size -= 1
+    f = font(size, bold, display)
+    img = f.render(str(s), True, color)
+    if alpha < 255:
+        img.set_alpha(alpha)
+    r = img.get_rect(**{anchor: pos})
+    if shadow:
+        sh = f.render(str(s), True, (0, 0, 0))
+        sh.set_alpha(int(150 * alpha / 255))
+        surf.blit(sh, r.move(2, 2))
+    surf.blit(img, r)
+    return r
+
+
+def wrap(s, size, max_width, bold=False):
+    """Split text into lines that fit max_width."""
+    f = font(size, bold)
+    lines, cur = [], ""
+    for word in str(s).split():
+        trial = f"{cur} {word}".strip()
+        if cur and f.size(trial)[0] > max_width:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = trial
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def text_block(surf, s, pos, size, max_width, color=WHITE, anchor="midtop", bold=False,
+               line_gap=4):
+    """Draw wrapped text. Returns the y just below the last line."""
+    x, y = pos
+    for ln in wrap(s, size, max_width, bold):
+        r = text(surf, ln, (x, y), size, color, anchor, bold=bold)
+        y = r.bottom + line_gap
+    return y
+
+
+def panel(surf, rect, color=PANEL, alpha=220, radius=10, border=None):
+    rect = pygame.Rect(rect)
+    s = pygame.Surface(rect.size, pygame.SRCALPHA)
+    pygame.draw.rect(s, (*color, alpha), s.get_rect(), border_radius=radius)
+    if border:
+        pygame.draw.rect(s, (*border, 255), s.get_rect(), 2, border_radius=radius)
+    surf.blit(s, rect)
+    return rect
+
+
+def bar(surf, rect, frac, color, back=(40, 42, 52), flip=False, ghost=None):
+    rect = pygame.Rect(rect)
+    pygame.draw.rect(surf, back, rect, border_radius=4)
+    frac = max(0.0, min(1.0, frac))
+    if ghost is not None and ghost > frac:
+        g = max(0.0, min(1.0, ghost))
+        gw = int(rect.w * g)
+        gr = pygame.Rect(rect.right - gw if flip else rect.x, rect.y, gw, rect.h)
+        pygame.draw.rect(surf, (240, 230, 200), gr, border_radius=4)
+    w = int(rect.w * frac)
+    r = pygame.Rect(rect.right - w if flip else rect.x, rect.y, w, rect.h)
+    if w > 0:
+        pygame.draw.rect(surf, color, r, border_radius=4)
+    pygame.draw.rect(surf, (0, 0, 0), rect, 2, border_radius=4)
+
+
+def lighten(c, f=1.3):
+    return tuple(min(255, int(v * f)) for v in c)
+
+
+class Button:
+    def __init__(self, rect, label, key=None, sub="", color=(52, 58, 78), enabled=True,
+                 size=22):
+        self.rect = pygame.Rect(rect)
+        self.label = label
+        self.key = key
+        self.sub = sub
+        self.color = color
+        self.enabled = enabled
+        self.size = size
+        self.hover = False
+        self.selected = False
+
+    def handle(self, event):
+        if not self.enabled:
+            return False
+        if event.type == pygame.MOUSEMOTION:
+            self.hover = self.rect.collidepoint(event.pos)
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            return self.rect.collidepoint(event.pos)
+        return False
+
+    def draw(self, surf):
+        c = self.color if self.enabled else (40, 42, 50)
+        if self.hover and self.enabled:
+            c = lighten(c, 1.25)
+        border = GOLD if self.selected else (0, 0, 0)
+        pygame.draw.rect(surf, c, self.rect, border_radius=8)
+        pygame.draw.rect(surf, border, self.rect, 3 if self.selected else 2, border_radius=8)
+        col = WHITE if self.enabled else (110, 110, 120)
+        fit = self.rect.w - 14
+        if self.key and not self.sub:
+            fit -= 24  # leave room for the key letter in the corner
+        if self.sub:
+            text(surf, self.label, (self.rect.centerx, self.rect.centery - 10), self.size,
+                 col, "center", bold=True, max_width=fit)
+            text(surf, self.sub, (self.rect.centerx, self.rect.centery + 14), 15, GREY, "center",
+                 max_width=fit)
+        else:
+            c = (self.rect.centerx + (8 if self.key else 0), self.rect.centery)
+            text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)
+        if self.key:
+            text(surf, self.key, (self.rect.x + 8, self.rect.y + 5), 14, GOLD)
