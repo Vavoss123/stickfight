@@ -13,6 +13,7 @@ import pygame
 import updater
 from ui.common import W, H
 from ui.feedback import Feedback
+from ui.settings import Settings
 from ui.sound import Sounds, RATE
 from version import VERSION
 
@@ -27,6 +28,9 @@ class App:
         self.screen = pygame.display.set_mode((W, H), pygame.SCALED | pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
+        self.settings = Settings()
+        self.fullscreen = False
+        self.apply_settings()
         self.running = True
         self.feedback = Feedback(self)
         from ui.scenes.menu import MenuScene
@@ -35,12 +39,26 @@ class App:
     def goto(self, scene):
         self.scene = scene
 
+    def apply_settings(self):
+        s = self.settings
+        self.sounds.set_volume(s["volume"] / 100, s["crowd"] / 100)
+        if s["fullscreen"] != self.fullscreen:
+            try:
+                pygame.display.toggle_fullscreen()
+                self.fullscreen = s["fullscreen"]
+            except pygame.error:
+                s["fullscreen"] = self.fullscreen
+
     def run(self):
         while self.running:
             dt = min(self.clock.tick(60) / 1000.0, 1 / 20)
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     self.running = False
+                elif e.type == pygame.KEYDOWN and e.key == pygame.K_F11:
+                    self.settings["fullscreen"] = not self.settings["fullscreen"]
+                    self.apply_settings()
+                    self.settings.save()
                 elif not self.feedback.handle(e):
                     self.scene.handle(e)
             if not self.feedback.open:

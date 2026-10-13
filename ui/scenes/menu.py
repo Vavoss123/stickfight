@@ -40,11 +40,12 @@ class MenuScene(Scene):
             ("Local 2 player", "Same keyboard, hidden picks", "versus"),
             ("Career", "Continue your career" if has_save else "Start from the bottom", "career"),
             ("How to play", "Rules and controls", "help"),
+            ("Settings", "Sound, screen and speed", "settings"),
             ("Quit", "", "quit"),
         ]
         self.buttons = []
         for k, (label, sub, pick) in enumerate(items):
-            b = Button((60, 250 + k * 78, 340, 64), label, sub=sub, size=24,
+            b = Button((60, 236 + k * 72, 340, 62), label, sub=sub, size=24,
                        color=(150, 40, 40) if k == 0 else (40, 44, 62))
             b.pick = pick
             self.buttons.append(b)
@@ -65,6 +66,9 @@ class MenuScene(Scene):
         elif pick == "help":
             from .howto import HowToScene
             self.app.goto(HowToScene(self.app))
+        elif pick == "settings":
+            from .settings import SettingsScene
+            self.app.goto(SettingsScene(self.app, lambda: MenuScene(self.app)))
         elif pick == "quit":
             self.app.running = False
 
@@ -117,7 +121,7 @@ class MenuScene(Scene):
         for f in self.figs:
             f.draw(surf)
         text(surf, "STICKFIGHT", (56, 70), 96, WHITE, display=True)
-        text(surf, "TURN BASED MMA", (62, 178), 24, GOLD, bold=True)
+        text(surf, "TURN BASED MMA", (62, 172), 24, GOLD, bold=True)
         for b in self.buttons:
             b.draw(surf)
         text(surf, "M mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")

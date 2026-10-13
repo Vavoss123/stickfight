@@ -33,6 +33,7 @@ LABEL_P2 = "UIOPJKL;"
 POS_NAME = {STANDING: "Standing", CLINCH: "Clinch", GUARD: "Guard", MOUNT: "Mount",
             BACK: "Back control"}
 REPLAY_SPEED = 0.3
+KICKS = {"kick", "legkick", "upkick", "knees", "imanari"}
 REPLAY_ZOOM = 1.7
 
 
@@ -202,8 +203,8 @@ class FightScene(Scene):
 
     def _badge(self, i, k):
         from engine.cards import CARDS
-        if self.fight.state.sub or k not in CARDS:
-            return None
+        if self.fight.state.sub or k not in CARDS or CARDS[k].is_perk:
+            return None  # a perk can share a basic move's name (Get Up Artist is "getup")
         return {"common": (190, 190, 200), "rare": (90, 160, 255), "legendary": GOLD}[CARDS[k].rarity]
 
     def _lock(self, i, idx):
@@ -262,7 +263,7 @@ class FightScene(Scene):
             d = 1 - a
             r = ex.sub_result
             if r == "tighter":
-                self.at(0.15, lambda: (figs[d].hit(0.6), self.snd("block", 0.6),
+                self.at(0.15, lambda: (figs[d].hit(0.6), self.snd("squeeze"),
                                        self.popup(d, "TIGHTER!", SUB_COLOR)))
                 self.arena.cheer(0.5)
             elif r == "defended":
@@ -270,10 +271,11 @@ class FightScene(Scene):
             elif r == "held":
                 self.at(0.15, lambda: self.popup(a, "HOLDING", GREY, 20))
             if r == "escaped":
-                self.at(0.3, lambda: self.popup(d, "ESCAPED!", (120, 220, 140), 30))
+                self.at(0.3, lambda: (self.popup(d, "ESCAPED!", (120, 220, 140), 30),
+                                      self.snd("escape"), self.snd("crowd", 0.8)))
                 self.arena.cheer(0.8)
             if r == "tap":
-                self.at(0.2, lambda: self.popup(d, "TAP!", GOLD, 40))
+                self.at(0.2, lambda: (self.popup(d, "TAP!", GOLD, 40), self.snd("tap")))
                 self.at(0.3, lambda: self._finish_anim(ex, xs, idle))
                 return 1.3
             self.at(0.45, lambda: self._settle(xs, idle))
@@ -295,7 +297,8 @@ class FightScene(Scene):
                 self.at(0.42, lambda i=i: self._counter_anim(i, before))
                 continue
             if ex.gassed[i]:
-                self.at(0.05, lambda i=i: self.popup(i, "GASSED", (236, 200, 70), 20, dy=-90))
+                self.at(0.05, lambda i=i: (self.popup(i, "GASSED", (236, 200, 70), 20, dy=-90),
+                                           self.snd("breath")))
             if ex.landed[i]:
                 self.at(impact, lambda i=i, k=k: self._hit_anim(i, k, ex, before))
             elif ex.missed[i] and m.power:
@@ -322,8 +325,11 @@ class FightScene(Scene):
             if ex.knockdown == o:
                 self.at(impact + 0.05, lambda o=o: (self.figs[o].play([("ko", 0.25)]),
                                                     self.popup(o, "KNOCKDOWN!", GOLD, 34, dy=-60),
-                                                    self.snd("slam"), self.snd("crowd", 1.0),
+                                                    self.snd("boom"), self.snd("roar"),
                                                     self.arena.cheer(2.0)))
+
+        if ex.stall and self.phase != "replay":
+            self.at(0.3, lambda: self.snd("boo", 0.7))
 
         changed = (before.pos, before.top) != (st.pos, st.top)
         ground_now = st.pos in (GUARD, MOUNT, BACK)
@@ -364,7 +370,12 @@ class FightScene(Scene):
                    34 if dmg >= 9 else 26)
         if target != "head":
             self.popup(o, "BODY" if target == "body" else "LEG", (255, 170, 60), 18, dy=30)
-        self.snd("punch" if dmg >= 8 else "jab")
+        if target == "body":
+            self.snd("body")
+        elif move.anim in KICKS:
+            self.snd("kick")
+        else:
+            self.snd("punch" if dmg >= 8 else "jab")
         if self.fight.state.f[o].cut > 0 and target == "head":
             self.arena.blood(self.figs[o].x, min(1.5, dmg / 10))
         if dmg >= 9:
@@ -397,11 +408,11 @@ class FightScene(Scene):
         else:
             fl.play([("hit", 0.08), ("ko", 0.45)], idle="ko")
             self.shake = 14
-            self.snd("slam")
+            self.snd("boom")
         self.ref.move_to(fl.x + (90 if l == 0 else -90), dur=0.35)
         self.ref.play([("walk1", 0.12), ("ref_stop", 0.15)], idle="ref_stop")
         self.arena.cheer(2.0)
-        self.snd("crowd", 1.0)
+        self.snd("roar")
         self.app.sounds.ambience(False)
 
     # Round end and finish
@@ -508,6 +519,9 @@ class FightScene(Scene):
                 if b.handle(e):
                     if b.pick == "resume":
                         self._toggle_pause()
+                    elif b.pick == "settings":
+                        from .settings import SettingsScene
+                        self.app.goto(SettingsScene(self.app, lambda: self))
                     elif b.pick == "quit":
                         self.app.sounds.ambience(False)
                         from .menu import MenuScene
@@ -549,10 +563,11 @@ class FightScene(Scene):
     def _toggle_pause(self):
         self.paused = not self.paused
         if self.paused:
-            self.pause_buttons = [Button((CX - 130, 320, 260, 54), "Resume"),
-                                  Button((CX - 130, 386, 260, 54), "Quit to menu", color=(120, 40, 40))]
-            self.pause_buttons[0].pick = "resume"
-            self.pause_buttons[1].pick = "quit"
+            self.pause_buttons = [Button((CX - 130, 310, 260, 54), "Resume"),
+                                  Button((CX - 130, 372, 260, 54), "Settings"),
+                                  Button((CX - 130, 434, 260, 54), "Quit to menu", color=(120, 40, 40))]
+            for b, pick in zip(self.pause_buttons, ("resume", "settings", "quit")):
+                b.pick = pick
 
     # Frame
 
@@ -560,7 +575,7 @@ class FightScene(Scene):
         if self.paused:
             return
         real_dt = dt
-        dt *= self.time_scale
+        dt *= self.time_scale * self.app.settings.fight_speed
         self.t += dt
         self.phase_t += dt
         due = [ev for ev in self.events if ev[0] <= self.t]
@@ -630,7 +645,7 @@ class FightScene(Scene):
             text(surf, "PAUSED", (CX, 250), 54, WHITE, "center", display=True)
             for b in self.pause_buttons:
                 b.draw(surf)
-            text(surf, "Something feel off? Press F1 to write a note", (CX, 470), 16, GREY, "center")
+            text(surf, "Something feel off? Press F1 to write a note", (CX, 516), 16, GREY, "center")
 
     def _draw_replay(self, surf):
         xs = [f.x for f in self.figs]

@@ -84,6 +84,11 @@ cost deck points by rarity and the budget grows as you climb the rankings.
 In quick fight and 2 player, press **Edit deck** on the select screen. Every card is
 unlocked there with a 10 point budget, and the deck is remembered for that fighter.
 
+## Settings
+
+Volume, crowd noise, fullscreen (or F11), fight speed and skipping the walkouts are in
+**Settings** on the main menu and the pause menu. They save to `~/.stickfight/settings.json`.
+
 ## Feedback
 
 Press **F1** on any screen to write a quick note. Notes go to `~/.stickfight/feedback.txt`

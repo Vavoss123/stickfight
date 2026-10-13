@@ -40,6 +40,8 @@ class WalkoutScene(Scene):
         self.events = []
         self._script()
         self.app.sounds.ambience(True)
+        if app.settings["skip_walkouts"]:
+            self.events = [[0.0, self._done]]
 
     def _script(self):
         walk = [("walk1", 0.2), ("walk2", 0.2)] * 6

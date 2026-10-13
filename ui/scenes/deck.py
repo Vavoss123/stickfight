@@ -250,20 +250,29 @@ class PackScene(Scene):
                         self.chosen = cid
                         self.result = self.c.gain_card(cid)
                         self.c.save()
-                        self.app.sounds.play("punch")
+                        self._picked_sound()
             if e.type == pygame.KEYDOWN and e.key in (pygame.K_1, pygame.K_2, pygame.K_3) and self.t > 0.8:
                 k = e.key - pygame.K_1
                 if k < len(self.cards):
                     self.chosen = self.cards[k]
                     self.result = self.c.gain_card(self.chosen)
                     self.c.save()
+                    self._picked_sound()
             if not self.cards:
                 self.app.goto(self.then())
             return
         if self.done.handle(e) or (e.type == pygame.KEYDOWN and e.key in (pygame.K_RETURN, pygame.K_SPACE)):
             self.app.goto(self.then())
 
+    def _picked_sound(self):
+        self.app.sounds.play({"new": "levelup", "level": "levelup", "refund": "cash"}[self.result])
+
     def update(self, dt):
+        # A flick for each card as it turns over
+        for k in range(len(self.cards)):
+            flip_at = k * 0.2 + 1 / 6
+            if self.t < flip_at <= self.t + dt:
+                self.app.sounds.play("flip")
         self.t += dt
 
     def draw(self, surf):
@@ -347,7 +356,7 @@ class ShopScene(Scene):
                     self.message = {"new": f"Bought {name}.",
                                     "level": f"{name} is now level {self.c.player.cards[cid]}.",
                                     "refund": f"{name} was maxed, half refunded."}[res]
-                    self.app.sounds.play("punch")
+                    self.app.sounds.play("cash")
                     self.c.save()
                     self._build()
                 return

@@ -4,14 +4,14 @@
 
 - [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder).
       Press F1 in game to write a note, they land in ~/.stickfight/feedback.txt
-- [ ] Check the Showtime Kick against wrestlers, it tests as neutral in mirror matches
+- [x] Check the Showtime Kick, it was losing mirror matches
 - [x] Edit decks before quick fight and 2 player
 - [x] Penalty for moves thrown with no stamina (GASSED)
 - [x] Ways out from under ground and pound besides covering up
 
 ## Next
 
-- [ ] Settings: volume, fullscreen, faster animations
+- [x] Settings: volume, fullscreen, faster animations
 - [x] Windows .exe build so friends can play without Python (GitHub release + in-game updater)
 - [ ] Career story: a rival who calls you out, a training camp before title fights,
       retirement and a hall of fame
@@ -34,6 +34,7 @@
 
 - Styles on hard: BJJ 52%, Wrestler 51%, Striker 49%, Brawler 45% (Oct 2026)
 - KOs end about 8% of fights, submissions about 23%
-- Showtime Kick tests weak now (44% in mirror matches), a legendary should beat that
+- Showtime Kick: costs 8 now with less KO power (51% in mirror matches). At 12 the AI
+  chased the knockout and gassed itself out
 - Run `python -m tools.simulate --fights 100 --level hard` and
   `python -m tools.cardsim --fights 1000` after changing any numbers
