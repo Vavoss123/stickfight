@@ -233,6 +233,7 @@ class PackScene(Scene):
         self.t = 0.0
         self.chosen = None
         self.result = None
+        self.chosen_t = 0.0
         self.done = Button((CX - 120, H - 76, 240, 50), "Continue", color=(150, 110, 30), size=20)
         app.sounds.play("crowd", 0.5)
 
@@ -265,15 +266,26 @@ class PackScene(Scene):
             self.app.goto(self.then())
 
     def _picked_sound(self):
+        self.chosen_t = 0.0
         self.app.sounds.play({"new": "levelup", "level": "levelup", "refund": "cash"}[self.result])
+        if self.result == "new" and CARDS[self.chosen].rarity == "legendary":
+            self.app.sounds.play("roar", 0.8)
+
+    def _legendary(self, cid):
+        return CARDS[cid].rarity == "legendary"
 
     def update(self, dt):
-        # A flick for each card as it turns over
-        for k in range(len(self.cards)):
+        # A flick for each card as it turns over, and a roar when a legendary shows up
+        for k, cid in enumerate(self.cards):
             flip_at = k * 0.2 + 1 / 6
+            shown_at = k * 0.2 + 1 / 3
             if self.t < flip_at <= self.t + dt:
                 self.app.sounds.play("flip")
+            if self._legendary(cid) and self.t < shown_at <= self.t + dt:
+                self.app.sounds.play("boom", 0.6)
+                self.app.sounds.play("roar", 0.7)
         self.t += dt
+        self.chosen_t += dt
 
     def draw(self, surf):
         surf.fill((14, 15, 22))
@@ -299,11 +311,17 @@ class PackScene(Scene):
                 surf.blit(dim, r)
                 continue
             have = p.cards.get(cid, 0)
+            if self._legendary(cid):
+                self._glow(surf, r, self.t - (k * 0.2 + 1 / 3))
             draw_card(surf, r, cid, max(1, have), selected=cid == self.chosen)
+            if self._legendary(cid) and self.chosen is None:
+                text(surf, "LEGENDARY!", (r.centerx, r.y - 30), 26, GOLD, "midtop", display=True)
             if self.chosen is None:
                 note = f"You have it at level {have}" if have else "New"
                 text(surf, note, (r.centerx, r.bottom + 10), 15, GREEN if not have else GOLD, "midtop", bold=True)
                 text(surf, str(k + 1), (r.centerx, r.bottom + 32), 14, GREY, "midtop")
+        if self.chosen is not None and self.result == "new":
+            self._new_card_banner(surf)
         if self.chosen is not None:
             name = CARDS[self.chosen].name
             msg = {"new": f"{name} added to your collection.",
@@ -312,6 +330,39 @@ class PackScene(Scene):
             text(surf, msg, (CX, 540), 22, WHITE, "midtop", bold=True)
             text(surf, "Equip it from the Deck screen.", (CX, 574), 16, GREY, "midtop")
             self.done.draw(surf)
+
+
+    def _glow(self, surf, r, age):
+        """Gold rays behind a legendary card. They burst out, then keep pulsing."""
+        import math
+        if age < 0:
+            return
+        burst = min(1.0, age * 3)
+        pulse = 0.75 + 0.25 * math.sin(self.t * 5)
+        size = int(max(r.w, r.h) * (0.9 + 0.5 * burst))
+        g = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+        c = (size, size)
+        for k in range(16):
+            a = self.t * 0.6 + k * math.pi / 8
+            tip = (c[0] + math.cos(a) * size, c[1] + math.sin(a) * size)
+            left = (c[0] + math.cos(a - 0.08) * size * 0.2, c[1] + math.sin(a - 0.08) * size * 0.2)
+            right = (c[0] + math.cos(a + 0.08) * size * 0.2, c[1] + math.sin(a + 0.08) * size * 0.2)
+            pygame.draw.polygon(g, (240, 196, 60, int(70 * pulse * burst)), [left, tip, right])
+        pygame.draw.circle(g, (255, 220, 120, int(28 * pulse * burst)), c, int(size * 0.42))
+        surf.blit(g, (r.centerx - size, r.centery - size))
+
+    def _new_card_banner(self, surf):
+        """NEW CARD! slams in over the pack, then settles."""
+        t = self.chosen_t
+        if t > 2.2:
+            return
+        scale = 1.0 + max(0.0, 0.4 - t) * 2.5     # starts big and lands
+        alpha = 255 if t < 1.6 else int(255 * (2.2 - t) / 0.6)
+        size = int(46 * scale)
+        legend = self._legendary(self.chosen)
+        label = "NEW LEGENDARY!" if legend else "NEW CARD!"
+        text(surf, label, (CX, 140), size, GOLD if legend else WHITE, "center", display=True,
+             alpha=max(0, alpha))
 
 
 class ShopScene(Scene):

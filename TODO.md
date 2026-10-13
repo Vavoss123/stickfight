@@ -13,17 +13,17 @@
 
 - [x] Settings: volume, fullscreen, faster animations
 - [x] Windows .exe build so friends can play without Python (GitHub release + in-game updater)
-- [ ] Career story: a rival who calls you out, a training camp before title fights,
+- [x] Career story: a rival who calls you out, a training camp before title fights,
       retirement and a hall of fame
-- [ ] Tournament mode: 8 fighter bracket in one night, injuries carry over
+- [x] Tournament mode: 8 fighter bracket in one night, injuries carry over
 - [ ] Shared card collection: use career cards to build decks for quick fight and 2 player
       (quick fight decks exist now, with every card unlocked)
 
 ## Polish
 
-- [ ] "NEW CARD" moment when a legendary is pulled from a pack
-- [ ] Show the card name in the fight when a signature move lands
-- [ ] Gamepad support for 2 player
+- [x] "NEW CARD" moment when a legendary is pulled from a pack
+- [x] Show the card name in the fight when a signature move lands
+- [x] Gamepad support for 2 player (needs testing with a real controller)
 - [ ] Weight classes with different sizes, speed and power
 
 ## Later

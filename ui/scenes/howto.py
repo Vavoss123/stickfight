@@ -67,7 +67,7 @@ PAGES = [
     ("Controls", [
         "Quick fight: number keys, Q W E R A S D F, or click a move.",
         "Local 2 player: red uses Q W E R A S D F, blue uses U I O P J K L ;",
-        "Picks stay hidden until both players lock in.",
+        "Controllers: A B X Y then the d-pad pick moves. One pad plays blue.",
         "Between rounds your corner tells you what they have seen.",
         "SPACE continues between rounds and skips the KO replay.",
         "ESC pauses. M mutes sound. F11 fullscreen. F1 writes a feedback note.",

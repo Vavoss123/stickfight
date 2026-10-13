@@ -22,7 +22,7 @@ def open_career(app):
     if c is None:
         app.goto(CreateScene(app))
     else:
-        app.goto(HubScene(app, c))
+        app.goto(HubScene(app, c, " ".join(c.news)))
 
 
 class TextField:
@@ -71,6 +71,7 @@ class CreateScene(Scene):
         self.swatches = [pygame.Rect(90 + k * 45, 552, 36, 36) for k in range(len(COLORS))]
         self.start = Button((CX + 140, H - 80, 280, 54), "Start career", color=(170, 40, 40), size=24)
         self.back = Button((20, H - 70, 120, 40), "Back", size=18)
+        self.hall = Button((150, H - 70, 160, 40), "Hall of fame", size=17, color=(150, 110, 30))
         self.fig = Figure(870, 470, 1, COLORS[0], glove=RED, scale=1.5)
         self.fig.set_pose("stance", idle="stance")
         self.error = ""
@@ -96,6 +97,9 @@ class CreateScene(Scene):
         if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
             from .menu import MenuScene
             self.app.goto(MenuScene(self.app))
+        if self.hall.handle(e):
+            from .legacy import HallScene
+            self.app.goto(HallScene(self.app, lambda: CreateScene(self.app)))
 
     def _create(self):
         name = self.fields[0].value.strip()
@@ -147,6 +151,7 @@ class CreateScene(Scene):
             text(surf, self.error, (CX + 280, H - 104), 16, (255, 120, 100), "midbottom")
         self.start.draw(surf)
         self.back.draw(surf)
+        self.hall.draw(surf)
 
 
 class HubScene(Scene):
@@ -171,9 +176,11 @@ class HubScene(Scene):
         self.fight_btn = Button((CX - 150, 560, 300, 60), "FIGHT", color=(170, 40, 40), size=28)
         self.menu_btn = Button((20, H - 56, 150, 40), "Main menu", size=17)
         self.retire_btn = Button((180, H - 56, 150, 40), "Retire", size=17, color=(90, 40, 40))
+        self.hall_btn = Button((340, H - 56, 140, 40), "Hall of fame", size=16, color=(150, 110, 30))
         self.deck_btn = Button((CX - 150, 628, 145, 42), "Deck", size=19, color=(60, 50, 110))
         self.shop_btn = Button((CX + 5, 628, 145, 42), "Shop", size=19, color=(150, 110, 30))
         opp, *_ = self.c.next_fight()
+        self.grudge_text = self.c.grudge_line() if self.c.next_fight()[4] == "Grudge match" else ""
         self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0)
         self.opp_fig.set_pose("stance", idle="stance")
 
@@ -196,20 +203,31 @@ class HubScene(Scene):
             from .deck import ShopScene
             self.app.goto(ShopScene(self.app, self.c, lambda: HubScene(self.app, self.c)))
             return
+        if self.hall_btn.handle(e):
+            from .legacy import HallScene
+            self.app.goto(HallScene(self.app, lambda: HubScene(self.app, self.c, self.message)))
+            return
         if self.retire_btn.handle(e):
             if self.confirm_retire:
+                from engine import legacy
+                from .legacy import RetireScene
+                entry = legacy.retire(self.c)
                 delete_save()
-                from .menu import MenuScene
-                self.app.goto(MenuScene(self.app))
+                self.app.goto(RetireScene(self.app, entry))
             else:
                 self.confirm_retire = True
                 self.retire_btn.label = "Sure? Click again"
 
     def _fight(self):
         c = self.c
+        if c.camp_due():
+            from .legacy import CampScene
+            self.app.goto(CampScene(self.app, c, then=lambda: HubScene(self.app, c)._fight(),
+                                    back=lambda: HubScene(self.app, c, self.message)))
+            return
         opp, rounds, title, level, label = c.next_fight()
         c.save()
-        p = c.player
+        p = c.fighter_for_fight()
         opp_view = opp
         if opp.color == p.color:
             import copy
@@ -238,12 +256,16 @@ class HubScene(Scene):
             else:
                 msg = "Tough night. Train up and go again."
             msg += f" You made ${reward['purse'] + reward['bonus']:,}."
+            if reward["story"]:
+                msg += " " + " ".join(reward["story"])
             if reward["pack"]:
                 from .deck import PackScene
                 app.goto(PackScene(app, c, reward["pack"], lambda: HubScene(app, c, msg)))
             else:
                 app.goto(HubScene(app, c, msg))
 
+        if label == "Grudge match" and title:
+            label = "Grudge match for the title"
         cfg = FightConfig(p, opp_view, mode="ai", level=level, rounds=rounds, title=title,
                           on_done=done, event=label)
         from .walkout import WalkoutScene
@@ -291,9 +313,11 @@ class HubScene(Scene):
 
         # Next fight
         opp, rounds, title, level, label = c.next_fight()
-        r2 = panel(surf, (460, 20, 380, 520), (22, 24, 34), border=GOLD if title else BLUE)
+        r2 = panel(surf, (460, 20, 380, 520), (22, 24, 34),
+                   border=(220, 60, 60) if label == "Grudge match" else GOLD if title else BLUE)
         text(surf, "NEXT FIGHT", (r2.centerx, r2.y + 14), 16, GOLD, "midtop", bold=True)
-        text(surf, label.upper(), (r2.centerx, r2.y + 36), 26, GOLD if title else WHITE, "midtop", display=True,
+        lc = (255, 90, 80) if label == "Grudge match" else GOLD if title else WHITE
+        text(surf, label.upper(), (r2.centerx, r2.y + 36), 26, lc, "midtop", display=True,
              max_width=r2.w - 30)
         text(surf, opp.name.upper(), (r2.centerx, r2.y + 80), 30, WHITE, "midtop", display=True,
              max_width=r2.w - 30)
@@ -318,7 +342,19 @@ class HubScene(Scene):
             text_block(surf, "Cards: " + ", ".join(sigs), (r2.centerx, r2.y + 462), 13, r2.w - 40,
                        (210, 190, 255))
         text(surf, f"{rounds} rounds, {LEVEL_NAME[level]} AI", (r2.centerx, r2.bottom - 24), 15, GREY, "midtop")
+        grudge = label == "Grudge match"
+        if grudge and self.grudge_text:
+            text_block(surf, self.grudge_text, (r2.centerx, r2.y + 162), 15, r2.w - 40, (255, 120, 100),
+                       bold=True)
+        if c.camp:
+            from engine.career import CAMPS
+            text(surf, f"{CAMPS[c.camp][0]}: +1 {c.camp}", (r2.centerx, r2.y + 196), 15, GREEN, "midtop",
+                 bold=True)
+        elif title:
+            text(surf, "Training camp before this one", (r2.centerx, r2.y + 196), 15, GOLD, "midtop")
         self.fight_btn.label = "FIGHT FOR THE BELT" if title and not c.is_champ() else "FIGHT"
+        if title and c.camp_due():
+            self.fight_btn.label = "GO TO CAMP"
         self.fight_btn.draw(surf)
         self.deck_btn.draw(surf)
         self.shop_btn.draw(surf)
@@ -333,7 +369,12 @@ class HubScene(Scene):
                 pygame.draw.rect(surf, (90, 30, 30), (r3.x + 10, yy - 4, r3.w - 20, 40), border_radius=6)
             label_r = "C" if i == 0 else str(i)
             text(surf, label_r, (r3.x + 34, yy), 20, GOLD if i == 0 else GREY, "midtop", bold=True)
-            text(surf, f.name, (r3.x + 64, yy), 18, WHITE if not me else GOLD, bold=me, max_width=250)
+            rival = not me and f.name == c.rival
+            text(surf, f.name, (r3.x + 64, yy), 18, (255, 120, 100) if rival else WHITE if not me else GOLD,
+                 bold=me or rival, max_width=200 if rival else 250)
+            if rival:
+                w, l = c.rival_record
+                text(surf, f"RIVAL {w}-{l}", (r3.right - 20, yy + 20), 12, (255, 120, 100), "topright", bold=True)
             text(surf, f.record(), (r3.right - 20, yy), 16, GREY, "topright")
             yy += 48
         if c.rank() is None:
@@ -345,6 +386,7 @@ class HubScene(Scene):
             text_block(surf, self.message, (1060, 638), 16, 380, WHITE, "midtop", bold=True)
         self.menu_btn.draw(surf)
         self.retire_btn.draw(surf)
+        self.hall_btn.draw(surf)
 
     def _belt(self, surf, x, y):
         pygame.draw.rect(surf, (30, 26, 18), (x - 60, y + 10, 120, 22), border_radius=8)

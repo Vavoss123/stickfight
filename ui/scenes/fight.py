@@ -10,6 +10,7 @@ from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, SUB_ATTACK_LABELS,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
 
+from .. import gamepad
 from ..arena import Arena
 from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, panel,
@@ -183,7 +184,8 @@ class FightScene(Scene):
             bw = (W - 40 - gap * (n - 1)) // n
             for j, k in enumerate(opts):
                 label, sub, color = self._option_label(0, k)
-                b = Button((20 + j * (bw + gap), 634, bw, 74), label, key=f"{j + 1}",
+                key = gamepad.PICK_LABELS[j] if self._pad_for(0) is not None else f"{j + 1}"
+                b = Button((20 + j * (bw + gap), 634, bw, 74), label, key=key,
                            sub=sub, color=color, size=21)
                 b.pick = k
                 b.badge = self._badge(0, k)
@@ -194,6 +196,8 @@ class FightScene(Scene):
                 x0 = 20 if i == 0 else W // 2 + 10
                 bw, bh = 146, 36
                 keys = LABEL_P1 if i == 0 else LABEL_P2
+                if self._pad_for(i) is not None:
+                    keys = gamepad.PICK_LABELS
                 for j, k in enumerate(opts):
                     label, sub, color = self._option_label(i, k)
                     b = Button((x0 + (j % 4) * (bw + 6), 632 + (j // 4) * (bh + 6), bw, bh),
@@ -201,6 +205,62 @@ class FightScene(Scene):
                     b.pick = k
                     b.badge = self._badge(i, k)
                     self.buttons[i].append(b)
+
+    # Controllers
+
+    def _side_for_pad(self, slot):
+        """Which corner a pad plays. One pad in 2 player is blue, red keeps the keyboard."""
+        if self.cfg.mode == "ai":
+            return 0
+        if self.app.pads.count >= 2:
+            return slot if slot in (0, 1) else None
+        return 1
+
+    def _pad_for(self, side):
+        """The pad slot playing this corner, or None if it is on the keyboard."""
+        pads = self.app.pads.count
+        if pads == 0:
+            return None
+        for slot in range(min(pads, 2)):
+            if self._side_for_pad(slot) == side:
+                return slot
+        return None
+
+    def handle_pad(self, slot, button):
+        """Pad buttons pick moves directly. Returns True when the press was used here."""
+        name = gamepad.name(button)
+        if name == "start":
+            self._toggle_pause()
+            return True
+        if self.paused:
+            if name == "a":
+                self._toggle_pause()
+            elif name == "back":
+                self.app.sounds.ambience(False)
+                from .menu import MenuScene
+                self.app.goto(MenuScene(self.app))
+            return True
+        if self.phase == "pick" and button in gamepad.PICK_BUTTONS:
+            side = self._side_for_pad(slot)
+            if side is not None and self.picks[side] is None:
+                self._lock(side, gamepad.PICK_BUTTONS.index(button))
+            return True
+        if name == "a":
+            self.handle(gamepad.key_event(pygame.K_SPACE))
+            return True
+        return False
+
+    def _is_card(self, m):
+        from engine.cards import CARDS
+        return m.key in CARDS and not CARDS[m.key].is_perk
+
+    def _signature(self, i, m):
+        """The card's name flashes up when a signature move works."""
+        from engine.cards import CARDS
+        color = {"common": (220, 220, 230), "rare": (120, 180, 255), "legendary": GOLD}[CARDS[m.key].rarity]
+        self.popup(i, m.name.upper() + "!", color, 30, dy=-130)
+        if CARDS[m.key].rarity == "legendary":
+            self.arena.cheer(1.2)
 
     def _badge(self, i, k):
         from engine.cards import CARDS
@@ -297,6 +357,8 @@ class FightScene(Scene):
             if ex.countered[i]:
                 self.at(0.42, lambda i=i: self._counter_anim(i, before))
                 continue
+            if self._is_card(m) and (ex.success[i] or ex.landed[i]) and ex.sub_start != i:
+                self.at(0.05, lambda i=i, m=m: self._signature(i, m))
             if ex.gassed[i]:
                 self.at(0.05, lambda i=i: (self.popup(i, "GASSED", (236, 200, 70), 20, dy=-90),
                                            self.snd("breath")))
@@ -732,6 +794,8 @@ class FightScene(Scene):
             for b in self.buttons[0]:
                 b.draw(surf)
             hint = "Pick a move with the number keys, QWER ASDF or the mouse"
+            if self._pad_for(0) is not None:
+                hint = "Pick a move: A B X Y, then the d-pad for 5 to 8"
             if st.sub:
                 hint = ("Attacking: pick a side they will not guess" if st.sub.att == 0
                         else "Defending: match their side to escape")
@@ -755,6 +819,8 @@ class FightScene(Scene):
                     tip = f"{who}  {role}"
                 else:
                     tip = f"{who}  keys {keys}"
+                    if self._pad_for(i) is not None:
+                        tip = f"{who}  controller: A B X Y, d-pad"
                 text(surf, tip, (x0 + 14, 608), 15, CORNER[i], bold=True)
                 if self.picks[i] is not None:
                     panel(surf, (x0, 604, W // 2 - 10, 112), CORNER[i], alpha=255)

@@ -13,6 +13,7 @@ import pygame
 import updater
 from ui.common import W, H
 from ui.feedback import Feedback
+from ui import gamepad
 from ui.settings import Settings
 from ui.sound import Sounds, RATE
 from version import VERSION
@@ -35,11 +36,28 @@ class App:
         self.focused = True
         self.minimized = False
         self.feedback = Feedback(self)
+        self.pads = gamepad.Pads()
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
 
     def goto(self, scene):
         self.scene = scene
+
+    def _pad(self, e):
+        """Pads pick moves in a fight and stand in for the keyboard everywhere else."""
+        got = self.pads.handle(e)
+        if got is None or self.feedback.open:
+            return
+        if got[0] == "button":
+            _, slot, button = got
+            handler = getattr(self.scene, "handle_pad", None)
+            if handler and handler(slot, button):
+                return
+            key = gamepad.AS_KEYS.get(gamepad.name(button))
+        else:
+            key = got[1]
+        if key:
+            self.scene.handle(gamepad.key_event(key))
 
     def apply_settings(self):
         s = self.settings
@@ -67,6 +85,8 @@ class App:
                     self.settings["fullscreen"] = not self.settings["fullscreen"]
                     self.apply_settings()
                     self.settings.save()
+                elif e.type in gamepad.EVENTS:
+                    self._pad(e)
                 elif not self.feedback.handle(e):
                     self.scene.handle(e)
             if not self.feedback.open:

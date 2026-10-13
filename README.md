@@ -32,6 +32,22 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
 - **Career**. Create a fighter, beat two prospects to get ranked, climb the top 10,
   win the belt and defend it. Wins earn training points to spend on your stats.
   Your career is saved in `~/.stickfight/career.json`.
+  - A **rival** calls you out once you are ranked (or whoever beats you becomes one).
+    Every few fights they demand a grudge match, which pays a bonus and can jump you
+    up the rankings. Beat them twice to settle it.
+  - Before a title fight you pick a **training camp** that adds 1 to a stat for that fight.
+  - **Retire** to put your career in the **hall of fame**. A world title or a big enough
+    legacy score gets you inducted.
+- **Tournament**. Pick any fighter and win an eight fighter bracket in one night:
+  quarterfinal, semifinal and final, three rounds each. About half the damage you take
+  carries into your next fight, and cuts stay open.
+
+### Controllers
+
+Plug in any controller. In a fight A, B, X and Y pick moves 1 to 4 and the d-pad picks
+5 to 8, so picks stay hidden. In 2 player one controller plays blue while red stays on
+the keyboard, and two controllers play a corner each. Start pauses. In menus the d-pad or
+stick moves, A selects and B goes back.
 
 ## How fights work
 

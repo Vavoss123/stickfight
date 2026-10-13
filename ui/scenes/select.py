@@ -131,7 +131,10 @@ class SelectScene(Scene):
         title = "QUICK FIGHT" if self.mode == "ai" else "LOCAL 2 PLAYER"
         text(surf, title, (CX, 20), 44, WHITE, "midtop", display=True)
         sub = "You are red. Pick your opponent in blue." if self.mode == "ai" else \
-            "Red uses Q W E A S D, blue uses U I O J K L"
+            "Red uses Q W E R A S D F, blue uses U I O P J K L ;"
+        if self.mode != "ai" and self.app.pads.count:
+            sub = ("Controller 1 is red, controller 2 is blue" if self.app.pads.count >= 2 else
+                   "Red uses Q W E R A S D F, the controller plays blue")
         text(surf, sub, (CX, 70), 17, GREY, "midtop")
         for side in (0, 1):
             for b in self.lists[side]:

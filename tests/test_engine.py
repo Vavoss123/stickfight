@@ -402,7 +402,10 @@ class CareerMode(unittest.TestCase):
         self.assertIsNone(c.rank())
         self._win(c)
         self.assertEqual(c.rank(), 10)
-        for _ in range(9):
+        # One spot per win, but grudge matches can jump you or cost a fight
+        for _ in range(15):
+            if c.rank() == 1 and not c.grudge_due():
+                break
             self._win(c)
         self.assertEqual(c.rank(), 1)
         opp, rounds, title, *_ = c.next_fight()

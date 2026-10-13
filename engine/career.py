@@ -124,6 +124,13 @@ class Career:
             opp = self.rival_profile()
             title = self.ladder.index(opp) == 0 or r == 0
             return opp, 5 if title else 3, title, "hard", "Grudge match"
+        opp, rounds, title, level, label = self._scheduled()
+        if self.rival and opp.name == self.rival and opp is not self.next_prospect:
+            label = "Grudge match"   # the rankings put you in with them anyway
+        return opp, rounds, title, level, label
+
+    def _scheduled(self):
+        r = self.rank()
         if r is None:
             if self.unranked_wins >= 2:
                 opp = self.ladder[-1]
