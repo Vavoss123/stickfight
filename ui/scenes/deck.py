@@ -34,7 +34,11 @@ class DeckScene(Scene):
             b.pick = k
             self.tab_buttons.append(b)
         self.back = Button((20, H - 56, 140, 42), "Done", color=(40, 110, 60), size=18)
-        self.reset = Button((20, H - 104, 140, 38), "Reset deck", size=16)             if hasattr(career, "reset") else None
+        self.reset = (Button((20, H - 104, 140, 38), "Reset deck", size=16)
+                      if hasattr(career, "reset") else None)
+        # Quick fight decks can use every card or only the ones earned in careers
+        self.pool_btn = (Button((W - 330, 66, 310, 34), "", size=15, color=(60, 50, 110))
+                         if hasattr(career, "set_pool") else None)
         self._pick_first_slot()
 
     def _slots(self):
@@ -93,6 +97,15 @@ class DeckScene(Scene):
             self.message = ""
             self.app.sounds.play("click")
             return
+        if self.pool_btn and self.pool_btn.handle(e):
+            new = "collection" if self.c.pool == "all" else "all"
+            self.c.set_pool(new)
+            self.c.save()
+            self.app.settings["card_pool"] = new
+            self.app.settings.save()
+            self.message = ""
+            self.app.sounds.play("click")
+            return
         for b in self.tab_buttons:
             if b.handle(e):
                 self.tab = b.pick
@@ -137,8 +150,12 @@ class DeckScene(Scene):
         p = c.player
         text(surf, getattr(c, "title", "YOUR DECK"), (20, 18), 40, WHITE, display=True, max_width=700)
         pts, budget = deck_points(p), c.budget()
-        text(surf, f"Deck points {pts} of {budget}", (W - 330, 22), 18, WHITE, bold=True)
-        bar(surf, (W - 330, 48, 310, 12), pts / max(1, budget), GREEN if pts <= budget else (220, 60, 60))
+        text(surf, f"Deck points {pts} of {budget}", (W - 330, 14), 18, WHITE, bold=True)
+        bar(surf, (W - 330, 40, 310, 12), pts / max(1, budget), GREEN if pts <= budget else (220, 60, 60))
+        if self.pool_btn:
+            self.pool_btn.label = ("Cards: all unlocked (switch to my collection)" if c.pool == "all"
+                                   else "Cards: my collection (switch to all)")
+            self.pool_btn.draw(surf)
         if c.money is not None:
             text(surf, money(c.money), (W - 20, 20), 18, GOLD, "topright", bold=True)
         for k, b in enumerate(self.tab_buttons):

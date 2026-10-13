@@ -59,6 +59,8 @@ class Tournament:
             raise ValueError(f"a tournament needs {SIZE - 1} opponents")
         self.rng = random.Random(seed)
         self.level = level
+        for p in field:
+            p.weight = player.weight   # everyone makes weight
         self.entrants = [player] + list(field)
         order = list(range(SIZE))
         self.rng.shuffle(order)

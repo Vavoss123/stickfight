@@ -42,6 +42,15 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
   quarterfinal, semifinal and final, three rounds each. About half the damage you take
   carries into your next fight, and cuts stay open.
 
+### Weight classes
+
+Every fighter is a lightweight (155 lbs), welterweight (170), middleweight (185) or
+heavyweight (240). Heavier classes hit harder and knock people out more often but gas
+sooner, lighter classes are quicker and last longer. In quick fight and 2 player you can
+match up any two fighters: the bigger one hits harder, takes shots better and wins more
+scrambles, so a heavyweight beats a lightweight about three times in four. Career and
+tournaments keep everyone at your weight.
+
 ### Controllers
 
 Plug in any controller. In a fight A, B, X and Y pick moves 1 to 4 and the d-pad picks
@@ -97,8 +106,10 @@ In career mode fights pay purse money, wins give a pack to pick one card from, a
 shop restocks after every fight. A duplicate levels a card up to a maximum of 3. Cards
 cost deck points by rarity and the budget grows as you climb the rankings.
 
-In quick fight and 2 player, press **Edit deck** on the select screen. Every card is
-unlocked there with a 10 point budget, and the deck is remembered for that fighter.
+In quick fight, 2 player and tournaments, press **Edit deck** on the select screen. The
+deck has a 10 point budget and is remembered for that fighter. The button at the top
+switches between every card unlocked and **your collection**: every card you have earned
+in any career, kept even after you retire (`~/.stickfight/collection.json`).
 
 ## Settings
 

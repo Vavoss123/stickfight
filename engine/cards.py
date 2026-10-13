@@ -258,13 +258,15 @@ def leveled(move, level):
 # The fighter's kit: what the engine uses in a fight
 
 class Kit:
-    __slots__ = ("moves", "movesets", "perks", "stats")
+    __slots__ = ("moves", "movesets", "perks", "stats", "weight")
 
-    def __init__(self, moves, movesets, perks, stats):
+    def __init__(self, moves, movesets, perks, stats, weight=None):
+        from .weights import get
         self.moves = moves          # key -> Move, for every move this fighter can pick
         self.movesets = movesets    # (pos, role) -> list of keys
         self.perks = perks          # perk id -> level
         self.stats = stats          # stats after stat perks
+        self.weight = weight or get(None)   # weight class numbers
 
     def perk(self, pid):
         lvl = self.perks.get(pid)
@@ -304,7 +306,8 @@ def build_kit(profile):
             stats.striking += v
             stats.chin -= 2
     stats.clamp()
-    return Kit(moves, movesets, perks, stats)
+    from .weights import get
+    return Kit(moves, movesets, perks, stats, get(getattr(profile, "weight", None)))
 
 
 def deck_points(profile):

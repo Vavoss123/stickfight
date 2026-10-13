@@ -14,6 +14,7 @@ DEFAULTS = {
     "fullscreen": False,
     "speed": 0,           # index into SPEEDS
     "skip_walkouts": False,
+    "card_pool": "all",   # quick fight decks: "all" cards or your "collection"
 }
 
 

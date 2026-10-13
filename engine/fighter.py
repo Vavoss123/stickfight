@@ -38,6 +38,7 @@ class Profile:
     losses: int = 0
     draws: int = 0
     height: str = "6'0\""
+    weight: str = "Welterweight"
     deck: dict = field(default_factory=dict)    # basic move key -> card id in that slot
     perks: list = field(default_factory=list)   # equipped perk card ids
     cards: dict = field(default_factory=dict)   # owned card id -> level
@@ -65,7 +66,7 @@ class FighterState:
     """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
 
     __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut", "kit",
-                 "combo")
+                 "combo", "wc")
 
     def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0,
                  cut=0.0, kit=None, combo=0):
@@ -75,6 +76,7 @@ class FighterState:
         self.profile = profile
         self.kit = kit
         self.stats = kit.stats
+        self.wc = kit.weight   # weight class numbers, see weights.py
         self.combo = combo  # strikes landed in a row
         self.hp = hp
         self.stamina = stamina
@@ -108,7 +110,8 @@ class FighterState:
         """What a cost really takes out of this fighter. Cardio scales both ways."""
         cardio = self.stats.cardio
         if amount > 0:
-            return amount * (1.3 - cardio * 0.06) * STAMINA_COST * (1 - self.kit.perk("ironlungs"))
+            return (amount * (1.3 - cardio * 0.06) * STAMINA_COST * (1 - self.kit.perk("ironlungs"))
+                    * self.wc["gas"])
         return amount * (0.7 + cardio * 0.06) * (1.0 - self.body / 160)
 
     def effort(self, move):

@@ -25,7 +25,7 @@ class TournamentSetupScene(Scene):
         super().__init__(app)
         self.roster = quick_fighters() + division()
         self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
-        apply_saved(self.roster)
+        apply_saved(self.roster, pool=app.settings["card_pool"])
         self.sel = 0
         self.level = 1
         self.list = []
@@ -67,7 +67,8 @@ class TournamentSetupScene(Scene):
         if self.deck.handle(e):
             from .deck import DeckScene
             k = self.sel
-            self.app.goto(DeckScene(self.app, Loadout(self.roster[k], self.defaults[k]), lambda: self))
+            lo = Loadout(self.roster[k], self.defaults[k], pool=self.app.settings["card_pool"])
+            self.app.goto(DeckScene(self.app, lo, lambda: self))
             return
         if self.start.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN):
             self._begin()
@@ -86,6 +87,8 @@ class TournamentSetupScene(Scene):
         for b in self.levels:
             b.selected = b.pick == self.level
         self.fig.shorts = self.roster[self.sel].color
+        from engine.weights import get
+        self.fig.scale = 0.8 * get(self.roster[self.sel].weight)["size"]
         self.fig.update(dt)
 
     def draw(self, surf):
@@ -99,8 +102,8 @@ class TournamentSetupScene(Scene):
         rect = panel(surf, (380, 110, 380, 500), (22, 24, 34), border=RED)
         text(surf, p.name.upper(), (rect.centerx, rect.y + 12), 26, WHITE, "midtop", display=True,
              max_width=rect.w - 24)
-        text(surf, f'"{p.nickname}"  {p.archetype}, {p.record()}', (rect.centerx, rect.y + 46), 16, GOLD,
-             "midtop", max_width=rect.w - 24)
+        text(surf, f'"{p.nickname}"  {p.weight} {p.archetype}, {p.record()}', (rect.centerx, rect.y + 46),
+             16, GOLD, "midtop", max_width=rect.w - 24)
         self.fig.x, self.fig.y = rect.centerx, rect.y + 220
         self.fig.draw(surf)
         yy = rect.y + 238
@@ -118,8 +121,8 @@ class TournamentSetupScene(Scene):
         text(surf, "Difficulty", (820, 272), 16, GREY)
         for b in self.levels:
             b.draw(surf)
-        text_block(surf, "Quarterfinal, semifinal and final, three rounds each. About half the damage "
-                         "you take stays with you for the next fight, and cuts stay open.",
+        text_block(surf, "Quarterfinal, semifinal and final, three rounds each, everyone at your weight. "
+                         "About half the damage you take stays with you, and cuts stay open.",
                    (820, 360), 15, 360, WHITE, "topleft")
         self.start.draw(surf)
         self.back.draw(surf)
@@ -189,7 +192,7 @@ class BracketScene(Scene):
         from .deck import DeckScene
         me = self.t.player
         default = (dict(me.deck), list(me.perks))
-        lo = Loadout(me, default)
+        lo = Loadout(me, default, pool=self.app.settings["card_pool"])
         lo.save = lambda: None   # only for this tournament
         lo.reset = lambda: (setattr(me, "deck", dict(default[0])), setattr(me, "perks", list(default[1])))
         self.app.goto(DeckScene(self.app, lo, lambda: BracketScene(self.app, self.t, self.message)))

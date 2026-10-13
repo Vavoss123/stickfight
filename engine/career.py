@@ -50,10 +50,10 @@ SAVE_DIR = os.path.join(os.path.expanduser("~"), ".stickfight")
 SAVE_PATH = os.path.join(SAVE_DIR, "career.json")
 
 
-def new_player(name, nickname, archetype, color, hometown):
+def new_player(name, nickname, archetype, color, hometown, weight="Welterweight"):
     base = {k: v - 1 for k, v in ARCHETYPES[archetype].items()}
     p = Profile(name=name, nickname=nickname, archetype=archetype,
-                stats=Stats(**base).clamp(), color=tuple(color), hometown=hometown)
+                stats=Stats(**base).clamp(), color=tuple(color), hometown=hometown, weight=weight)
     deck, perks = STARTERS[archetype]
     return apply_deck(p, deck, perks, 1)
 
@@ -65,7 +65,7 @@ def train_cost(value):
 class Career:
     def __init__(self, player, seed=None):
         self.player = player
-        self.ladder = division()
+        self.ladder = division(player.weight)
         self.points = 0
         self.unranked_wins = 0
         self.defenses = 0
@@ -136,7 +136,8 @@ class Career:
                 opp = self.ladder[-1]
                 return opp, 3, False, "normal", f"Ranked #{LADDER_SIZE - 1}"
             if self.next_prospect is None:
-                self.next_prospect = prospect(self.rng, strength=self.unranked_wins)
+                self.next_prospect = prospect(self.rng, strength=self.unranked_wins,
+                                              weight=self.player.weight)
             level = "easy" if self.unranked_wins == 0 and not self.history else "normal"
             return self.next_prospect, 3, False, level, "Prospect"
         if r == 0:
@@ -300,7 +301,7 @@ class Career:
             self.unranked_wins = 1
         self.ladder = self.ladder[:LADDER_SIZE]
         while len(self.ladder) < LADDER_SIZE:
-            self.ladder.append(prospect(self.rng, strength=1))
+            self.ladder.append(prospect(self.rng, strength=1, weight=self.player.weight))
 
     # Cards and money
 
@@ -445,6 +446,8 @@ class Career:
         return c
 
     def save(self, path=SAVE_PATH):
+        from . import collection
+        collection.add(self.player.cards, os.path.join(os.path.dirname(path), "collection.json"))
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:

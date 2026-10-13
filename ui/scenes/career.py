@@ -5,6 +5,7 @@ import pygame
 from engine.career import Career, new_player, train_cost, delete_save
 from engine.constants import STAT_NAMES, STAT_MAX
 from engine.roster import ARCHETYPES, ARCHETYPE_BLURB, COLORS
+from engine.weights import NAMES as WEIGHTS, get as get_weight
 
 from engine.cards import deck_points, signature_names
 
@@ -69,6 +70,8 @@ class CreateScene(Scene):
             b.pick = a
             self.arch_buttons.append(b)
         self.swatches = [pygame.Rect(90 + k * 45, 552, 36, 36) for k in range(len(COLORS))]
+        self.weight = 1   # Welterweight
+        self.weight_btn = Button((90, 600, 360, 38), "", size=17, color=(52, 58, 78))
         self.start = Button((CX + 140, H - 80, 280, 54), "Start career", color=(170, 40, 40), size=24)
         self.back = Button((20, H - 70, 120, 40), "Back", size=18)
         self.hall = Button((150, H - 70, 160, 40), "Hall of fame", size=17, color=(150, 110, 30))
@@ -88,6 +91,9 @@ class CreateScene(Scene):
         for b in self.arch_buttons:
             if b.handle(e):
                 self.arch = b.pick
+        if self.weight_btn.handle(e):
+            self.weight = (self.weight + 1) % len(WEIGHTS)
+            self.app.sounds.play("click")
         if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             for k, r in enumerate(self.swatches):
                 if r.collidepoint(e.pos):
@@ -108,13 +114,16 @@ class CreateScene(Scene):
             return
         nick = self.fields[1].value.strip()
         town = self.fields[2].value.strip()
-        p = new_player(name.title(), nick, self.arch, COLORS[self.color], town)
+        p = new_player(name.title(), nick, self.arch, COLORS[self.color], town, WEIGHTS[self.weight])
         c = Career(p)
         c.save()
         self.app.goto(HubScene(self.app, c, "Welcome to the show. Win two prospect fights to get ranked."))
 
     def update(self, dt):
         self.fig.shorts = COLORS[self.color]
+        self.fig.scale = 1.5 * get_weight(WEIGHTS[self.weight])["size"]
+        w = WEIGHTS[self.weight]
+        self.weight_btn.label = f"Weight class: {w} ({get_weight(w)['lbs']} lbs)  >"
         self.fig.update(dt)
 
     def draw(self, surf):
@@ -131,6 +140,7 @@ class CreateScene(Scene):
         for k, r in enumerate(self.swatches):
             pygame.draw.rect(surf, COLORS[k], r, border_radius=6)
             pygame.draw.rect(surf, GOLD if k == self.color else (0, 0, 0), r, 3, border_radius=6)
+        self.weight_btn.draw(surf)
         rect = panel(surf, (640, 110, 520, 500), (22, 24, 34))
         name = self.fields[0].value.strip() or "Your Name"
         text(surf, name.upper(), (rect.centerx, rect.y + 16), 32, WHITE, "midtop", display=True,
@@ -285,7 +295,7 @@ class HubScene(Scene):
         text(surf, p.name.upper(), (rect.x + 20, rect.y + 14), 32, WHITE, display=True, max_width=240)
         if p.nickname:
             text(surf, f'"{p.nickname}"', (rect.x + 22, rect.y + 54), 17, GOLD)
-        text(surf, f"{p.archetype}, {p.record()}", (rect.x + 22, rect.y + 78), 17, GREY)
+        text(surf, f"{p.weight} {p.archetype}, {p.record()}", (rect.x + 22, rect.y + 78), 17, GREY)
         text(surf, f"${c.money:,}", (rect.x + 22, rect.y + 102), 18, GOLD, bold=True)
         text(surf, f"Deck {deck_points(p)} of {c.budget()} points", (rect.right - 20, rect.y + 104), 15,
              GREY, "topright")

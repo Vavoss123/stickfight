@@ -13,8 +13,11 @@ def intro_lines(p, corner):
     nick = f' "{p.nickname}" ' if p.nickname else " "
     first, *rest = p.name.split(" ", 1)
     full = f"{first}{nick}{rest[0] if rest else ''}".strip()
+    from engine.weights import get
+    lbs = get(getattr(p, "weight", None))["lbs"]
     lines = [f"Fighting out of the {corner} corner",
-             f"Standing {p.height}, with a record of {p.record()}"]
+             f"Standing {p.height}, weighing in at {lbs} pounds",
+             f"With a record of {p.record()}"]
     if p.hometown:
         lines.append(f"Out of {p.hometown}")
     lines.append(full.upper())
@@ -27,8 +30,9 @@ class WalkoutScene(Scene):
         self.cfg = cfg
         self.label = label
         self.arena = Arena()
-        self.figs = [Figure(-80, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE),
-                     Figure(W + 80, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE)]
+        from .fight import size_of
+        self.figs = [Figure(-80, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE * size_of(cfg.p0)),
+                     Figure(W + 80, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE * size_of(cfg.p1))]
         self.ref = Figure(CX, FLOOR_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)
         self.ref.set_pose("ref", idle="ref")
@@ -54,6 +58,11 @@ class WalkoutScene(Scene):
         walk = [("walk1", 0.2), ("walk2", 0.2)] * 6
         title = "This is the main event of the evening" if not self.cfg.title else \
             "This is for the championship of the world"
+        w0, w1 = getattr(self.cfg.p0, "weight", ""), getattr(self.cfg.p1, "weight", "")
+        if w0 == w1 and w0:
+            title += f", at {w0.lower()}"
+        elif w0 and w1:
+            title = "This is a catchweight bout"
         s = [
             (0.2, lambda: self._say(["Ladies and gentlemen", title], None)),
             (2.6, lambda: (self._say(intro_lines(self.cfg.p1, "blue"), 1),

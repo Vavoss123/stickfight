@@ -9,7 +9,21 @@ from .cards import ESCAPES
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, SUB, DEFEND,
                         SUB_TAP, SUB_START, HEAD, BODY, LEGS, TIRED_DAMAGE)
 from .moves import matchup, base_class
+from .weights import SIZE_DAMAGE, SIZE_GRAPPLE, SIZE_TOUGH
 from .state import SubState
+
+def _size(a, d):
+    """How much heavier fighter a is than d, in hundreds of pounds."""
+    return (a.wc["lbs"] - d.wc["lbs"]) / 100
+
+
+def _power(a, d):
+    """Weight class punching power, plus extra for the bigger fighter, and less for
+    hitting someone bigger than you."""
+    gap = _size(a, d)
+    return (a.wc["power"] * (1 + max(0.0, gap) * SIZE_DAMAGE)
+            / (1 + max(0.0, -gap) * SIZE_TOUGH))
+
 
 # How much harder an escape from the bottom is when the top fighter's strike lands on
 # you at the same time. Without it, covering up was the only answer to ground and pound.
@@ -128,6 +142,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         return  # knocked out by the other shot
     a, d = st.f[i], st.f[1 - i]
     p = move.acc + bonus_acc + (a.stat(move.stat) - d.stat(move.stat)) * 0.025
+    p += a.wc["speed"]   # lighter classes are quicker
     p *= 0.55 + 0.45 * a.stamina_factor()
     p *= 0.35 + 0.65 * ex.effort[i]   # thrown on an empty tank
     if a.rocked:
@@ -141,6 +156,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         return
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
     dmg *= 0.5 + 0.5 * ex.effort[i]
+    dmg *= _power(a, d)
     dmg *= _damage_mult(st, i)
     if move.power:
         dmg *= a.mobility()  # no legs, no power
@@ -195,7 +211,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
 
     if move.power and standing:
         # A clean power shot can end it at any time, more likely when hurt
-        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin * move.ko, 0, 0.5)
+        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin * move.ko * a.wc["ko"], 0, 0.5)
         if was_rocked:
             ko *= 1.5
         if rng.random() < ko:
@@ -241,7 +257,7 @@ def _counter(st, ex, i, rng, move, open_shot=False):
         dmg *= 1.35
     if move.counter:
         dmg *= 1.25
-    dmg *= _damage_mult(st, i)
+    dmg *= _damage_mult(st, i) * _power(a, d)
     dmg /= 0.75 + 0.05 * d.stats.chin
     d.take(dmg)
     ex.dmg[i] += dmg
@@ -283,6 +299,7 @@ def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     p *= 0.7 + 0.3 * a.stamina_factor()
     p -= 0.4 * (1 - ex.effort[i])
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
+    p += _size(a, d) * SIZE_GRAPPLE   # the bigger fighter wins scrambles
     if d.rocked:
         p += 0.1
     if rng.random() < _clamp(p, 0.1, 0.97):
@@ -298,6 +315,7 @@ def _grapple_contest(st, ex, moves, rng):
     p += _grapple_edge(st, 0, moves[0]) - _grapple_edge(st, 1, moves[1])
     p += (a.stamina - b.stamina) * 0.002
     p += 0.35 * (ex.effort[0] - ex.effort[1])
+    p += _size(a, b) * SIZE_GRAPPLE
     p += (b.legs - a.legs) * 0.002
     if a.rocked:
         p -= 0.15

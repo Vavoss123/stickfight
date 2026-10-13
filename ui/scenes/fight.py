@@ -9,6 +9,7 @@ from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, SUB_ATTACK_LABELS,
                               SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
+from engine.weights import get as weight_class
 
 from .. import gamepad
 from ..arena import Arena
@@ -38,6 +39,11 @@ KICKS = {"kick", "legkick", "upkick", "knees", "imanari"}
 REPLAY_ZOOM = 1.7
 
 
+def size_of(profile):
+    """How big to draw a fighter, from their weight class."""
+    return weight_class(getattr(profile, "weight", None))["size"]
+
+
 class FightConfig:
     def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
                  on_done=None, event="", start=None):
@@ -60,8 +66,8 @@ class FightScene(Scene):
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
         self.figs = [
-            Figure(CX - 330, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE),
-            Figure(CX + 330, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE),
+            Figure(CX - 330, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE * size_of(cfg.p0)),
+            Figure(CX + 330, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE * size_of(cfg.p1)),
         ]
         self.ref = Figure(CX, FLOOR_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)

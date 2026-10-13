@@ -5,6 +5,7 @@ import pygame
 from engine.constants import STAT_NAMES
 from engine.cards import signature_names
 from engine.loadouts import Loadout, apply_saved
+from engine.weights import get as get_weight, gap as weight_gap
 from engine.roster import quick_fighters, division, ARCHETYPE_BLURB
 
 from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, text_block, wrap,
@@ -22,7 +23,7 @@ class SelectScene(Scene):
         self.mode = mode
         self.roster = quick_fighters() + division()
         self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
-        apply_saved(self.roster)
+        apply_saved(self.roster, pool=app.settings["card_pool"])
         self.sel = [0, 1]
         self.level = 1
         self.rounds = 3
@@ -62,7 +63,8 @@ class SelectScene(Scene):
         from .deck import DeckScene
         k = self.sel[side]
         self.app.sounds.play("click")
-        self.app.goto(DeckScene(self.app, Loadout(self.roster[k], self.defaults[k]), lambda: self))
+        lo = Loadout(self.roster[k], self.defaults[k], pool=self.app.settings["card_pool"])
+        self.app.goto(DeckScene(self.app, lo, lambda: self))
 
     def _refresh(self):
         for side in (0, 1):
@@ -72,7 +74,9 @@ class SelectScene(Scene):
             kind, v = b.pick
             b.selected = (kind == "level" and v == self.level) or (kind == "rounds" and v == self.rounds)
         for i in (0, 1):
-            self.figs[i].shorts = self.roster[self.sel[i]].color
+            p = self.roster[self.sel[i]]
+            self.figs[i].shorts = p.color
+            self.figs[i].scale = 0.64 * get_weight(p.weight)["size"]
 
     def _start(self):
         import copy
@@ -135,7 +139,14 @@ class SelectScene(Scene):
         if self.mode != "ai" and self.app.pads.count:
             sub = ("Controller 1 is red, controller 2 is blue" if self.app.pads.count >= 2 else
                    "Red uses Q W E R A S D F, the controller plays blue")
-        text(surf, sub, (CX, 70), 17, GREY, "midtop")
+        a, b = self.roster[self.sel[0]], self.roster[self.sel[1]]
+        if a.weight != b.weight:
+            heavy = a if weight_gap(a.weight, b.weight) > 0 else b
+            lbs = abs(get_weight(a.weight)["lbs"] - get_weight(b.weight)["lbs"])
+            text(surf, f"Catchweight bout: {heavy.name} is {lbs} lbs heavier", (CX, 70), 17,
+                 (255, 170, 60), "midtop", bold=True)
+        else:
+            text(surf, sub, (CX, 70), 17, GREY, "midtop")
         for side in (0, 1):
             for b in self.lists[side]:
                 b.draw(surf)
@@ -148,8 +159,8 @@ class SelectScene(Scene):
             text(surf, p.name.upper(), (rect.centerx, rect.y + 12), 24, WHITE, "midtop", display=True,
                  max_width=inner)
             text(surf, f'"{p.nickname}"', (rect.centerx, rect.y + 44), 16, GOLD, "midtop", max_width=inner)
-            text(surf, f"{p.archetype}, {p.record()}", (rect.centerx, rect.y + 66), 16, GREY, "midtop",
-                 max_width=inner)
+            text(surf, f"{p.weight} {p.archetype}, {p.record()}", (rect.centerx, rect.y + 66), 16, GREY,
+                 "midtop", max_width=inner)
             self.figs[i].x = rect.centerx
             self.figs[i].y = rect.y + 196
             self.figs[i].draw(surf)

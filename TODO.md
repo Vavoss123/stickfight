@@ -16,15 +16,14 @@
 - [x] Career story: a rival who calls you out, a training camp before title fights,
       retirement and a hall of fame
 - [x] Tournament mode: 8 fighter bracket in one night, injuries carry over
-- [ ] Shared card collection: use career cards to build decks for quick fight and 2 player
-      (quick fight decks exist now, with every card unlocked)
+- [x] Shared card collection: use career cards to build decks for quick fight and 2 player
 
 ## Polish
 
 - [x] "NEW CARD" moment when a legendary is pulled from a pack
 - [x] Show the card name in the fight when a signature move lands
 - [x] Gamepad support for 2 player (needs testing with a real controller)
-- [ ] Weight classes with different sizes, speed and power
+- [x] Weight classes with different sizes, speed and power
 
 ## Later
 
@@ -33,6 +32,9 @@
 ## Balance notes
 
 - Styles on hard: BJJ 52%, Wrestler 51%, Striker 49%, Brawler 45% (Oct 2026)
+- Weight classes: KOs go from about 7% at lightweight to 12% at heavyweight. Across
+  classes in mirror matches welter beats light 54%, heavy beats middle 68%, heavy beats
+  light 76% (SIZE_* in engine/weights.py)
 - KOs end about 8% of fights, submissions about 23%
 - Showtime Kick: costs 8 now with less KO power (51% in mirror matches). At 12 the AI
   chased the knockout and gassed itself out
