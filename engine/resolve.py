@@ -38,6 +38,8 @@ class Exchange:
         self.limping = [False, False]   # fighter i's legs just went
         self.cut_opened = [False, False]  # fighter i got cut this exchange
         self.combo = [0, 0]             # strikes in a row fighter i has landed
+        self.effort = [1.0, 1.0]        # below 1 when fighter i could not pay for the move
+        self.gassed = [False, False]
         self.transition = None          # (by, to)
         self.takedown_by = None
         self.reversal_by = None
@@ -123,6 +125,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     a, d = st.f[i], st.f[1 - i]
     p = move.acc + bonus_acc + (a.stat(move.stat) - d.stat(move.stat)) * 0.025
     p *= 0.55 + 0.45 * a.stamina_factor()
+    p *= 0.35 + 0.65 * ex.effort[i]   # thrown on an empty tank
     if a.rocked:
         p -= 0.15
     if d.rocked:
@@ -133,6 +136,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         ex.missed[i] = True
         return
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
+    dmg *= 0.5 + 0.5 * ex.effort[i]
     dmg *= _damage_mult(st, i)
     if move.power:
         dmg *= a.mobility()  # no legs, no power
@@ -273,6 +277,7 @@ def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     a, d = st.f[i], st.f[1 - i]
     p = 0.78 + bonus + _grapple_edge(st, i, move) + (a.stat(move.stat) - d.stat(move.stat)) * 0.03
     p *= 0.7 + 0.3 * a.stamina_factor()
+    p -= 0.4 * (1 - ex.effort[i])
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
     if d.rocked:
         p += 0.1
@@ -288,6 +293,7 @@ def _grapple_contest(st, ex, moves, rng):
     p = 0.5 + (a.stat(moves[0].stat) - b.stat(moves[1].stat)) * 0.05
     p += _grapple_edge(st, 0, moves[0]) - _grapple_edge(st, 1, moves[1])
     p += (a.stamina - b.stamina) * 0.002
+    p += 0.35 * (ex.effort[0] - ex.effort[1])
     p += (b.legs - a.legs) * 0.002
     if a.rocked:
         p -= 0.15
@@ -344,6 +350,8 @@ def resolve(st, picks, rng):
     rocked_before = [st.f[0].rocked > 0, st.f[1].rocked > 0]
     moves = list(ex.moves)
     for i in (0, 1):
+        ex.effort[i] = st.f[i].effort(moves[i])
+        ex.gassed[i] = ex.effort[i] < 1.0
         st.f[i].spend(moves[i].cost)
 
     rel = matchup(moves[0], moves[1])
@@ -380,7 +388,8 @@ def resolve(st, picks, rng):
         if c == STRIKE:
             # The faster strike lands first and disrupts the slower one.
             # Equal speed means a true trade, in random order so neither corner has an edge.
-            s0, s1 = moves[0].speed, moves[1].speed
+            # A gassed strike is slower than anything
+            s0, s1 = [-1 if ex.gassed[i] else moves[i].speed for i in (0, 1)]
             if s0 == s1:
                 order = (0, 1) if rng.random() < 0.5 else (1, 0)
                 bonus = {0: 0.0, 1: 0.0}

@@ -1,7 +1,9 @@
 """Fight cards.
 
 Every fighter has a deck. Move cards are signature versions of the basic moves and take
-that move's slot (Superman Punch takes the Power punch slot). Perk cards change how a
+that move's slot (Superman Punch takes the Power punch slot). Some take the slot of a
+different kind of move, like Guard Pull in the Body shot slot, so a grappler can trade
+strikes they do not need for more ways to get it to the mat. Perk cards change how a
 fighter fights. Cards come in three rarities and level up from 1 to 3 when you get a
 duplicate. A deck has a point budget, so you cannot equip everything you own.
 """
@@ -76,6 +78,20 @@ _MOVE_CARDS = [
                    sub_fail="bottom",
                    desc="Roll straight into a heel hook. If it fails you are on your back."),
      "Roll straight into a heel hook. If it fails you are on your back."),
+    # Grappling cards that take a strike's slot. They play like the move named as base.
+    (COMMON, _m("guardpull", "Guard Pull", "clinch", GRAPPLE, "grappling", 4, slot="body",
+                to="guard_bottom", bonus=0.1, anim="clinch",
+                desc="Pull them into your guard. Takes the Body shot slot."),
+     "Pull them into your guard. Takes the Body shot slot."),
+    (COMMON, _m("singleleg", "Single Leg", "takedown", GRAPPLE, "wrestling", 8, slot="legkick",
+                to="guard_top", bonus=-0.04, anim="takedown",
+                desc="A cheaper shot that is a bit easier to stop. Takes the Leg kick slot."),
+     "A cheaper shot that is a bit easier to stop. Takes the Leg kick slot."),
+    (RARE, _m("flytri", "Flying Triangle", "clinch", SUB, "grappling", 14, slot="kick",
+              bonus=0.04, sub_fail="bottom", anim="imanari",
+              desc="Jump straight into a triangle. If it fails you are on your back. "
+                   "Takes the Head kick slot."),
+     "Jump straight into a triangle. Takes the Head kick slot."),
 
     # Clinch
     (RARE, _m("plum", "Thai Plum Knees", "knees", STRIKE, "striking", 9, dmg=10, acc=0.7,
@@ -203,10 +219,10 @@ GROUPS = [
 ]
 
 
-def group_of(base):
+def group_of(slot):
     for name, keys in GROUPS:
         for k in keys:
-            if base in MOVESETS[k]:
+            if slot in MOVESETS[k]:
                 return name
     return "Standing"
 
@@ -224,9 +240,9 @@ def group_slots(group):
     return []
 
 
-def variants(base):
+def variants(slot):
     """Move cards that can go in the slot of this basic move."""
-    return [c for c in CARDS.values() if c.move and c.move.base == base]
+    return [c for c in CARDS.values() if c.move and c.move.slot == slot]
 
 
 def leveled(move, level):
@@ -266,7 +282,7 @@ def build_kit(profile):
         for k in keys:
             cid = deck.get(k)
             card = CARDS.get(cid) if cid else None
-            if card and card.move and card.move.base == k:
+            if card and card.move and card.move.slot == k:
                 m = leveled(card.move, levels.get(cid, 1))
                 moves[m.key] = m
                 out.append(m.key)
@@ -314,7 +330,8 @@ def signature_names(profile):
 PRESETS = {
     "Striker": ({"cross": "superman", "legkick": "calfkick"}, ["combo"]),
     "Wrestler": ({"takedown": "doubleleg", "gnp": "hammer"}, ["heavytop"]),
-    "BJJ": ({"triangle": "kimura", "sweep": "butterfly"}, ["subhunter"]),
+    "BJJ": ({"body": "guardpull", "legkick": "singleleg", "triangle": "kimura",
+             "sweep": "butterfly"}, ["subhunter"]),
     "Brawler": ({"body": "liver", "dirty": "spinelbow"}, ["nevergiveup"]),
 }
 
@@ -336,6 +353,38 @@ def apply_deck(profile, deck, perks, level=1):
     return profile
 
 
+def equip(profile, slot, cid, budget):
+    """Put a card in a move slot, or None for the basic move. Returns an error or None."""
+    old = dict(profile.deck)
+    if cid is None:
+        profile.deck.pop(slot, None)
+    else:
+        c = CARDS.get(cid)
+        if not c or not c.move or c.move.slot != slot or cid not in profile.cards:
+            return "That card does not go there"
+        profile.deck[slot] = cid
+    if deck_points(profile) > budget:
+        profile.deck = old
+        return "Not enough deck points"
+    return None
+
+
+def toggle_perk(profile, pid, budget):
+    """Equip or remove a perk. Returns an error or None."""
+    if pid in profile.perks:
+        profile.perks.remove(pid)
+        return None
+    if pid not in profile.cards:
+        return "You do not own that perk"
+    if len(profile.perks) >= MAX_PERKS:
+        return f"Only {MAX_PERKS} perks at a time"
+    profile.perks.append(pid)
+    if deck_points(profile) > budget:
+        profile.perks.remove(pid)
+        return "Not enough deck points"
+    return None
+
+
 def validate(profile, budget):
     """Problems with a deck, as plain strings. Empty means it is fine."""
     problems = []
@@ -343,10 +392,10 @@ def validate(profile, budget):
         problems.append(f"Over budget: {deck_points(profile)} of {budget} points")
     if len(profile.perks or []) > MAX_PERKS:
         problems.append(f"Only {MAX_PERKS} perks allowed")
-    for base, cid in (profile.deck or {}).items():
+    for slot, cid in (profile.deck or {}).items():
         c = CARDS.get(cid)
-        if not c or not c.move or c.move.base != base:
-            problems.append(f"{cid} cannot go in the {base} slot")
+        if not c or not c.move or c.move.slot != slot:
+            problems.append(f"{cid} cannot go in the {slot} slot")
         elif cid not in (profile.cards or {}):
             problems.append(f"You do not own {c.name}")
     return problems

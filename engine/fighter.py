@@ -104,14 +104,24 @@ class FighterState:
         """1.0 when fresh, STAMINA_FLOOR when empty."""
         return STAMINA_FLOOR + (1 - STAMINA_FLOOR) * (self.stamina / MAX_STAMINA)
 
-    def spend(self, amount):
-        """Positive amount costs stamina, negative recovers it. Cardio scales both."""
+    def cost_of(self, amount):
+        """What a cost really takes out of this fighter. Cardio scales both ways."""
         cardio = self.stats.cardio
         if amount > 0:
-            amount *= (1.3 - cardio * 0.06) * STAMINA_COST * (1 - self.kit.perk("ironlungs"))
-        else:
-            amount *= (0.7 + cardio * 0.06) * (1.0 - self.body / 160)
-        self.stamina = max(0.0, min(MAX_STAMINA, self.stamina - amount))
+            return amount * (1.3 - cardio * 0.06) * STAMINA_COST * (1 - self.kit.perk("ironlungs"))
+        return amount * (0.7 + cardio * 0.06) * (1.0 - self.body / 160)
+
+    def effort(self, move):
+        """1.0 when there is gas for the move, down to 0 when the tank is empty.
+        A move you cannot pay for still comes out, but slow and weak."""
+        cost = self.cost_of(move.cost)
+        if cost <= 0 or self.stamina >= cost:
+            return 1.0
+        return self.stamina / cost
+
+    def spend(self, amount):
+        """Positive amount costs stamina, negative recovers it."""
+        self.stamina = max(0.0, min(MAX_STAMINA, self.stamina - self.cost_of(amount)))
 
     def take(self, dmg):
         self.hp = max(0.0, self.hp - dmg)

@@ -81,6 +81,11 @@ def describe(ex, names):
         elif to == "back_top":
             lines.append(_pick(f"{n[by]} takes the back!", f"{n[by]} is on the back, hooks in!"))
 
+    if not lines and any(ex.gassed):
+        i = 0 if ex.gassed[0] else 1
+        lines.append(_pick(f"{n[i]} is running on fumes, nothing behind it.",
+                           f"{n[i]} is exhausted and it shows."))
+
     if not lines:
         dmg = ex.dmg
         if max(dmg) >= 1:

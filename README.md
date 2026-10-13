@@ -50,12 +50,15 @@ and slow its recovery, and enough of them can fold a fighter. Leg kicks take awa
 and wrestling, and a fighter past 60% leg damage starts limping.
 
 The fight moves between standing, the clinch, guard, mount and back control. Each
-position has its own moves. A submission starts a contest: the attacker hides a side
+position has its own moves. Covering up stops strikes from the top, but strikes open
+you up too: a triangle catches ground and pound, a sweep catches elbows, and under the
+mount a shrimp beats punches and a bridge beats elbows. A submission starts a contest: the attacker hides a side
 and the defender escapes by matching it. The rear naked choke from the back is the most
 dangerous of them, and escaping it still leaves you with them on your back.
 
 Stamina is scarce. Every move costs it, the break between rounds only gives some back,
-and a tired fighter hits softer, misses more and gets taken down and submitted.
+and a tired fighter hits softer, misses more and gets taken down and submitted. A move
+you do not have the stamina for still comes out, but slow and weak (it shows as GASSED).
 
 Elbows and big shots can open cuts. Blood in the eyes hurts accuracy, and a bad enough
 cut gets the fight stopped by the doctor. Between rounds your corner reads the fight
@@ -69,13 +72,21 @@ Knockouts get a slow motion replay.
 Every fighter has a deck. Signature cards are named after the techniques fighters made
 famous (Superman Punch, Showtime Kick, Calf Kick, Imanari Roll, D'Arce, Peruvian Necktie,
 Twister, Gogoplata and more). Each one takes the slot of a basic move and changes how it
-works, usually with a trade-off. Perk cards change how you fight: Never Say Die,
+works, usually with a trade-off. Some swap in a different kind of move, so a grappler can
+trade strikes for Guard Pull, Single Leg or a Flying Triangle. Perk cards change how you fight: Never Say Die,
 Combination Puncher, Dutch Kickboxing, Iron Lungs, Granite Chin and others.
 
 In career mode fights pay purse money, wins give a pack to pick one card from, and the
 shop restocks after every fight. A duplicate levels a card up to a maximum of 3. Cards
-cost deck points by rarity and the budget grows as you climb the rankings. Quick fight
-and 2 player use each fighter's preset deck, which shows on the select screen.
+cost deck points by rarity and the budget grows as you climb the rankings.
+
+In quick fight and 2 player, press **Edit deck** on the select screen. Every card is
+unlocked there with a 10 point budget, and the deck is remembered for that fighter.
+
+## Feedback
+
+Press **F1** on any screen to write a quick note. Notes go to `~/.stickfight/feedback.txt`
+along with the fight situation (round, position, health, stamina and the last few moves).
 
 Fights are 3 rounds of 8 exchanges (title fights are 5 rounds). Three judges score each
 round on damage, takedowns, control time, submission attempts and knockdowns.

@@ -120,7 +120,7 @@ class MenuScene(Scene):
         text(surf, "TURN BASED MMA", (62, 178), 24, GOLD, bold=True)
         for b in self.buttons:
             b.draw(surf)
-        text(surf, "M mutes sound, ESC pauses in a fight", (W - 20, H - 16), 14, GREY, "bottomright")
+        text(surf, "M mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")
         text(surf, f"v{VERSION}", (20, H - 16), 14, GREY, "bottomleft")
         self._draw_update(surf)
 

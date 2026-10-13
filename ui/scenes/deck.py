@@ -19,6 +19,8 @@ def money(n):
 
 
 class DeckScene(Scene):
+    """career is a Career, or a Loadout for quick fight decks. Both have the same calls."""
+
     def __init__(self, app, career, back):
         super().__init__(app)
         self.c = career
@@ -32,6 +34,7 @@ class DeckScene(Scene):
             b.pick = k
             self.tab_buttons.append(b)
         self.back = Button((20, H - 56, 140, 42), "Done", color=(40, 110, 60), size=18)
+        self.reset = Button((20, H - 104, 140, 38), "Reset deck", size=16)             if hasattr(career, "reset") else None
         self._pick_first_slot()
 
     def _slots(self):
@@ -85,6 +88,11 @@ class DeckScene(Scene):
             self.c.save()
             self.app.goto(self.back_to())
             return
+        if self.reset and self.reset.handle(e):
+            self.c.reset()
+            self.message = ""
+            self.app.sounds.play("click")
+            return
         for b in self.tab_buttons:
             if b.handle(e):
                 self.tab = b.pick
@@ -127,11 +135,12 @@ class DeckScene(Scene):
         surf.fill((14, 15, 22))
         c = self.c
         p = c.player
-        text(surf, "YOUR DECK", (20, 18), 40, WHITE, display=True)
+        text(surf, getattr(c, "title", "YOUR DECK"), (20, 18), 40, WHITE, display=True, max_width=700)
         pts, budget = deck_points(p), c.budget()
         text(surf, f"Deck points {pts} of {budget}", (W - 330, 22), 18, WHITE, bold=True)
         bar(surf, (W - 330, 48, 310, 12), pts / max(1, budget), GREEN if pts <= budget else (220, 60, 60))
-        text(surf, money(c.money), (W - 20, 20), 18, GOLD, "topright", bold=True)
+        if c.money is not None:
+            text(surf, money(c.money), (W - 20, 20), 18, GOLD, "topright", bold=True)
         for k, b in enumerate(self.tab_buttons):
             b.selected = k == self.tab
             b.draw(surf)
@@ -148,9 +157,12 @@ class DeckScene(Scene):
         if self.message:
             text(surf, self.message, (180, H - 44), 17, (255, 120, 100), bold=True)
         else:
-            text(surf, "Common cards cost 1 point, rare 2, legendary 3. Win fights to raise your budget.",
-                 (180, H - 44), 15, GREY)
+            hint = getattr(c, "hint", "Common cards cost 1 point, rare 2, legendary 3. "
+                                      "Win fights to raise your budget.")
+            text(surf, hint, (180, H - 44), 15, GREY)
         self.back.draw(surf)
+        if self.reset:
+            self.reset.draw(surf)
 
     def _draw_slots(self, surf):
         p = self.c.player

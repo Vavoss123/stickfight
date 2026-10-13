@@ -4,9 +4,11 @@ import pygame
 
 from engine.constants import STAT_NAMES
 from engine.cards import signature_names
+from engine.loadouts import Loadout, apply_saved
 from engine.roster import quick_fighters, division, ARCHETYPE_BLURB
 
-from ..common import W, H, CX, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, text_block, panel, Button, bar
+from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, text_block, wrap,
+                      panel, Button, bar)
 from ..stickman import Figure
 from .base import Scene
 from .fight import FightConfig
@@ -19,6 +21,8 @@ class SelectScene(Scene):
         super().__init__(app)
         self.mode = mode
         self.roster = quick_fighters() + division()
+        self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
+        apply_saved(self.roster)
         self.sel = [0, 1]
         self.level = 1
         self.rounds = 3
@@ -46,6 +50,19 @@ class SelectScene(Scene):
             self.opts.append(b)
         self.start = Button((CX - 130, H - 62, 260, 50), "FIGHT", color=(170, 40, 40), size=26)
         self.back = Button((20, H - 56, 120, 40), "Back", size=18)
+        # The computer picks its own cards, so in quick fight only red gets a deck button
+        self.deck_buttons = []
+        for i in ((0,) if mode == "ai" else (0, 1)):
+            x = 340 if i == 0 else CX + 20
+            b = Button((x + 30, 514, 220, 30), "Edit deck", size=16, color=(60, 50, 110))
+            b.pick = i
+            self.deck_buttons.append(b)
+
+    def _edit_deck(self, side):
+        from .deck import DeckScene
+        k = self.sel[side]
+        self.app.sounds.play("click")
+        self.app.goto(DeckScene(self.app, Loadout(self.roster[k], self.defaults[k]), lambda: self))
 
     def _refresh(self):
         for side in (0, 1):
@@ -82,6 +99,10 @@ class SelectScene(Scene):
                 else:
                     self.rounds = v
                 self.app.sounds.play("click")
+        for b in self.deck_buttons:
+            if b.handle(e):
+                self._edit_deck(b.pick)
+                return
         if self.start.handle(e):
             self._start()
         if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
@@ -134,18 +155,25 @@ class SelectScene(Scene):
                 v = p.stats.get(s)
                 text(surf, s.capitalize(), (rect.x + 16, yy), 15, GREY)
                 bar(surf, (rect.x + 110, yy + 3, 150, 12), v / 10, CORNER[i])
-                yy += 24
+                yy += 22
             blurb = ARCHETYPE_BLURB.get(p.archetype, "")
             yy = text_block(surf, blurb, (rect.centerx, yy + 4), 13, inner, GREY, line_gap=1)
             sigs = signature_names(p)
             if sigs:
-                text_block(surf, "Cards: " + ", ".join(sigs), (rect.centerx, yy + 4), 13, inner,
-                           (210, 190, 255), line_gap=1)
+                lines = wrap("Cards: " + ", ".join(sigs), 13, inner)
+                if len(lines) > 2:
+                    lines = lines[:2]
+                    lines[1] = lines[1].rstrip(",") + "..."
+                yy += 4
+                for ln in lines:
+                    yy = text(surf, ln, (rect.centerx, yy), 13, (210, 190, 255), "midtop").bottom + 1
         text(surf, "VS", (CX, 300), 40, GOLD, "center", display=True)
         if self.mode == "ai":
             text(surf, "Difficulty", (CX - 230, 570), 16, GREY, "topright")
         text(surf, "Length", (CX - 120, 618), 16, GREY, "topright")
         for b in self.opts:
+            b.draw(surf)
+        for b in self.deck_buttons:
             b.draw(surf)
         self.start.draw(surf)
         self.back.draw(surf)

@@ -83,8 +83,24 @@ class FightScene(Scene):
         self.corner_tips = None
         self.snap = None
         self.saved_banner = None
+        self.history = []   # move names of recent exchanges, for feedback notes
         self.world = pygame.Surface((W, H))
         self._intro()
+
+    def feedback_context(self):
+        """What a feedback note should remember about the fight."""
+        f, st, cfg = self.fight, self.fight.state, self.cfg
+        mode = f"vs AI ({cfg.level})" if cfg.mode == "ai" else "2 player"
+        out = [f"{cfg.p0.name} ({cfg.p0.archetype}) vs {cfg.p1.name} ({cfg.p1.archetype}), {mode}",
+               f"Round {f.round} {f.clock()}, {POS_NAME[st.pos]}"
+               + (f", {self.names[st.top]} on top" if st.top is not None else "")]
+        for i in (0, 1):
+            fs = st.f[i]
+            out.append(f"{self.names[i]}: health {fs.hp:.0f}, stamina {fs.stamina:.0f}, "
+                       f"body {fs.body:.0f}, legs {fs.legs:.0f}")
+        for picks in self.history[-3:]:
+            out.append(f"{self.names[0]} {picks[0]} / {self.names[1]} {picks[1]}")
+        return out
 
     # Timeline helpers
 
@@ -149,6 +165,10 @@ class FightScene(Scene):
             labels = SUB_ATTACK_LABELS if st.sub.att == i else SUB_DEFEND_LABELS
             return labels[k], "Read your opponent", SUB_COLOR
         m = self.mv(i, k)
+        if st.f[i].effort(m) < 1:
+            # Not enough gas for it: it will come out slow and weak
+            dim = tuple(int(c * 0.5) for c in CLASS_COLOR[m.cls])
+            return m.name, "Too tired, weak and slow", dim
         cost = f"{abs(int(m.cost))} stamina" if m.cost > 0 else f"+{abs(int(m.cost))} stamina"
         return m.name, f"{CLASS_NAME[m.cls]}, {cost}", CLASS_COLOR[m.cls]
 
@@ -212,6 +232,10 @@ class FightScene(Scene):
         hp_before = [f.hp for f in self.fight.state.f]
         self.snap = self._snapshot()
         self.last_before = before
+        if before.sub:
+            self.history.append(tuple(self.picks))
+        else:
+            self.history.append(tuple(self.mv(i, self.picks[i]).name for i in (0, 1)))
         ex = self.fight.play(tuple(self.picks))
         self.last_ex = ex
         self.ghost = hp_before
@@ -270,6 +294,8 @@ class FightScene(Scene):
             if ex.countered[i]:
                 self.at(0.42, lambda i=i: self._counter_anim(i, before))
                 continue
+            if ex.gassed[i]:
+                self.at(0.05, lambda i=i: self.popup(i, "GASSED", (236, 200, 70), 20, dy=-90))
             if ex.landed[i]:
                 self.at(impact, lambda i=i, k=k: self._hit_anim(i, k, ex, before))
             elif ex.missed[i] and m.power:
@@ -604,6 +630,7 @@ class FightScene(Scene):
             text(surf, "PAUSED", (CX, 250), 54, WHITE, "center", display=True)
             for b in self.pause_buttons:
                 b.draw(surf)
+            text(surf, "Something feel off? Press F1 to write a note", (CX, 470), 16, GREY, "center")
 
     def _draw_replay(self, surf):
         xs = [f.x for f in self.figs]

@@ -65,11 +65,11 @@ def draw_card(surf, rect, card_id, level=1, owned=True, selected=False, equipped
         kind = "Perk"
     else:
         m = MOVES[card_id] if basic else card.move
-        kind = f"{group_of(m.base)} {CLASS_WORD[m.cls]}"
+        kind = f"{group_of(m.slot)} {CLASS_WORD[m.cls]}"
     y = rect.y + pad + (20 if small else 24)
     text(surf, kind, (rect.x + pad, y), 12 if small else 13, (200, 200, 210))
     if card and card.move:
-        text(surf, f"Replaces {MOVES[card.move.base].name}", (rect.x + pad, y + 15), 11 if small else 12,
+        text(surf, f"Replaces {MOVES[card.move.slot].name}", (rect.x + pad, y + 15), 11 if small else 12,
              GREY, max_width=rect.w - pad * 2)
 
     # Little fighter doing the move

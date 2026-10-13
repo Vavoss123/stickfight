@@ -8,8 +8,8 @@ import json
 import os
 import random
 
-from .cards import (CARDS, STARTERS, PRICE, MAX_LEVEL, MAX_PERKS, COMMON, RARE, LEGENDARY,
-                    apply_deck, deck_points)
+from .cards import (CARDS, STARTERS, PRICE, MAX_LEVEL, COMMON, RARE, LEGENDARY,
+                    apply_deck, equip, toggle_perk)
 from .constants import STAT_NAMES, STAT_MAX
 from .fighter import Profile, Stats
 from .roster import ARCHETYPES, division, prospect
@@ -249,36 +249,12 @@ class Career:
         self.shop.remove(cid)
         return self.gain_card(cid)
 
-    def equip(self, base, cid):
+    def equip(self, slot, cid):
         """Put a card in a move slot, or None for the basic move. Returns an error or None."""
-        p = self.player
-        old = dict(p.deck)
-        if cid is None:
-            p.deck.pop(base, None)
-        else:
-            c = CARDS.get(cid)
-            if not c or not c.move or c.move.base != base or cid not in p.cards:
-                return "That card does not go there"
-            p.deck[base] = cid
-        if deck_points(p) > self.budget():
-            p.deck = old
-            return "Not enough deck points"
-        return None
+        return equip(self.player, slot, cid, self.budget())
 
     def toggle_perk(self, pid):
-        p = self.player
-        if pid in p.perks:
-            p.perks.remove(pid)
-            return None
-        if pid not in p.cards:
-            return "You do not own that perk"
-        if len(p.perks) >= MAX_PERKS:
-            return f"Only {MAX_PERKS} perks at a time"
-        p.perks.append(pid)
-        if deck_points(p) > self.budget():
-            p.perks.remove(pid)
-            return "Not enough deck points"
-        return None
+        return toggle_perk(self.player, pid, self.budget())
 
     # Training
 

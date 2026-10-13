@@ -12,7 +12,9 @@ to      where the fight goes if the move works:
         standing, clinch, guard_top, guard_bottom, mount_top, back_top (relative to the mover)
 
 Signature cards (see cards.py) are variants of these moves and use the extra fields:
-base      the basic move whose slot the card takes, and whose matchups it inherits
+base      the basic move whose matchups it inherits
+slot      the basic move whose button it replaces in the deck (defaults to base), so a
+          grappling card can take a strike's slot
 anim      which animation to play
 beats     move keys or classes this move beats on top of the usual rules
 loses_to  move keys or classes this move loses to on top of the usual rules
@@ -47,6 +49,7 @@ class Move:
     to: str = None
     desc: str = ""
     base: str = None
+    slot: str = None
     anim: str = None
     beats: tuple = ()
     loses_to: tuple = ()
@@ -61,6 +64,8 @@ class Move:
     def __post_init__(self):
         if self.base is None:
             object.__setattr__(self, "base", self.key)
+        if self.slot is None:
+            object.__setattr__(self, "slot", self.base)
         if self.anim is None:
             object.__setattr__(self, "anim", self.base)
         if self.sub_fail is None and self.cls == SUB:
@@ -117,9 +122,9 @@ _ALL = [
     Move("upkick", "Strikes off back", STRIKE, "striking", 6, dmg=5, acc=0.7,
          desc="Upkicks and elbows from the bottom."),
     Move("sweep", "Sweep", GRAPPLE, "grappling", 10, to="guard_top",
-         desc="Flip them and come up on top."),
+         desc="Flip them and come up on top. Best when they post up for elbows."),
     Move("triangle", "Triangle choke", SUB, "grappling", 12,
-         desc="Lock a triangle from guard."),
+         desc="Lock a triangle from guard. Catches them punching down."),
     Move("getup", "Get up", GRAPPLE, "wrestling", 8, to="standing",
          desc="Wall walk back to the feet."),
     Move("cover", "Cover up", DEFEND, "grappling", -5,
@@ -149,7 +154,7 @@ _ALL = [
     Move("bcover", "Hand fight", DEFEND, "grappling", -4,
          desc="Protect the neck and wait."),
     Move("turnin", "Turn in", GRAPPLE, "grappling", 8, to="guard_bottom",
-         desc="Turn to face them, back to guard."),
+         desc="Turn to face them while they punch, back to guard."),
     Move("bstand", "Stand up", GRAPPLE, "wrestling", 9, to="standing",
          desc="Fight the hooks and get up."),
 
@@ -157,9 +162,9 @@ _ALL = [
     Move("mcover", "Cover up", DEFEND, "grappling", -4,
          desc="Protect the face."),
     Move("bridge", "Bridge and roll", GRAPPLE, "wrestling", 10, to="guard_top",
-         desc="Explode and reverse the position."),
+         desc="Explode and reverse. Best when they sit up for elbows."),
     Move("shrimp", "Shrimp to guard", GRAPPLE, "grappling", 7, to="guard_bottom",
-         desc="Recover guard."),
+         desc="Recover guard. Slips out while they punch."),
 ]
 
 MOVES = {m.key: m for m in _ALL}
@@ -184,6 +189,13 @@ OVERRIDES = {
     ("legkick", "takedown"): -1,  # kick gets caught
     ("body", "takedown"): -1,   # dipping to the body opens up the shot
     ("kick", "clinch"): -1,
+    # Off the bottom. Throwing strikes gives the bottom fighter something to work with,
+    # so covering up is not the only answer to ground and pound.
+    ("triangle", "gnp"): 1,     # they leave an arm in while punching
+    ("sweep", "elbows"): 1,     # posting up for elbows takes their base away
+    ("bridge", "melbows"): 1,   # sitting up high for elbows, bridge them off
+    ("shrimp", "mgnp"): 1,      # hips out while they punch
+    ("turnin", "bpunch"): 1,    # the hooks loosen when they punch from the back
 }
 
 # Triangle: who beats whom by class. Subs count as grappling.

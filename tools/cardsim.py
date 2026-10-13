@@ -49,8 +49,8 @@ def duel(card, fights, level, pool=None):
         style = "Striker"
         deck, perks = {}, [card.id]
     else:
-        style = STYLE_FOR_GROUP[group_of(card.move.base)]
-        deck, perks = {card.move.base: card.id}, []
+        style = STYLE_FOR_GROUP[group_of(card.move.slot)]
+        deck, perks = {card.move.slot: card.id}, []
     a = make("A", "", style, cards=(deck, perks, 1))
     b = make("B", "", style, cards=({}, [], 1))
     # Every seed is played from both corners, which cancels out corner luck

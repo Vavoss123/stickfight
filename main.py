@@ -12,6 +12,7 @@ import pygame
 
 import updater
 from ui.common import W, H
+from ui.feedback import Feedback
 from ui.sound import Sounds, RATE
 from version import VERSION
 
@@ -27,6 +28,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
         self.running = True
+        self.feedback = Feedback(self)
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
 
@@ -39,10 +41,13 @@ class App:
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     self.running = False
-                else:
+                elif not self.feedback.handle(e):
                     self.scene.handle(e)
-            self.scene.update(dt)
+            if not self.feedback.open:
+                self.scene.update(dt)
+            self.feedback.update(dt)
             self.scene.draw(self.screen)
+            self.feedback.draw(self.screen)
             pygame.display.flip()
             if updater.state["status"] == "restarting":
                 updater.relaunch()

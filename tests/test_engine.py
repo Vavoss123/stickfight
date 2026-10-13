@@ -138,7 +138,7 @@ class Cuts(unittest.TestCase):
         cuts = 0
         for seed in range(200):
             st = fresh(GUARD, 0)
-            ex = resolve(st, ("elbows", "sweep"), random.Random(seed))
+            ex = resolve(st, ("elbows", "getup"), random.Random(seed))
             cuts += ex.cut_opened[1]
         self.assertGreater(cuts, 10)
 
