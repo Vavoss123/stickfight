@@ -3,7 +3,6 @@
 import random
 
 from .constants import STANDING, CLINCH, GUARD, MOUNT
-from .moves import MOVES
 
 _rng = random.Random()
 
@@ -20,7 +19,7 @@ def describe(ex, names):
 
     if ex.in_sub:
         att, dfn = n[ex.sub_att], n[1 - ex.sub_att]
-        sub = MOVES[ex.sub_move].name.lower()
+        sub = ex.sub_card.name.lower()
         r = ex.sub_result
         if r == "tap":
             lines.append(_pick(f"{dfn} taps! {att} wins by {sub}!",
@@ -38,7 +37,7 @@ def describe(ex, names):
 
     for i in (0, 1):
         me, them = n[i], n[1 - i]
-        m = MOVES[ex.picks[i]]
+        m = ex.moves[i]
         if ex.countered[i]:
             lines.append(_pick(f"{me} blocks and counters!", f"Slick counter from {me}!"))
         elif ex.blocked[i]:
@@ -46,7 +45,7 @@ def describe(ex, names):
         if ex.caught[1 - i] and ex.landed[i]:
             lines.append(_pick(f"{me} catches {them} coming in!", f"{them} walks right into it!"))
         if ex.takedown_by == i:
-            if ex.picks[1 - i] == "kick":
+            if ex.moves[1 - i].base in ("kick", "legkick"):
                 lines.append(f"{me} catches the kick and dumps {them}!")
             else:
                 lines.append(_pick(f"{me} takes {them} down!", f"Big takedown by {me}!",
@@ -86,7 +85,7 @@ def describe(ex, names):
         dmg = ex.dmg
         if max(dmg) >= 1:
             i = 0 if dmg[0] >= dmg[1] else 1
-            m = MOVES[ex.picks[i]]
+            m = ex.moves[i]
             if ex.landed[0] and ex.landed[1]:
                 lines.append(_pick("They trade shots!", "Both men land!", "Wild exchange!"))
             elif ex.target_hit[i] == "body":

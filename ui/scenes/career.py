@@ -6,8 +6,10 @@ from engine.career import Career, new_player, train_cost, delete_save
 from engine.constants import STAT_NAMES, STAT_MAX
 from engine.roster import ARCHETYPES, ARCHETYPE_BLURB, COLORS
 
-from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, panel, Button, bar,
-                      font)
+from engine.cards import deck_points, signature_names
+
+from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, text_block, panel, Button,
+                      bar, font)
 from ..stickman import Figure
 from .base import Scene
 from .fight import FightConfig
@@ -169,6 +171,8 @@ class HubScene(Scene):
         self.fight_btn = Button((CX - 150, 560, 300, 60), "FIGHT", color=(170, 40, 40), size=28)
         self.menu_btn = Button((20, H - 56, 150, 40), "Main menu", size=17)
         self.retire_btn = Button((180, H - 56, 150, 40), "Retire", size=17, color=(90, 40, 40))
+        self.deck_btn = Button((CX - 150, 628, 145, 42), "Deck", size=19, color=(60, 50, 110))
+        self.shop_btn = Button((CX + 5, 628, 145, 42), "Shop", size=19, color=(150, 110, 30))
         opp, *_ = self.c.next_fight()
         self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0)
         self.opp_fig.set_pose("stance", idle="stance")
@@ -184,6 +188,14 @@ class HubScene(Scene):
         if self.menu_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
             from .menu import MenuScene
             self.app.goto(MenuScene(self.app))
+        if self.deck_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_d):
+            from .deck import DeckScene
+            self.app.goto(DeckScene(self.app, self.c, lambda: HubScene(self.app, self.c)))
+            return
+        if self.shop_btn.handle(e):
+            from .deck import ShopScene
+            self.app.goto(ShopScene(self.app, self.c, lambda: HubScene(self.app, self.c)))
+            return
         if self.retire_btn.handle(e):
             if self.confirm_retire:
                 delete_save()
@@ -210,7 +222,7 @@ class HubScene(Scene):
             draw = r.winner is None
             before = c.rank_label()
             was_champ = c.is_champ()
-            c.record_result(opp, won, draw, r.method, r.detail, r.round)
+            reward = c.record_result(opp, won, draw, r.method, r.detail, r.round)
             c.save()
             after = c.rank_label()
             if c.is_champ() and not was_champ:
@@ -225,7 +237,12 @@ class HubScene(Scene):
                 msg = "Good win. Keep it going."
             else:
                 msg = "Tough night. Train up and go again."
-            app.goto(HubScene(app, c, msg))
+            msg += f" You made ${reward['purse'] + reward['bonus']:,}."
+            if reward["pack"]:
+                from .deck import PackScene
+                app.goto(PackScene(app, c, reward["pack"], lambda: HubScene(app, c, msg)))
+            else:
+                app.goto(HubScene(app, c, msg))
 
         cfg = FightConfig(p, opp_view, mode="ai", level=level, rounds=rounds, title=title,
                           on_done=done, event=label)
@@ -247,6 +264,9 @@ class HubScene(Scene):
         if p.nickname:
             text(surf, f'"{p.nickname}"', (rect.x + 22, rect.y + 54), 17, GOLD)
         text(surf, f"{p.archetype}, {p.record()}", (rect.x + 22, rect.y + 78), 17, GREY)
+        text(surf, f"${c.money:,}", (rect.x + 22, rect.y + 102), 18, GOLD, bold=True)
+        text(surf, f"Deck {deck_points(p)} of {c.budget()} points", (rect.right - 20, rect.y + 104), 15,
+             GREY, "topright")
         rank = c.rank_label()
         rc = GOLD if c.is_champ() else WHITE
         text(surf, rank.upper(), (rect.right - 20, rect.y + 18), 30, rc, "topright", display=True)
@@ -281,9 +301,9 @@ class HubScene(Scene):
             text(surf, f'"{opp.nickname}"', (r2.centerx, r2.y + 116), 16, GOLD, "midtop")
         text(surf, f"{opp.archetype}, {opp.record()}", (r2.centerx, r2.y + 138), 16, GREY, "midtop")
         self.opp_fig.shorts = opp.color
-        self.opp_fig.x, self.opp_fig.y = r2.centerx, r2.y + 330
+        self.opp_fig.x, self.opp_fig.y = r2.centerx, r2.y + 318
         self.opp_fig.draw(surf)
-        yy = r2.y + 350
+        yy = r2.y + 334
         for s in STAT_NAMES:
             v = opp.stats.get(s)
             mine = p.stats.get(s)
@@ -293,9 +313,15 @@ class HubScene(Scene):
             col = (255, 120, 100) if diff > 0 else GREEN if diff < 0 else GREY
             text(surf, f"{v}", (r2.x + 320, yy), 15, col)
             yy += 24
-        text(surf, f"{rounds} rounds, {LEVEL_NAME[level]} AI", (r2.centerx, r2.bottom - 30), 15, GREY, "midtop")
+        sigs = signature_names(opp)
+        if sigs:
+            text_block(surf, "Cards: " + ", ".join(sigs), (r2.centerx, r2.y + 462), 13, r2.w - 40,
+                       (210, 190, 255))
+        text(surf, f"{rounds} rounds, {LEVEL_NAME[level]} AI", (r2.centerx, r2.bottom - 24), 15, GREY, "midtop")
         self.fight_btn.label = "FIGHT FOR THE BELT" if title and not c.is_champ() else "FIGHT"
         self.fight_btn.draw(surf)
+        self.deck_btn.draw(surf)
+        self.shop_btn.draw(surf)
 
         # Rankings
         r3 = panel(surf, (860, 20, 400, 600), (22, 24, 34))
@@ -315,8 +341,8 @@ class HubScene(Scene):
                  GOLD, "midtop")
 
         if self.message:
-            panel(surf, (460, 640, 800, 50), (40, 34, 14), alpha=230, border=GOLD)
-            text(surf, self.message, (860, 665), 18, WHITE, "center", bold=True)
+            panel(surf, (860, 628, 400, 84), (40, 34, 14), alpha=230, border=GOLD)
+            text_block(surf, self.message, (1060, 638), 16, 380, WHITE, "midtop", bold=True)
         self.menu_btn.draw(surf)
         self.retire_btn.draw(surf)
 

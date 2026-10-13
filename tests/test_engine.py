@@ -191,6 +191,129 @@ class Stamina(unittest.TestCase):
         self.assertLess(st.f[0].stamina, 30)
 
 
+class CardSystem(unittest.TestCase):
+    def _fighter(self, deck=None, perks=None, level=1, style="Striker"):
+        from engine.roster import make
+        return make("Test", "", style, cards=(deck or {}, perks or [], level))
+
+    def test_card_takes_the_slot_of_its_basic_move(self):
+        p = self._fighter({"cross": "superman"})
+        st = FightState([FighterState(p), FighterState(self._fighter())])
+        opts = st.options(0)
+        self.assertIn("superman", opts)
+        self.assertNotIn("cross", opts)
+        self.assertEqual(len(opts), 8)
+
+    def test_levels_make_cards_better(self):
+        from engine.cards import build_kit
+        k1 = build_kit(self._fighter({"cross": "superman"}, level=1))
+        k3 = build_kit(self._fighter({"cross": "superman"}, level=3))
+        self.assertGreater(k3.moves["superman"].dmg, k1.moves["superman"].dmg)
+        self.assertLess(k3.moves["superman"].cost, k1.moves["superman"].cost)
+
+    def test_signature_inherits_basic_matchups(self):
+        from engine.cards import CARDS
+        sm = CARDS["superman"].move
+        self.assertEqual(matchup(sm, MOVES["takedown"]), 1)   # still stops takedowns
+        self.assertEqual(matchup(MOVES["clinch"], sm), 1)     # still smothered by the clinch
+        sbf = CARDS["spinfist"].move
+        self.assertEqual(matchup(sbf, MOVES["block"]), 1)
+        self.assertEqual(matchup(sbf, MOVES["takedown"]), -1)
+
+    def test_iron_lungs_saves_stamina(self):
+        a = FighterState(self._fighter(perks=["ironlungs"]))
+        b = FighterState(self._fighter())
+        a.spend(20)
+        b.spend(20)
+        self.assertGreater(a.stamina, b.stamina)
+
+    def test_stat_perks_change_stats(self):
+        f = FighterState(self._fighter(perks=["heavyhands"]))
+        self.assertEqual(f.stats.striking, 9)
+        self.assertEqual(f.profile.stats.striking, 8)  # the profile itself is untouched
+
+    def test_combo_builds_on_landed_strikes(self):
+        st = FightState([FighterState(self._fighter(perks=["combo"])), FighterState(self._fighter())])
+        for seed in range(50):
+            st.f[1].hp = 100
+            resolve(st, ("jab", "clinch"), random.Random(seed))  # jab beats the clinch entry
+            st.pos = STANDING
+            if st.f[0].combo >= 2:
+                break
+        self.assertGreaterEqual(st.f[0].combo, 2)
+
+    def test_tired_fighters_take_more_damage(self):
+        fresh_dmg, tired_dmg = [], []
+        for seed in range(80):
+            for bucket, stam in ((fresh_dmg, 100), (tired_dmg, 0)):
+                st = fresh()
+                st.f[1].stamina = stam
+                ex = resolve(st, ("cross", "takedown"), random.Random(seed))
+                if ex.landed[0]:
+                    bucket.append(ex.dmg[0])
+        self.assertGreater(sum(tired_dmg) / len(tired_dmg), sum(fresh_dmg) / len(fresh_dmg) * 1.25)
+
+    def test_warns_about_no_takedown_defence(self):
+        from engine.cards import warnings
+        self.assertEqual(warnings(self._fighter()), [])
+        self.assertTrue(warnings(self._fighter({"cross": "spinfist"})))
+
+
+class CareerCards(unittest.TestCase):
+    def _career(self):
+        return Career(new_player("Test Fighter", "", "Striker", (200, 0, 0), ""), seed=7)
+
+    def test_new_fighter_starts_with_a_card_and_a_perk(self):
+        c = self._career()
+        self.assertEqual(c.player.deck, {"legkick": "calfkick"})
+        self.assertEqual(c.player.perks, ["counter"])
+
+    def test_wins_pay_and_give_a_pack(self):
+        c = self._career()
+        opp, *_ = c.next_fight()
+        reward = c.record_result(opp, True, False, "KO", "x", 1)
+        self.assertEqual(c.money, reward["purse"] + reward["bonus"])
+        self.assertEqual(reward["pack"], "finish")
+        pack = c.make_pack(reward["pack"])
+        self.assertEqual(len(pack), 3)
+        self.assertEqual(len(set(pack)), 3)
+
+    def test_duplicates_level_up_then_refund(self):
+        c = self._career()
+        self.assertEqual(c.gain_card("superman"), "new")
+        self.assertEqual(c.gain_card("superman"), "level")
+        self.assertEqual(c.gain_card("superman"), "level")
+        self.assertEqual(c.player.cards["superman"], 3)
+        before = c.money
+        self.assertEqual(c.gain_card("superman"), "refund")
+        self.assertGreater(c.money, before)
+
+    def test_budget_limits_the_deck(self):
+        c = self._career()
+        for cid in ("showtime", "twister", "necktie"):
+            c.gain_card(cid)
+        # Starter is Calf Kick (rare, 2) and Counter Striker (common, 1)
+        self.assertIsNone(c.equip("kick", "showtime"))      # 3 + 3 = 6 of 6
+        self.assertIsNotNone(c.equip("rnc", "twister"))     # would be 9
+        self.assertNotIn("rnc", c.player.deck)
+
+    def test_shop(self):
+        c = self._career()
+        c.money = 100000
+        cid = c.shop[0]
+        self.assertIsNotNone(c.buy(cid))
+        self.assertIn(cid, c.player.cards)
+        self.assertNotIn(cid, c.shop)
+
+    def test_old_saves_without_cards_still_load(self):
+        from engine.fighter import Profile
+        d = new_player("Old Save", "", "Wrestler", (0, 0, 200), "").to_dict()
+        for k in ("deck", "perks", "cards"):
+            d.pop(k)
+        c = Career(Profile.from_dict(d))
+        self.assertTrue(c.player.cards)
+
+
 class BackControl(unittest.TestCase):
     def test_take_the_back_from_mount(self):
         for seed in range(20):

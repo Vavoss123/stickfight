@@ -3,6 +3,7 @@
 import pygame
 
 from engine.constants import STAT_NAMES
+from engine.cards import signature_names
 from engine.roster import quick_fighters, division, ARCHETYPE_BLURB
 
 from ..common import W, H, CX, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, text_block, panel, Button, bar
@@ -21,7 +22,8 @@ class SelectScene(Scene):
         self.sel = [0, 1]
         self.level = 1
         self.rounds = 3
-        self.figs = [Figure(250, 400, 1, (0, 0, 0), glove=RED), Figure(W - 250, 400, -1, (0, 0, 0), glove=BLUE)]
+        self.figs = [Figure(250, 400, 1, (0, 0, 0), glove=RED, scale=0.72),
+                     Figure(W - 250, 400, -1, (0, 0, 0), glove=BLUE, scale=0.72)]
         for f in self.figs:
             f.set_pose("stance", idle="stance")
         self.lists = [[], []]
@@ -117,7 +119,7 @@ class SelectScene(Scene):
         for i in (0, 1):
             p = self.roster[self.sel[i]]
             x = 340 if i == 0 else CX + 20
-            rect = panel(surf, (x, 110, 280, 420), (22, 24, 34), border=CORNER[i])
+            rect = panel(surf, (x, 104, 280, 446), (22, 24, 34), border=CORNER[i])
             inner = rect.w - 24
             text(surf, p.name.upper(), (rect.centerx, rect.y + 12), 24, WHITE, "midtop", display=True,
                  max_width=inner)
@@ -125,16 +127,20 @@ class SelectScene(Scene):
             text(surf, f"{p.archetype}, {p.record()}", (rect.centerx, rect.y + 66), 16, GREY, "midtop",
                  max_width=inner)
             self.figs[i].x = rect.centerx
-            self.figs[i].y = rect.y + 236
+            self.figs[i].y = rect.y + 196
             self.figs[i].draw(surf)
-            yy = rect.y + 250
+            yy = rect.y + 214
             for s in STAT_NAMES:
                 v = p.stats.get(s)
                 text(surf, s.capitalize(), (rect.x + 16, yy), 15, GREY)
                 bar(surf, (rect.x + 110, yy + 3, 150, 12), v / 10, CORNER[i])
                 yy += 24
             blurb = ARCHETYPE_BLURB.get(p.archetype, "")
-            text_block(surf, blurb, (rect.centerx, yy + 4), 14, inner, GREY)
+            yy = text_block(surf, blurb, (rect.centerx, yy + 4), 13, inner, GREY, line_gap=1)
+            sigs = signature_names(p)
+            if sigs:
+                text_block(surf, "Cards: " + ", ".join(sigs), (rect.centerx, yy + 4), 13, inner,
+                           (210, 190, 255), line_gap=1)
         text(surf, "VS", (CX, 300), 40, GOLD, "center", display=True)
         if self.mode == "ai":
             text(surf, "Difficulty", (CX - 230, 570), 16, GREY, "topright")

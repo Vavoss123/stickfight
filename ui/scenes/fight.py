@@ -9,7 +9,6 @@ from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, SUB_ATTACK_LABELS,
                               SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
-from engine.moves import MOVES
 
 from ..arena import Arena
 from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
@@ -104,6 +103,10 @@ class FightScene(Scene):
     def set_banner(self, big, small="", color=WHITE, dur=1.6):
         self.banner = [big, small, color, dur, dur]
 
+    def mv(self, i, key):
+        """Fighter i's version of a move, so signature cards show up."""
+        return self.fight.state.f[i].move(key)
+
     def snd(self, name, vol=1.0):
         self.app.sounds.play(name, vol)
 
@@ -145,7 +148,7 @@ class FightScene(Scene):
         if st.sub:
             labels = SUB_ATTACK_LABELS if st.sub.att == i else SUB_DEFEND_LABELS
             return labels[k], "Read your opponent", SUB_COLOR
-        m = MOVES[k]
+        m = self.mv(i, k)
         cost = f"{abs(int(m.cost))} stamina" if m.cost > 0 else f"+{abs(int(m.cost))} stamina"
         return m.name, f"{CLASS_NAME[m.cls]}, {cost}", CLASS_COLOR[m.cls]
 
@@ -161,6 +164,7 @@ class FightScene(Scene):
                 b = Button((20 + j * (bw + gap), 634, bw, 74), label, key=f"{j + 1}",
                            sub=sub, color=color, size=21)
                 b.pick = k
+                b.badge = self._badge(0, k)
                 self.buttons[0].append(b)
         else:
             for i in (0, 1):
@@ -173,7 +177,14 @@ class FightScene(Scene):
                     b = Button((x0 + (j % 4) * (bw + 6), 632 + (j // 4) * (bh + 6), bw, bh),
                                label, key=keys[j], color=color, size=17)
                     b.pick = k
+                    b.badge = self._badge(i, k)
                     self.buttons[i].append(b)
+
+    def _badge(self, i, k):
+        from engine.cards import CARDS
+        if self.fight.state.sub or k not in CARDS:
+            return None
+        return {"common": (190, 190, 200), "rare": (90, 160, 255), "legendary": GOLD}[CARDS[k].rarity]
 
     def _lock(self, i, idx):
         if self.phase != "pick":
@@ -246,33 +257,34 @@ class FightScene(Scene):
 
         # Each fighter throws their move
         for i in (0, 1):
-            figs[i].play(list(ACTION[ex.picks[i]]))
-            if MOVES[ex.picks[i]].cls == STRIKE:
-                self.at(max(0.0, IMPACT.get(ex.picks[i], 0.15) - 0.1),
+            figs[i].play(list(ACTION[ex.moves[i].anim]))
+            if ex.moves[i].cls == STRIKE:
+                self.at(max(0.0, IMPACT.get(ex.moves[i].anim, 0.15) - 0.1),
                         lambda: self.snd("whoosh", 0.5))
 
         for i in (0, 1):
             o = 1 - i
             k = ex.picks[i]
-            impact = IMPACT.get(k, 0.15)
+            m = ex.moves[i]
+            impact = IMPACT.get(m.anim, 0.15)
             if ex.countered[i]:
                 self.at(0.42, lambda i=i: self._counter_anim(i, before))
                 continue
             if ex.landed[i]:
                 self.at(impact, lambda i=i, k=k: self._hit_anim(i, k, ex, before))
-            elif ex.missed[i] and MOVES[k].power:
+            elif ex.missed[i] and m.power:
                 self.at(impact, lambda i=i: self.popup(i, "MISS", GREY, 20))
-            if ex.blocked[o] and MOVES[k].cls == STRIKE:
+            if ex.blocked[o] and m.cls == STRIKE:
                 self.at(impact, lambda o=o: (self.snd("block"), self.popup(o, "BLOCKED", (150, 220, 255), 22),
                                              self.figs[o].play([("block", 0.08), ("block", 0.2)])))
             if ex.caught[o] and ex.landed[i]:
                 self.at(impact + 0.05, lambda i=i: self.popup(i, "CAUGHT!", GOLD, 26, dy=-30))
-            if ex.stuffed[i] and k in ("takedown", "trip", "sweep", "bridge", "pass"):
+            if ex.stuffed[i] and m.base in ("takedown", "trip", "sweep", "bridge", "pass"):
                 if before.pos == STANDING:
                     self.at(0.16, lambda o=o: self.figs[o].play([("sprawl", 0.14), ("sprawl", 0.2)]))
                 self.at(0.25, lambda o=o: self.popup(o, "STUFFED", (150, 220, 255), 22))
             if ex.sub_start == i:
-                self.at(0.3, lambda i=i, k=k: (self.popup(i, MOVES[k].name.upper() + "!", SUB_COLOR, 28),
+                self.at(0.3, lambda i=i, m=m: (self.popup(i, m.name.upper() + "!", SUB_COLOR, 28),
                                                self.snd("crowd", 0.7), self.arena.cheer(1.0)))
             if ex.rocked[o]:
                 self.at(impact + 0.08, lambda o=o: self.popup(o, "ROCKED!", GOLD, 30, dy=-34))
@@ -315,9 +327,10 @@ class FightScene(Scene):
     def _hit_anim(self, i, k, ex, before):
         o = 1 - i
         dmg = ex.dmg[i]
-        power = MOVES[k].power
+        move = ex.moves[i]
+        power = move.power
         bottom = before.top == i and before.pos in (GUARD, MOUNT, BACK)
-        target = MOVES[k].target
+        target = move.target
         self.figs[o].hit(1.5 if power else 0.8)
         pose = hit_pose(before.pos, bottom, target)
         self.figs[o].play([(pose, 0.07), (pose, 0.14)])
@@ -662,7 +675,7 @@ class FightScene(Scene):
         # Position
         if self.phase in ("pick", "reveal", "anim"):
             if st.sub:
-                pos = f"Submission attempt: {MOVES[st.sub.move].name}"
+                pos = f"Submission attempt: {self.mv(st.sub.att, st.sub.move).name}"
             elif st.pos in (GUARD, MOUNT, BACK):
                 pos = f"{POS_NAME[st.pos]}, {self.names[st.top]} on top"
             else:
@@ -681,7 +694,7 @@ class FightScene(Scene):
                         else "Defending: match their side to escape")
             hb = next((b for b in self.buttons[0] if b.hover), None)
             if hb and not st.sub:
-                hint = MOVES[hb.pick].desc
+                hint = self.mv(0, hb.pick).desc
             text(surf, hint, (24, 609), 16, WHITE, bold=True)
             if not st.sub:
                 text(surf, "Strike beats grapple, grapple beats defend, defend beats strike",
@@ -713,7 +726,8 @@ class FightScene(Scene):
                 labels = SUB_ATTACK_LABELS if st.sub.att == i else SUB_DEFEND_LABELS
                 name, color = labels[k], SUB_COLOR
             else:
-                name, color = MOVES[k].name, CLASS_COLOR[MOVES[k].cls]
+                m = self.mv(i, k)
+                name, color = m.name, CLASS_COLOR[m.cls]
             x = CX - 300 if i == 0 else CX + 300
             r = font(36, display=True).size(name.upper())
             rect = pygame.Rect(0, 0, r[0] + 40, 58)
@@ -724,7 +738,7 @@ class FightScene(Scene):
 
     def _draw_sub_meter(self, surf):
         s = self.fight.state.sub
-        name = MOVES[s.move].name.upper()
+        name = self.mv(s.att, s.move).name.upper()
         rect = panel(surf, (CX - 190, 176, 380, 70), (16, 10, 24), alpha=225, border=SUB_COLOR)
         text(surf, name, (CX, 182), 18, (210, 170, 255), "midtop", bold=True)
         text(surf, "ESCAPE", (rect.x + 14, 216), 14, (120, 220, 140), "midleft", bold=True)

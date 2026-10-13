@@ -1,7 +1,6 @@
 """The minimal fight state the rules operate on. Cheap to clone for AI lookahead."""
 
 from .constants import STANDING, CLINCH, NEUTRAL, TOP, BOTTOM, SUB_OPTIONS
-from .moves import MOVESETS
 
 
 class SubState:
@@ -38,4 +37,4 @@ class FightState:
         """Legal picks for fighter i right now."""
         if self.sub:
             return list(SUB_OPTIONS)
-        return list(MOVESETS[(self.pos, self.role(i))])
+        return list(self.f[i].kit.movesets[(self.pos, self.role(i))])

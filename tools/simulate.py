@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from engine.ai import AI
 from engine.fight import Fight
+from engine.cards import CARDS
 from engine.moves import MOVES
 from engine.roster import quick_fighters
 
@@ -99,7 +100,8 @@ def main():
     print("\nMoves (share of picks, success rate)")
     picks = sum(move_count.values())
     for k, n in move_count.most_common():
-        print(f"  {MOVES[k].name:20s} {100 * n / picks:5.1f}%   {100 * move_ok[k] / n:5.1f}%")
+        name = (MOVES.get(k) or CARDS[k].move).name
+        print(f"  {name:20s} {100 * n / picks:5.1f}%   {100 * move_ok[k] / n:5.1f}%")
 
 
 if __name__ == "__main__":

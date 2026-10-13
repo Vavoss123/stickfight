@@ -9,7 +9,20 @@ power   power shots can rock, drop and knock out
 speed   when two strikes meet, the faster one lands first and disrupts the other
 target  head (damage), body (drains stamina) or legs (saps power and movement)
 to      where the fight goes if the move works:
-        standing, clinch, guard_top, guard_bottom, mount_top (relative to the mover)
+        standing, clinch, guard_top, guard_bottom, mount_top, back_top (relative to the mover)
+
+Signature cards (see cards.py) are variants of these moves and use the extra fields:
+base      the basic move whose slot the card takes, and whose matchups it inherits
+anim      which animation to play
+beats     move keys or classes this move beats on top of the usual rules
+loses_to  move keys or classes this move loses to on top of the usual rules
+bonus     extra success chance for grapples and submissions
+ko        multiplier on the flash knockout chance
+limb      multiplier on body or leg damage
+slam      damage done when a takedown lands
+catch     damage multiplier when this strike catches someone shooting in
+counter   extra counter chance when this defend move blocks a strike
+sub_fail  what happens when the hold is escaped: guard, bottom or stay
 """
 
 from dataclasses import dataclass
@@ -33,6 +46,26 @@ class Move:
     cuts: float = 0.0   # chance a clean head shot opens a cut
     to: str = None
     desc: str = ""
+    base: str = None
+    anim: str = None
+    beats: tuple = ()
+    loses_to: tuple = ()
+    bonus: float = 0.0
+    ko: float = 1.0
+    limb: float = 1.0
+    slam: float = 0.0
+    catch: float = 1.2
+    counter: float = 0.0
+    sub_fail: str = None
+
+    def __post_init__(self):
+        if self.base is None:
+            object.__setattr__(self, "base", self.key)
+        if self.anim is None:
+            object.__setattr__(self, "anim", self.base)
+        if self.sub_fail is None and self.cls == SUB:
+            fail = {"guillotine": "bottom", "rnc": "stay"}.get(self.base, "guard")
+            object.__setattr__(self, "sub_fail", fail)
 
 
 _ALL = [
@@ -161,12 +194,20 @@ def base_class(move):
     return GRAPPLE if move.cls == SUB else move.cls
 
 
+def _named(lst, m):
+    return m.key in lst or m.base in lst or base_class(m) in lst
+
+
 def matchup(a, b):
     """+1 if move a beats move b, -1 if b beats a, 0 if neither does."""
-    if (a.key, b.key) in OVERRIDES:
-        return OVERRIDES[(a.key, b.key)]
-    if (b.key, a.key) in OVERRIDES:
-        return -OVERRIDES[(b.key, a.key)]
+    if _named(a.beats, b) or _named(b.loses_to, a):
+        return 1
+    if _named(b.beats, a) or _named(a.loses_to, b):
+        return -1
+    if (a.base, b.base) in OVERRIDES:
+        return OVERRIDES[(a.base, b.base)]
+    if (b.base, a.base) in OVERRIDES:
+        return -OVERRIDES[(b.base, a.base)]
     ca, cb = base_class(a), base_class(b)
     if ca == cb:
         return 0

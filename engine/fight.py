@@ -6,7 +6,6 @@ from .constants import (EXCHANGES_PER_ROUND, ROUND_SECONDS, STANDING, MAX_STAMIN
                         STRIKE, ROUND_RECOVERY)
 from .fighter import FighterState
 from .judges import RoundStats, score_fight
-from .moves import MOVES
 from .resolve import resolve
 from .state import FightState
 
@@ -95,7 +94,8 @@ class Fight:
         st.pos, st.top, st.sub = STANDING, None, None
         for f in st.f:
             f.rocked = 0
-            gain = (ROUND_RECOVERY + f.stats.cardio * 2) * (1.0 - f.body / 200)
+            gain = (ROUND_RECOVERY + f.stats.cardio * 2) * (1.0 - f.body / 200) + f.perk("secondwind")
+            f.combo = 0
             f.stamina = min(MAX_STAMINA, f.stamina + gain)
             f.hp = min(100.0, f.hp + 4)
             f.body *= 0.8
@@ -112,7 +112,7 @@ class Fight:
         for i in (0, 1):
             r = s[i]
             if not ex.in_sub:
-                m = MOVES[ex.picks[i]]
+                m = ex.moves[i]
                 if m.cls == STRIKE:
                     r.thrown += 1
                 if ex.countered[i]:

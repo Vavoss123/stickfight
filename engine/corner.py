@@ -61,7 +61,8 @@ def _picks(fight, who, pos=None, role=None, last_round_only=True):
             mine = TOP if ex.top_before == who else BOTTOM
             if mine != role:
                 continue
-        out.append(ex.picks[who])
+        m = ex.moves[who]
+        out.append(m.base if m else ex.picks[who])  # signature cards count as their basic move
     return out
 
 

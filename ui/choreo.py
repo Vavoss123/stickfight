@@ -48,6 +48,7 @@ ACTION = {
     "bcover": [("rnc_def", 0.3)],
     "turnin": [("guard_bot", 0.25)],
     "bstand": [("getup", 0.25)],
+    "imanari": [("shoot", 0.15), ("sweep", 0.2)],
 }
 
 IMPACT = {"jab": 0.10, "cross": 0.24, "kick": 0.28, "knees": 0.14, "dirty": 0.1,
@@ -60,6 +61,7 @@ SUB_POSES = {
     "triangle": ("triangle", "pass"),
     "armtri": ("arm_tri", "mount_bot"),
     "rnc": ("rnc", "rnc_def"),
+    "imanari": ("sweep", "leg_hit"),
 }
 
 
@@ -100,7 +102,7 @@ def layout(st):
             xs[top] = bx - fb * 28 * SCALE
             idle[top], idle[bot] = "mount_top", "mount_bot"
     if st.sub:
-        a, d = SUB_POSES[st.sub.move]
+        a, d = SUB_POSES[st.f[st.sub.att].move(st.sub.move).anim]
         idle[st.sub.att] = a
         idle[1 - st.sub.att] = d
     for i in (0, 1):

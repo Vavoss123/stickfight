@@ -1,12 +1,14 @@
 """Resolves one exchange: both picks are revealed and play out together.
 
 Everything here works on a FightState and a random.Random, with no UI, so it can be
-tested, simulated and used by the AI for lookahead.
+tested, simulated and used by the AI for lookahead. Moves come from each fighter's own
+kit, so signature cards and perks apply.
 """
 
+from .cards import ESCAPES
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, SUB, DEFEND,
-                        SUB_TAP, SUB_START, HEAD, BODY, LEGS)
-from .moves import MOVES, matchup, base_class
+                        SUB_TAP, SUB_START, HEAD, BODY, LEGS, TIRED_DAMAGE)
+from .moves import matchup, base_class
 from .state import SubState
 
 
@@ -20,6 +22,8 @@ class Exchange:
         self.in_sub = st.sub is not None
         self.sub_move = st.sub.move if st.sub else None
         self.sub_att = st.sub.att if st.sub else None
+        self.sub_card = st.f[st.sub.att].move(st.sub.move) if st.sub else None
+        self.moves = (None, None) if st.sub else (st.f[0].move(picks[0]), st.f[1].move(picks[1]))
         self.success = [False, False]   # the move did what it was meant to
         self.landed = [False, False]    # strike connected
         self.missed = [False, False]
@@ -33,6 +37,7 @@ class Exchange:
         self.target_hit = [None, None]  # head / body / legs that fighter i landed on
         self.limping = [False, False]   # fighter i's legs just went
         self.cut_opened = [False, False]  # fighter i got cut this exchange
+        self.combo = [0, 0]             # strikes in a row fighter i has landed
         self.transition = None          # (by, to)
         self.takedown_by = None
         self.reversal_by = None
@@ -52,7 +57,7 @@ def _clamp(x, lo, hi):
 
 def _chin_factor(f):
     """Above 1 for weak chins, below 1 for iron chins."""
-    return 1.3 - f.stats.chin * 0.06
+    return (1.3 - f.stats.chin * 0.06) * (1 - f.perk("granite"))
 
 
 def _apply_transition(st, ex, i, to):
@@ -70,7 +75,7 @@ def _apply_transition(st, ex, i, to):
     elif to == "back_top":
         st.pos, st.top = BACK, i
     ex.transition = (i, to)
-    if to == "guard_top":
+    if to in ("guard_top", "mount_top"):
         if before[0] in (STANDING, CLINCH):
             ex.takedown_by = i
         elif before[1] == 1 - i:
@@ -95,6 +100,23 @@ def _target(st, i, move):
     return None
 
 
+def _damage_mult(st, i):
+    """Perks that make fighter i hit harder right now."""
+    a, d = st.f[i], st.f[1 - i]
+    m = 1.0
+    if a.hp < 40:
+        m += a.perk("nevergiveup")
+    if d.rocked:
+        m += a.perk("killer")
+    if a.combo:
+        m += a.perk("combo") * min(3, a.combo)
+    if st.top == i and st.pos not in (STANDING, CLINCH):
+        m += a.perk("heavytop")
+    # Tired fighters cannot defend themselves
+    m *= 1 + TIRED_DAMAGE * (1 - d.stamina / 100)
+    return m
+
+
 def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     if st.f[i].hp <= 0:
         return  # knocked out by the other shot
@@ -111,6 +133,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         ex.missed[i] = True
         return
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
+    dmg *= _damage_mult(st, i)
     if move.power:
         dmg *= a.mobility()  # no legs, no power
     if d.rocked:
@@ -128,10 +151,11 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
 
     if move.target == BODY:
         # Less damage now, but it takes the gas out of them
+        limb = move.limb * (1 + a.perk("bodysnatcher"))
         d.take(dmg * 0.7)
-        d.body = min(100.0, d.body + dmg * 2.4)
-        d.stamina = max(0.0, d.stamina - dmg * 0.9)
-        fold = max(0.0, (d.body - 45) / 300) * chin
+        d.body = min(100.0, d.body + dmg * 2.4 * limb)
+        d.stamina = max(0.0, d.stamina - dmg * 0.9 * limb)
+        fold = max(0.0, (d.body - 45) / 300) * chin * move.limb
         if standing and rng.random() < fold:
             ex.knockdown = 1 - i
             d.rocked = 1
@@ -140,9 +164,10 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
             ex.transition = (i, "knockdown")
         return
     if move.target == LEGS:
+        limb = move.limb * (1 + a.perk("dutch"))
         was_ok = d.legs < 60
         d.take(dmg * 0.6)
-        d.legs = min(100.0, d.legs + dmg * 3.2)
+        d.legs = min(100.0, d.legs + dmg * 3.2 * limb)
         d.stamina = max(0.0, d.stamina - dmg * 0.3)
         if was_ok and d.legs >= 60:
             ex.limping[1 - i] = True
@@ -162,7 +187,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
 
     if move.power and standing:
         # A clean power shot can end it at any time, more likely when hurt
-        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin, 0, 0.4)
+        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin * move.ko, 0, 0.5)
         if was_rocked:
             ko *= 1.5
         if rng.random() < ko:
@@ -194,17 +219,21 @@ def _cut(st, ex, i, move, dmg, rng):
         ex.finish = (i, "TKO", "Doctor stoppage, cut")
 
 
-def _counter(st, ex, i, rng, open_shot=False):
+def _counter(st, ex, i, rng, move, open_shot=False):
     """Fighter i blocked a strike and fires back. Blocked power shots leave a bigger opening."""
     a, d = st.f[i], st.f[1 - i]
     p = 0.45 + (0.2 if open_shot else 0.0) + (a.stats.striking - d.stats.striking) * 0.04
+    p += move.counter + a.perk("counter")
     if a.rocked:
         p -= 0.2
-    if rng.random() >= _clamp(p, 0.05, 0.9):
+    if rng.random() >= _clamp(p, 0.05, 0.92):
         return
     dmg = (3.5 + a.stats.striking * 0.45) * a.stamina_factor() * rng.uniform(0.8, 1.2)
     if open_shot:
         dmg *= 1.35
+    if move.counter:
+        dmg *= 1.25
+    dmg *= _damage_mult(st, i)
     dmg /= 0.75 + 0.05 * d.stats.chin
     d.take(dmg)
     ex.dmg[i] += dmg
@@ -221,13 +250,28 @@ def _grapple_success(st, ex, i, move):
         ex.sub_start = i
         ex.lock = SUB_START
     else:
+        from_feet = st.pos in (STANDING, CLINCH)
         _apply_transition(st, ex, i, move.to)
+        if move.slam and from_feet:
+            st.f[1 - i].take(move.slam)
+            ex.dmg[i] += move.slam
     ex.success[i] = True
+
+
+def _grapple_edge(st, i, move):
+    """Card and perk bonuses for fighter i's grapple."""
+    a, d = st.f[i], st.f[1 - i]
+    edge = move.bonus
+    if move.base in ESCAPES:
+        edge += a.perk("getup")
+        if st.top == 1 - i:
+            edge -= d.perk("heavytop") * 0.35
+    return edge
 
 
 def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     a, d = st.f[i], st.f[1 - i]
-    p = 0.78 + bonus + (a.stat(move.stat) - d.stat(move.stat)) * 0.03
+    p = 0.78 + bonus + _grapple_edge(st, i, move) + (a.stat(move.stat) - d.stat(move.stat)) * 0.03
     p *= 0.7 + 0.3 * a.stamina_factor()
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
     if d.rocked:
@@ -242,6 +286,7 @@ def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
 def _grapple_contest(st, ex, moves, rng):
     a, b = st.f
     p = 0.5 + (a.stat(moves[0].stat) - b.stat(moves[1].stat)) * 0.05
+    p += _grapple_edge(st, 0, moves[0]) - _grapple_edge(st, 1, moves[1])
     p += (a.stamina - b.stamina) * 0.002
     p += (b.legs - a.legs) * 0.002
     if a.rocked:
@@ -249,7 +294,7 @@ def _grapple_contest(st, ex, moves, rng):
     if b.rocked:
         p += 0.15
     w = 0 if rng.random() < _clamp(p, 0.1, 0.9) else 1
-    if moves[w].key == "pass" and moves[1 - w].key == "getup":
+    if moves[w].base == "pass" and moves[1 - w].base == "getup":
         # They turned away to get up and gave up the back
         _apply_transition(st, ex, w, "back_top")
         ex.success[w] = True
@@ -263,6 +308,13 @@ def _end_of_exchange(st, ex, rocked_before):
         f = st.f[i]
         if not ex.rocked[i] and rocked_before[i]:
             f.rocked = max(0, f.rocked - 1)
+        # Strikes landed in a row
+        m = ex.moves[i]
+        if m is not None and base_class(m) == STRIKE and ex.landed[i]:
+            f.combo = min(3, f.combo + 1)
+        elif not ex.countered[i]:
+            f.combo = 0
+        ex.combo[i] = f.combo
     if ex.finish is None:
         dead = [st.f[0].hp <= 0, st.f[1].hp <= 0]
         if any(dead):
@@ -271,7 +323,7 @@ def _end_of_exchange(st, ex, rocked_before):
             else:
                 loser = 0 if dead[0] else 1
             w = 1 - loser
-            move = MOVES[ex.picks[w]] if not ex.in_sub else None
+            move = ex.moves[w]
             name = move.name.lower() if move else "strikes"
             if ex.countered[w]:
                 name = "counter punch"
@@ -290,7 +342,7 @@ def resolve(st, picks, rng):
 
     ex = Exchange(picks, st)
     rocked_before = [st.f[0].rocked > 0, st.f[1].rocked > 0]
-    moves = [MOVES[picks[0]], MOVES[picks[1]]]
+    moves = list(ex.moves)
     for i in (0, 1):
         st.f[i].spend(moves[i].cost)
 
@@ -302,11 +354,12 @@ def resolve(st, picks, rng):
         cw = base_class(mw)
         if cw == STRIKE:
             # Caught coming in (or a kick that goes under the guard): extra accurate and hard
-            if base_class(ml) == GRAPPLE:
+            caught = base_class(ml) == GRAPPLE
+            if caught:
                 ex.caught[l] = True
                 st.f[l].spend(3)
-            _strike(st, ex, w, mw, rng, bonus_acc=0.12, mult=1.2)
-            if ex.missed[w] and st.f[l].hp > 0:
+            _strike(st, ex, w, mw, rng, bonus_acc=0.12, mult=mw.catch if caught else 1.2)
+            if ex.missed[w] and st.f[l].hp > 0 and base_class(ml) != DEFEND:
                 # Punch missed, so the shot can still get through
                 ex.caught[l] = False
                 _grapple_uncontested(st, ex, l, ml, rng, bonus=-0.2)
@@ -318,9 +371,9 @@ def resolve(st, picks, rng):
                 chip = ml.dmg * 0.12
                 st.f[w].take(chip)
                 ex.dmg[l] += chip
-            _counter(st, ex, w, rng, open_shot=ml.power)
+            _counter(st, ex, w, rng, mw, open_shot=ml.power)
         else:
-            caught_kick = ml.key == "kick"
+            caught_kick = ml.base in ("kick", "legkick")
             _grapple_uncontested(st, ex, w, mw, rng, bonus=0.15 if caught_kick else 0.0)
     else:
         c = base_class(moves[0])
@@ -367,6 +420,7 @@ def _resolve_sub(st, picks, rng):
     s = st.sub
     a, d = s.att, 1 - s.att
     A, D = st.f[a], st.f[d]
+    hold = ex.sub_card
     A.spend(4)
     D.spend(3)
     if picks[a] == picks[d]:
@@ -375,10 +429,11 @@ def _resolve_sub(st, picks, rng):
         ex.success[d] = True
     else:
         p = 0.52 + (A.stats.grappling - D.stats.grappling) * 0.05
+        p += hold.bonus + A.perk("subhunter")
         p += 0.3 * (1 - D.stamina / 100) - 0.3 * (1 - A.stamina / 100)
         if D.rocked:
             p += 0.15
-        if rng.random() < _clamp(p, 0.15, 0.9):
+        if rng.random() < _clamp(p, 0.15, 0.92):
             s.lock += 1
             ex.sub_result = "tighter"
             ex.success[a] = True
@@ -387,13 +442,14 @@ def _resolve_sub(st, picks, rng):
     ex.lock = s.lock
     if s.lock >= SUB_TAP:
         ex.sub_result = "tap"
-        ex.finish = (a, "Submission", MOVES[s.move].name)
+        ex.finish = (a, "Submission", hold.name)
     elif s.lock <= 0:
         ex.sub_result = "escaped"
-        if s.move == "guillotine":
+        if hold.sub_fail == "bottom":
             st.pos, st.top = GUARD, d
-        elif s.move != "rnc":
-            st.pos = GUARD  # escaping a choke from the back keeps you on the back
+        elif hold.sub_fail == "guard":
+            st.pos = GUARD if st.pos not in (STANDING, CLINCH) else st.pos
+        # "stay": escaping a choke from the back keeps you on the back
         st.sub = None
     _end_of_exchange(st, ex, rocked_before)
     return ex

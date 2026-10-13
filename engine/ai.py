@@ -10,7 +10,7 @@ import random
 from collections import defaultdict
 
 from .constants import STANDING, CLINCH, GUARD, MOUNT, BACK, TOP
-from .moves import MOVES, base_class
+from .moves import base_class
 from .resolve import resolve
 
 LEVELS = {
@@ -56,13 +56,13 @@ def evaluate(st, ex, me):
     return v
 
 
-def _class_prior(opts):
+def _class_prior(opts, kit):
     """Spread the guess evenly over move classes, then over moves inside a class,
     so three strike options do not make strikes look three times as likely."""
-    if opts[0] in MOVES:
+    if opts[0] in kit.moves:
         groups = defaultdict(list)
         for k in opts:
-            groups[base_class(MOVES[k])].append(k)
+            groups[base_class(kit.moves[k])].append(k)
         return {k: 1.0 / len(groups) / len(g) for g in groups.values() for k in g}
     return {k: 1.0 / len(opts) for k in opts}
 
@@ -88,7 +88,7 @@ class AI:
 
     def predict(self, st, opp):
         opts = st.options(opp)
-        uniform = _class_prior(opts)
+        uniform = _class_prior(opts, st.f[opp].kit)
         h = self.habits.get(self._context(st, opp))
         if not h or self.habit_w == 0:
             return uniform

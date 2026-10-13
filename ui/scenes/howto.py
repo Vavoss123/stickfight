@@ -53,6 +53,17 @@ PAGES = [
         "If the defender picks the same side, the hold loosens. Fill the meter to win.",
         "Better grapplers and fresher fighters finish faster.",
     ]),
+    ("Fight cards", [
+        "Every fighter has a deck. Signature cards take the slot of a basic move,",
+        "like the Superman Punch in place of the Power punch, or the Kimura in",
+        "place of the Triangle. Perk cards change how you fight.",
+        "",
+        "Career fights pay purse money. Wins give a pack: pick one of three cards.",
+        "The shop has new cards after every fight. A duplicate levels a card up.",
+        "Cards cost deck points (common 1, rare 2, legendary 3). Your budget",
+        "grows as you climb, so choose what fits your style.",
+        "Tired fighters take more damage, so watch both stamina bars.",
+    ]),
     ("Controls", [
         "Quick fight: number keys, Q W E R A S D F, or click a move.",
         "Local 2 player: red uses Q W E R A S D F, blue uses U I O P J K L ;",

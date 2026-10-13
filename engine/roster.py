@@ -2,6 +2,7 @@
 
 import random
 
+from .cards import PRESETS, apply_deck
 from .fighter import Profile, Stats
 
 ARCHETYPES = {
@@ -25,28 +26,56 @@ COLORS = [
 
 
 def make(name, nickname, archetype, hometown="", record=(0, 0), tweak=None, color=None,
-         height="6'0\""):
+         height="6'0\"", cards=None):
+    """cards: (deck dict, perk list, level) or None for the style's preset deck."""
     s = dict(ARCHETYPES[archetype])
     for k, v in (tweak or {}).items():
         s[k] += v
-    return Profile(name=name, nickname=nickname, archetype=archetype,
-                   stats=Stats(**s).clamp(), color=color or COLORS[0],
-                   hometown=hometown, wins=record[0], losses=record[1], height=height)
+    p = Profile(name=name, nickname=nickname, archetype=archetype,
+                stats=Stats(**s).clamp(), color=color or COLORS[0],
+                hometown=hometown, wins=record[0], losses=record[1], height=height)
+    if cards is None:
+        deck, perks = PRESETS[archetype]
+        cards = (deck, perks, 1)
+    deck, perks, level = cards
+    levels = level if isinstance(level, dict) else None
+    apply_deck(p, deck, perks, 1 if levels else level)
+    for cid, lv in (levels or {}).items():
+        p.cards[cid] = lv
+    return p
 
 
 def quick_fighters():
     """One ready-made fighter per archetype for quick fights."""
     return [
         make("Dan Reyes", "The Hammer", "Striker", "San Diego, California", (14, 3),
-             color=COLORS[0], height="5'11\""),
+             color=COLORS[0], height="5'11\"", cards=(*PRESETS["Striker"], 2)),
         make("Ivan Petrov", "The Bear", "Wrestler", "Makhachkala, Russia", (18, 1),
-             color=COLORS[1], height="5'10\""),
+             color=COLORS[1], height="5'10\"", cards=(*PRESETS["Wrestler"], 2)),
         make("Lucas Silva", "Spider Hands", "BJJ", "Rio de Janeiro, Brazil", (12, 4),
-             color=COLORS[3], height="6'1\""),
+             color=COLORS[3], height="6'1\"", cards=(*PRESETS["BJJ"], 2)),
         make("Tommy Byrne", "Iron Jaw", "Brawler", "Dublin, Ireland", (21, 9),
-             color=COLORS[2], height="5'9\""),
+             color=COLORS[2], height="5'9\"", cards=(*PRESETS["Brawler"], 2)),
     ]
 
+
+# Signature cards for the division: (deck, perks, {card: level})
+SIGNATURES = [
+    ({"takedown": "doubleleg", "gnp": "hammer"}, ["heavytop", "ironlungs"],
+     {"doubleleg": 3, "hammer": 2, "heavytop": 2, "ironlungs": 1}),
+    ({"cross": "spinfist", "legkick": "calfkick"}, ["combo"],
+     {"spinfist": 3, "calfkick": 2, "combo": 2}),
+    ({"guillotine": "anaconda", "triangle": "kimura"}, ["subhunter"],
+     {"anaconda": 3, "kimura": 2, "subhunter": 2}),
+    ({"body": "liver"}, ["granite", "nevergiveup"], {"liver": 2, "granite": 3, "nevergiveup": 1}),
+    ({"takedown": "doubleleg", "pass": "smash"}, ["base"], {"doubleleg": 2, "smash": 2, "base": 1}),
+    ({"kick": "showtime"}, ["killer"], {"showtime": 2, "killer": 2}),
+    ({"standup": "darce", "triangle": "gogo"}, ["subhunter"], {"darce": 2, "gogo": 1, "subhunter": 1}),
+    ({"dirty": "spinelbow", "knees": "plum"}, ["killer"], {"spinelbow": 2, "plum": 1, "killer": 1}),
+    ({"trip": "hiptoss", "gnp": "hammer"}, ["heavytop"], {"hiptoss": 1, "hammer": 1, "heavytop": 1}),
+    ({"kick": "flyknee"}, ["dutch"], {"flyknee": 1, "dutch": 1}),
+    ({"body": "liver"}, ["nevergiveup"], {"liver": 1, "nevergiveup": 1}),
+]
 
 # Champion first, then ranked 1 to 10
 DIVISION = [
@@ -76,7 +105,8 @@ _TOWNS = ["Phoenix, Arizona", "Manchester, England", "Sydney, Australia", "Toron
 def division():
     out = []
     for idx, (n, nick, arch, town, rec, tw) in enumerate(DIVISION):
-        out.append(make(n, nick, arch, town, rec, tw, color=COLORS[(idx + 1) % len(COLORS)]))
+        out.append(make(n, nick, arch, town, rec, tw, color=COLORS[(idx + 1) % len(COLORS)],
+                        cards=SIGNATURES[idx]))
     return out
 
 

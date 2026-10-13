@@ -117,6 +117,7 @@ class Button:
         self.size = size
         self.hover = False
         self.selected = False
+        self.badge = None   # colour of a corner mark, for signature cards
 
     def handle(self, event):
         if not self.enabled:
@@ -148,3 +149,7 @@ class Button:
             text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)
         if self.key:
             text(surf, self.key, (self.rect.x + 8, self.rect.y + 5), 14, GOLD)
+        if self.badge:
+            r = self.rect
+            pygame.draw.polygon(surf, self.badge, [(r.right - 16, r.y + 2), (r.right - 3, r.y + 2),
+                                                   (r.right - 3, r.y + 15)])

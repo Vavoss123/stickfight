@@ -8,9 +8,17 @@ import json
 import os
 import random
 
+from .cards import (CARDS, STARTERS, PRICE, MAX_LEVEL, MAX_PERKS, COMMON, RARE, LEGENDARY,
+                    apply_deck, deck_points)
 from .constants import STAT_NAMES, STAT_MAX
 from .fighter import Profile, Stats
 from .roster import ARCHETYPES, division, prospect
+
+SHOP_SIZE = 4
+# (purse, win bonus) by the kind of fight
+PURSES = {"prospect": (4000, 4000), "ranked": (10000, 10000), "contender": (20000, 20000),
+          "title": (50000, 50000), "defence": (60000, 60000)}
+FINISH_BONUS = 0.5
 
 LADDER_SIZE = 11
 SAVE_DIR = os.path.join(os.path.expanduser("~"), ".stickfight")
@@ -19,8 +27,10 @@ SAVE_PATH = os.path.join(SAVE_DIR, "career.json")
 
 def new_player(name, nickname, archetype, color, hometown):
     base = {k: v - 1 for k, v in ARCHETYPES[archetype].items()}
-    return Profile(name=name, nickname=nickname, archetype=archetype,
-                   stats=Stats(**base).clamp(), color=tuple(color), hometown=hometown)
+    p = Profile(name=name, nickname=nickname, archetype=archetype,
+                stats=Stats(**base).clamp(), color=tuple(color), hometown=hometown)
+    deck, perks = STARTERS[archetype]
+    return apply_deck(p, deck, perks, 1)
 
 
 def train_cost(value):
@@ -37,6 +47,12 @@ class Career:
         self.history = []
         self.next_prospect = None
         self.rng = random.Random(seed)
+        self.money = 0
+        self.shop = []
+        if not player.cards:
+            deck, perks = STARTERS.get(player.archetype, ({}, []))
+            apply_deck(player, deck, perks, 1)
+        self.refresh_shop()
 
     # Standing
 
@@ -81,8 +97,17 @@ class Career:
     # Results
 
     def record_result(self, opp, won, draw, method, detail, round_no):
+        """Updates the record and rankings. Returns the rewards: purse, bonus, pack quality."""
         p = self.player
         before = self.rank_label()
+        kind = self.fight_kind()
+        purse, win_bonus = PURSES[kind]
+        finish = method in ("KO", "TKO", "Submission")
+        reward = {"purse": purse, "bonus": 0, "pack": None}
+        if won:
+            reward["bonus"] = win_bonus + (int(purse * FINISH_BONUS) if finish else 0)
+            reward["pack"] = "title" if kind in ("title", "defence") else "finish" if finish else "normal"
+        self.money += reward["purse"] + reward["bonus"]
         if draw:
             p.draws += 1
             opp.draws += 1
@@ -102,6 +127,8 @@ class Career:
             "method": method, "detail": detail, "round": round_no,
             "rank_before": before, "rank_after": self.rank_label(),
         })
+        self.refresh_shop()
+        return reward
 
     def _win_vs(self, opp):
         r = self.rank()
@@ -146,6 +173,113 @@ class Career:
         while len(self.ladder) < LADDER_SIZE:
             self.ladder.append(prospect(self.rng, strength=1))
 
+    # Cards and money
+
+    def budget(self):
+        """Deck points you can spend. It grows as you climb."""
+        r = self.rank()
+        if r is None:
+            return 6
+        if r == 0:
+            return 12
+        return 10 if r <= 5 else 8
+
+    def fight_kind(self):
+        r = self.rank()
+        if r is None:
+            return "prospect" if self.unranked_wins < 2 else "ranked"
+        if r == 0:
+            return "defence"
+        if r == 1:
+            return "title"
+        return "contender" if r <= 6 else "ranked"
+
+    def _roll_card(self, rarity_weights, exclude=()):
+        pool = []
+        for c in CARDS.values():
+            if c.id in exclude:
+                continue
+            if self.player.cards.get(c.id, 0) >= MAX_LEVEL:
+                continue
+            pool.append(c)
+        if not pool:
+            return None
+        rarity = self.rng.choices(list(rarity_weights), list(rarity_weights.values()))[0]
+        of_rarity = [c for c in pool if c.rarity == rarity] or pool
+        return self.rng.choice(of_rarity).id
+
+    def make_pack(self, quality="normal"):
+        """Three cards to pick one from."""
+        weights = {COMMON: 60, RARE: 34, LEGENDARY: 6}
+        out = []
+        first = None
+        if quality == "finish":
+            first = {RARE: 85, LEGENDARY: 15}
+        elif quality == "title":
+            first = {LEGENDARY: 100}
+        for n in range(3):
+            w = first if (n == 0 and first) else weights
+            cid = self._roll_card(w, exclude=out)
+            if cid:
+                out.append(cid)
+        self.rng.shuffle(out)
+        return out
+
+    def gain_card(self, cid):
+        """Add a card. Returns 'new', 'level' or 'refund'."""
+        have = self.player.cards.get(cid, 0)
+        if have >= MAX_LEVEL:
+            self.money += PRICE[CARDS[cid].rarity] // 2
+            return "refund"
+        self.player.cards[cid] = have + 1
+        return "new" if have == 0 else "level"
+
+    def refresh_shop(self):
+        self.shop = []
+        for _ in range(SHOP_SIZE):
+            cid = self._roll_card({COMMON: 45, RARE: 40, LEGENDARY: 15}, exclude=self.shop)
+            if cid:
+                self.shop.append(cid)
+
+    def buy(self, cid):
+        price = PRICE[CARDS[cid].rarity]
+        if cid not in self.shop or self.money < price:
+            return None
+        self.money -= price
+        self.shop.remove(cid)
+        return self.gain_card(cid)
+
+    def equip(self, base, cid):
+        """Put a card in a move slot, or None for the basic move. Returns an error or None."""
+        p = self.player
+        old = dict(p.deck)
+        if cid is None:
+            p.deck.pop(base, None)
+        else:
+            c = CARDS.get(cid)
+            if not c or not c.move or c.move.base != base or cid not in p.cards:
+                return "That card does not go there"
+            p.deck[base] = cid
+        if deck_points(p) > self.budget():
+            p.deck = old
+            return "Not enough deck points"
+        return None
+
+    def toggle_perk(self, pid):
+        p = self.player
+        if pid in p.perks:
+            p.perks.remove(pid)
+            return None
+        if pid not in p.cards:
+            return "You do not own that perk"
+        if len(p.perks) >= MAX_PERKS:
+            return f"Only {MAX_PERKS} perks at a time"
+        p.perks.append(pid)
+        if deck_points(p) > self.budget():
+            p.perks.remove(pid)
+            return "Not enough deck points"
+        return None
+
     # Training
 
     def train(self, stat):
@@ -171,6 +305,8 @@ class Career:
             "defenses": self.defenses,
             "history": self.history,
             "next_prospect": self.next_prospect.to_dict() if self.next_prospect else None,
+            "money": self.money,
+            "shop": self.shop,
         }
 
     @classmethod
@@ -183,6 +319,8 @@ class Career:
         c.history = d.get("history", [])
         np_ = d.get("next_prospect")
         c.next_prospect = Profile.from_dict(np_) if np_ else None
+        c.money = d.get("money", 0)
+        c.shop = [x for x in d.get("shop", []) if x in CARDS] or c.shop
         return c
 
     def save(self, path=SAVE_PATH):
