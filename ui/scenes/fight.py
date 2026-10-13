@@ -39,7 +39,7 @@ REPLAY_ZOOM = 1.7
 
 class FightConfig:
     def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
-                 on_done=None, event=""):
+                 on_done=None, event="", start=None):
         self.p0, self.p1 = p0, p1
         self.mode = mode
         self.level = level
@@ -47,13 +47,14 @@ class FightConfig:
         self.title = title
         self.on_done = on_done   # called with (app, fight) when the player leaves the result
         self.event = event
+        self.start = start       # carried damage, see Fight
 
 
 class FightScene(Scene):
     def __init__(self, app, cfg):
         super().__init__(app)
         self.cfg = cfg
-        self.fight = Fight(cfg.p0, cfg.p1, rounds=cfg.rounds, title=cfg.title)
+        self.fight = Fight(cfg.p0, cfg.p1, rounds=cfg.rounds, title=cfg.title, start=cfg.start)
         self.ai = AI(cfg.level) if cfg.mode == "ai" else None
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
@@ -69,7 +70,7 @@ class FightScene(Scene):
         self.events = []
         self.t = 0.0
         self.shake = 0.0
-        self.ghost = [100.0, 100.0]
+        self.ghost = [f.hp for f in self.fight.state.f]
         self.banner = None
         self.picks = [None, None]
         self.buttons = [[], []]

@@ -2,8 +2,12 @@
 
 The ladder is a list of profiles: index 0 is the champion, 1 to 10 are ranked.
 The player is in the ladder once they break into the top 10.
+
+The story around it: a rival who calls you out for grudge matches, a training camp
+before title fights, and retirement into the hall of fame (see legacy.py).
 """
 
+import copy
 import json
 import os
 import random
@@ -21,6 +25,27 @@ PURSES = {"prospect": (4000, 4000), "ranked": (10000, 10000), "contender": (2000
 FINISH_BONUS = 0.5
 
 LADDER_SIZE = 11
+GRUDGE_EVERY = 3          # fights between grudge matches
+RIVALRY_WINS = 2          # beat your rival this many times and it is settled
+GRUDGE_BONUS = 0.5        # extra share of the purse for beating your rival
+CAMPS = {
+    "striking": ("Boxing camp", "Sparring with pro boxers every day."),
+    "wrestling": ("Wrestling camp", "Hard rounds with college wrestlers."),
+    "grappling": ("Jiu-jitsu camp", "Rolling with black belts."),
+    "cardio": ("Altitude camp", "Running hills in the mountains."),
+}
+
+CALLOUTS = [
+    '"{player} is not ready for the top. I want {player} next." - {rival}',
+    '"Everybody keeps talking about {player}. Put us in the cage and watch." - {rival}',
+    '"{player} got lucky last time. It will not happen twice." - {rival}',
+    '"Tell {player} to stop hiding. I am right here." - {rival}',
+]
+GRUDGE_LINES = [
+    "{rival} has been calling you out all week. Grudge match.",
+    "Bad blood. {rival} wants you, and the fans want to see it.",
+    "{rival} again. This one is personal.",
+]
 SAVE_DIR = os.path.join(os.path.expanduser("~"), ".stickfight")
 SAVE_PATH = os.path.join(SAVE_DIR, "career.json")
 
@@ -49,6 +74,15 @@ class Career:
         self.rng = random.Random(seed)
         self.money = 0
         self.shop = []
+        # Story
+        self.rival = None             # name of a fighter in the ladder
+        self.rival_record = [0, 0]    # your wins and losses against them
+        self.since_grudge = 0
+        self.camp = None              # stat trained for the next title fight
+        self.news = []                # callouts and story beats for the hub
+        self.titles_won = 0
+        self.best_rank = None
+        self.most_defenses = 0
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
             apply_deck(player, deck, perks, 1)
@@ -74,9 +108,22 @@ class Career:
 
     # Next fight
 
+    def rival_profile(self):
+        for p in self.ladder:
+            if p is not self.player and p.name == self.rival:
+                return p
+        return None
+
+    def grudge_due(self):
+        return self.rival_profile() is not None and self.since_grudge >= GRUDGE_EVERY
+
     def next_fight(self):
         """(opponent, rounds, title, ai_level, label)."""
         r = self.rank()
+        if self.grudge_due() and r is not None:
+            opp = self.rival_profile()
+            title = self.ladder.index(opp) == 0 or r == 0
+            return opp, 5 if title else 3, title, "hard", "Grudge match"
         if r is None:
             if self.unranked_wins >= 2:
                 opp = self.ladder[-1]
@@ -101,12 +148,20 @@ class Career:
         p = self.player
         before = self.rank_label()
         kind = self.fight_kind()
+        grudge = opp.name == self.rival and opp is not self.next_prospect
+        if grudge and opp in self.ladder and self.ladder.index(opp) == 0:
+            kind = "title"
         purse, win_bonus = PURSES[kind]
         finish = method in ("KO", "TKO", "Submission")
-        reward = {"purse": purse, "bonus": 0, "pack": None}
+        reward = {"purse": purse, "bonus": 0, "pack": None, "story": []}
         if won:
             reward["bonus"] = win_bonus + (int(purse * FINISH_BONUS) if finish else 0)
-            reward["pack"] = "title" if kind in ("title", "defence") else "finish" if finish else "normal"
+            if grudge:
+                reward["bonus"] += int(purse * GRUDGE_BONUS)
+            reward["pack"] = "title" if kind in ("title", "defence") else \
+                "finish" if finish or grudge else "normal"
+        was_champ = self.is_champ()
+        self.camp = None
         self.money += reward["purse"] + reward["bonus"]
         if draw:
             p.draws += 1
@@ -127,8 +182,75 @@ class Career:
             "method": method, "detail": detail, "round": round_no,
             "rank_before": before, "rank_after": self.rank_label(),
         })
+        r = self.rank()
+        if r is not None and (self.best_rank is None or r < self.best_rank):
+            self.best_rank = r
+        if self.is_champ() and not was_champ:
+            self.titles_won += 1
+        self.most_defenses = max(self.most_defenses, self.defenses)
+        reward["story"] = self._story(opp, won, draw, grudge)
+        self.news = list(reward["story"])
         self.refresh_shop()
         return reward
+
+    def _story(self, opp, won, draw, grudge):
+        """Move the rivalry along. Returns lines for the hub."""
+        out = []
+        p = self.player
+        if grudge:
+            self.since_grudge = 0
+            if not draw:
+                self.rival_record[0 if won else 1] += 1
+            score = f"{self.rival_record[0]}-{self.rival_record[1]}"
+            if self.rival_record[0] >= RIVALRY_WINS:
+                out.append(f"You beat {self.rival} again. That rivalry is settled.")
+                self.rival = None
+                self.rival_record = [0, 0]
+            elif won:
+                out.append(f"You got one over {self.rival}. Rivalry: {score}.")
+            else:
+                out.append(f"{self.rival} has the upper hand. Rivalry: {score}.")
+            return out
+        if self.rival:
+            self.since_grudge += 1
+            if self.rival_profile() is None:
+                self.rival = None   # they dropped out of the rankings
+            elif self.grudge_due():
+                out.append(self.rng.choice(CALLOUTS).format(player=p.name, rival=self.rival))
+            return out
+        # A new rival: whoever just beat you, or someone up the ladder once you are ranked
+        r = self.rank()
+        if r is None:
+            return out
+        candidate = None
+        if not won and not draw and opp in self.ladder:
+            candidate = opp
+        elif r >= 2:
+            candidate = self.ladder[max(1, r - 3)]
+        if candidate is not None and candidate is not p:
+            self.rival = candidate.name
+            self.rival_record = [0, 0] if won or draw else [0, 1]
+            self.since_grudge = 0
+            out.append(self.rng.choice(CALLOUTS).format(player=p.name, rival=self.rival))
+        return out
+
+    def grudge_line(self):
+        return self.rng.choice(GRUDGE_LINES).format(rival=self.rival)
+
+    # Training camp
+
+    def camp_due(self):
+        """True before a title fight or defence while no camp has been picked."""
+        title = self.next_fight()[2]
+        return title and self.camp is None
+
+    def fighter_for_fight(self):
+        """The player's profile for the next fight, with the camp's boost on a copy."""
+        if not self.camp:
+            return self.player
+        p = copy.deepcopy(self.player)
+        setattr(p.stats, self.camp, min(STAT_MAX, p.stats.get(self.camp) + 1))
+        return p
 
     def _win_vs(self, opp):
         r = self.rank()
@@ -283,6 +405,14 @@ class Career:
             "next_prospect": self.next_prospect.to_dict() if self.next_prospect else None,
             "money": self.money,
             "shop": self.shop,
+            "rival": self.rival,
+            "rival_record": self.rival_record,
+            "since_grudge": self.since_grudge,
+            "camp": self.camp,
+            "news": self.news,
+            "titles_won": self.titles_won,
+            "best_rank": self.best_rank,
+            "most_defenses": self.most_defenses,
         }
 
     @classmethod
@@ -297,6 +427,14 @@ class Career:
         c.next_prospect = Profile.from_dict(np_) if np_ else None
         c.money = d.get("money", 0)
         c.shop = [x for x in d.get("shop", []) if x in CARDS] or c.shop
+        c.rival = d.get("rival")
+        c.rival_record = list(d.get("rival_record", [0, 0]))
+        c.since_grudge = d.get("since_grudge", 0)
+        c.camp = d.get("camp") if d.get("camp") in CAMPS else None
+        c.news = list(d.get("news", []))
+        c.titles_won = d.get("titles_won", 1 if c.is_champ() else 0)
+        c.best_rank = d.get("best_rank", c.rank())
+        c.most_defenses = d.get("most_defenses", c.defenses)
         return c
 
     def save(self, path=SAVE_PATH):

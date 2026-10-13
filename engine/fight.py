@@ -26,10 +26,13 @@ def fmt_time(seconds):
 
 
 class Fight:
-    def __init__(self, p0, p1, rounds=3, seed=None, title=False):
+    def __init__(self, p0, p1, rounds=3, seed=None, title=False, start=None):
+        """start: optional (dict, dict) of hp, stamina, body, legs and cut for fighters who
+        are not fresh, like the later rounds of a tournament."""
         self.rng = random.Random(seed)
         self.profiles = (p0, p1)
-        self.state = FightState([FighterState(p0), FighterState(p1)])
+        start = start or (None, None)
+        self.state = FightState([FighterState(p, **(s or {})) for p, s in zip((p0, p1), start)])
         self.rounds = rounds
         self.title = title
         self.round = 1
