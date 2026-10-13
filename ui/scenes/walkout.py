@@ -41,6 +41,7 @@ class WalkoutScene(Scene):
         self.lines = []
         self.shown = 0.0
         self.spot = None
+        self.big_name = True
         self.events = []
         self.dim = pygame.Surface((W, H), pygame.SRCALPHA)
         self.dim.fill((0, 0, 0, 120))
@@ -70,25 +71,35 @@ class WalkoutScene(Scene):
                            self.figs[1].move_to(CX + 230, dur=2.2))),
             (5.6, lambda: (self.figs[1].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
                            self.app.sounds.play("crowd", 0.6), self.arena.cheer(1.2))),
-            (6.8, lambda: (self._say(intro_lines(self.cfg.p0, "red"), 0),
+            (6.2, lambda: self._say(self._quote(self.cfg.p1), 1, big_name=False)),
+            (8.4, lambda: (self._say(intro_lines(self.cfg.p0, "red"), 0),
                            self.figs[0].play(walk, idle="stance"),
                            self.figs[0].move_to(CX - 230, dur=2.2))),
-            (9.8, lambda: (self.figs[0].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
-                           self.app.sounds.play("crowd", 0.8), self.arena.cheer(1.5))),
-            (11.0, lambda: (self._say(["Touch gloves", "and let's get it on"], None),
+            (11.4, lambda: (self.figs[0].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
+                            self.app.sounds.play("crowd", 0.8), self.arena.cheer(1.5))),
+            (12.6, lambda: (self._say(["Touch gloves", "and let's get it on"], None),
                             self.figs[0].move_to(CX - 85, dur=0.8), self.figs[1].move_to(CX + 85, dur=0.8),
                             self.ref.play([("ref_fight", 0.3)], idle="ref_fight"))),
-            (12.2, lambda: (self.figs[0].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]),
+            (13.8, lambda: (self.figs[0].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]),
                             self.figs[1].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]))),
-            (13.4, self._done),
+            (15.0, self._done),
         ]
         for t, fn in s:
             self.events.append([t, fn])
 
-    def _say(self, lines, spot):
+    def _quote(self, p):
+        """A line of trash talk before the fight."""
+        import random
+        from engine import personality
+        line = random.choice(personality.PERSONALITIES[personality.of(p)]["quotes"])
+        return [f"{p.name.split()[-1]} says:", f'"{line}"']
+
+    def _say(self, lines, spot, big_name=True):
+        """big_name: the last line is the fighter's name, announced big."""
         self.lines = lines
         self.shown = 0.0
         self.spot = spot
+        self.big_name = big_name
 
     def _done(self):
         from .fight import FightScene
@@ -126,7 +137,7 @@ class WalkoutScene(Scene):
             chars = int(self.shown * 45)
             y = 150
             for k, ln in enumerate(self.lines):
-                last = k == len(self.lines) - 1 and self.spot is not None
+                last = k == len(self.lines) - 1 and self.spot is not None and self.big_name
                 vis = ln[:max(0, chars)]
                 chars -= len(ln) + 6
                 if not vis:

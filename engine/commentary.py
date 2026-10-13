@@ -81,6 +81,16 @@ def describe(ex, names):
         elif to == "back_top":
             lines.append(_pick(f"{n[by]} takes the back!", f"{n[by]} is on the back, hooks in!"))
 
+    for i in (0, 1):
+        if len(lines) >= 2:
+            break
+        if ex.surging[i]:
+            lines.insert(0, _pick(f"{n[i]} goes all in!", f"{n[i]} rides the momentum!"))
+        elif ex.surge_ready[i]:
+            lines.append(_pick(f"The crowd is on its feet for {n[i]}!", f"{n[i]} has all the momentum!"))
+        elif ex.booed[i]:
+            lines.append(_pick(f"The crowd is booing {n[i]}.", f"{n[i]} is stalling and the fans let them know."))
+
     if not lines and any(ex.gassed):
         i = 0 if ex.gassed[0] else 1
         lines.append(_pick(f"{n[i]} is running on fumes, nothing behind it.",

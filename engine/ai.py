@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from .constants import STANDING, CLINCH, GUARD, MOUNT, BACK, TOP
 from .moves import base_class
+from .personality import bias as style_bias
 from .resolve import resolve
 
 LEVELS = {
@@ -54,6 +55,7 @@ def evaluate(st, ex, me):
         v -= 8
     if o.rocked:
         v += 8
+    v += 0.05 * (m.hype - o.hype) + 6 * (m.surge - o.surge)
     if st.sub:
         sign = 1 if st.sub.att == me else -1
         v += sign * st.sub.lock * 18
@@ -72,8 +74,9 @@ def _class_prior(opts, kit):
 
 
 class AI:
-    def __init__(self, level="normal", seed=None):
+    def __init__(self, level="normal", seed=None, personality="balanced"):
         self.level = level
+        self.personality = personality
         self.habit_w, self.temp, self.samples, self.random_pick = LEVELS[level]
         self.rng = random.Random(seed)
         self.sim_rng = random.Random(self.rng.random())
@@ -125,6 +128,8 @@ class AI:
                     total += evaluate(sim, ex, me)
                 ev += p * total / self.samples
             scores[m] = ev
+            if not st.sub and self.personality != "balanced":
+                scores[m] += style_bias(self.personality, st.f[me].move(m), st, me)
         # The opponent is reading habits too, so lean away from what it has been doing
         mine = self.mine[self._context(st, me)]
         total = sum(mine.values())

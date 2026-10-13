@@ -18,6 +18,16 @@
 - [x] Tournament mode: 8 fighter bracket in one night, injuries carry over
 - [x] Shared card collection: use career cards to build decks for quick fight and 2 player
 
+## Making it more fun for other people
+
+- [x] Interactive tutorial (press T on the menu)
+- [x] Momentum: hype meter, all in attacks, booing for stalling
+- [x] AI personalities with walkout quotes and taunts
+- [ ] Mind games: feints and follow up combos
+- [ ] Fight variety: fouls and point deductions, ref breaking up the clinch, slow motion on big shots
+- [ ] Reasons to come back: daily challenge, achievements, unlockable fighters
+- [ ] Get it seen: itch.io page, KO replay GIF in the README, Mac and Linux builds
+
 ## Polish
 
 - [x] "NEW CARD" moment when a legendary is pulled from a pack
@@ -30,6 +40,11 @@
 - [ ] Online multiplayer (needs a server)
 
 ## Balance notes
+
+- Momentum fills about 1.3 times a fight between two hard AIs. Turning it off moves the
+  styles by about 2 points, inside the noise
+- Personalities against a balanced AI in mirror matches: pressure 46%, showboat 50%,
+  counter 53%, grinder 52%. Nudges live in engine/personality.py
 
 - Styles on hard: BJJ 52%, Wrestler 51%, Striker 49%, Brawler 45% (Oct 2026)
 - Weight classes: KOs go from about 7% at lightweight to 12% at heavyweight. Across

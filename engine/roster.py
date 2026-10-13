@@ -26,7 +26,7 @@ COLORS = [
 
 
 def make(name, nickname, archetype, hometown="", record=(0, 0), tweak=None, color=None,
-         height="6'0\"", cards=None, weight="Welterweight"):
+         height="6'0\"", cards=None, weight="Welterweight", personality=""):
     """cards: (deck dict, perk list, level) or None for the style's preset deck."""
     s = dict(ARCHETYPES[archetype])
     for k, v in (tweak or {}).items():
@@ -34,7 +34,7 @@ def make(name, nickname, archetype, hometown="", record=(0, 0), tweak=None, colo
     p = Profile(name=name, nickname=nickname, archetype=archetype,
                 stats=Stats(**s).clamp(), color=color or COLORS[0],
                 hometown=hometown, wins=record[0], losses=record[1], height=height,
-                weight=weight)
+                weight=weight, personality=personality)
     if cards is None:
         deck, perks = PRESETS[archetype]
         cards = (deck, perks, 1)
@@ -104,6 +104,8 @@ _TOWNS = ["Phoenix, Arizona", "Manchester, England", "Sydney, Australia", "Toron
 
 
 # Weight classes for the division in quick fight. In career they all fight at your weight.
+DIVISION_PERSONALITIES = ["grinder", "counter", "balanced", "pressure", "pressure", "showboat",
+                          "grinder", "pressure", "balanced", "showboat", "showboat"]
 DIVISION_WEIGHTS = ["Welterweight", "Lightweight", "Middleweight", "Heavyweight", "Middleweight",
                     "Welterweight", "Lightweight", "Heavyweight", "Welterweight", "Middleweight",
                     "Lightweight"]
@@ -114,7 +116,8 @@ def division(weight=None):
     out = []
     for idx, (n, nick, arch, town, rec, tw) in enumerate(DIVISION):
         out.append(make(n, nick, arch, town, rec, tw, color=COLORS[(idx + 1) % len(COLORS)],
-                        cards=SIGNATURES[idx], weight=weight or DIVISION_WEIGHTS[idx]))
+                        cards=SIGNATURES[idx], weight=weight or DIVISION_WEIGHTS[idx],
+                        personality=DIVISION_PERSONALITIES[idx]))
     return out
 
 
@@ -124,4 +127,5 @@ def prospect(rng, strength=0, weight="Welterweight"):
     tweak = {k: strength - 1 + rng.choice((-1, 0, 0, 1)) for k in ARCHETYPES[arch]}
     rec = (rng.randint(3, 9), rng.randint(0, 4))
     return make(f"{rng.choice(_FIRST)} {rng.choice(_LAST)}", rng.choice(_NICK), arch,
-                rng.choice(_TOWNS), rec, tweak, color=rng.choice(COLORS), weight=weight)
+                rng.choice(_TOWNS), rec, tweak, color=rng.choice(COLORS), weight=weight,
+                personality=rng.choice(["balanced", "pressure", "counter", "grinder", "showboat"]))

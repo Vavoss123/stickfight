@@ -39,6 +39,7 @@ class Profile:
     draws: int = 0
     height: str = "6'0\""
     weight: str = "Welterweight"
+    personality: str = ""      # how the computer fights them, see personality.py
     deck: dict = field(default_factory=dict)    # basic move key -> card id in that slot
     perks: list = field(default_factory=list)   # equipped perk card ids
     cards: dict = field(default_factory=dict)   # owned card id -> level
@@ -66,10 +67,10 @@ class FighterState:
     """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
 
     __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut", "kit",
-                 "combo", "wc")
+                 "combo", "wc", "hype", "surge", "passive")
 
     def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0,
-                 cut=0.0, kit=None, combo=0):
+                 cut=0.0, kit=None, combo=0, hype=0.0, surge=False, passive=0):
         if kit is None:
             from .cards import build_kit
             kit = build_kit(profile)
@@ -84,10 +85,13 @@ class FighterState:
         self.body = body    # 0 to 100, body damage slows stamina recovery
         self.legs = legs    # 0 to 100, leg damage saps power and movement
         self.cut = cut      # 0 to 100, blood in the eyes, the doctor may stop it
+        self.hype = hype        # 0 to 100, the crowd behind them (see momentum in resolve.py)
+        self.surge = surge      # full hype: the next attack goes all in
+        self.passive = passive  # defensive picks in a row that did nothing
 
     def clone(self):
         return FighterState(self.profile, self.hp, self.stamina, self.rocked, self.body, self.legs,
-                            self.cut, self.kit, self.combo)
+                            self.cut, self.kit, self.combo, self.hype, self.surge, self.passive)
 
     def perk(self, pid):
         return self.kit.perk(pid)

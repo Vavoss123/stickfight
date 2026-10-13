@@ -2,6 +2,7 @@
 
 import pygame
 
+from engine import personality
 from engine.ai import AI
 from engine.commentary import describe, finish_line
 from engine.corner import advice
@@ -23,6 +24,7 @@ CLASS_COLOR = {STRIKE: (196, 70, 62), GRAPPLE: (58, 110, 205), SUB: (150, 80, 20
                DEFEND: (56, 160, 100)}
 CLASS_NAME = {STRIKE: "Strike", GRAPPLE: "Grapple", SUB: "Submission", DEFEND: "Defend"}
 SUB_COLOR = (150, 80, 205)
+HYPE_COLOR = (190, 110, 255)
 
 KEYS_P1 = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r,
            pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f]
@@ -62,7 +64,7 @@ class FightScene(Scene):
         super().__init__(app)
         self.cfg = cfg
         self.fight = Fight(cfg.p0, cfg.p1, rounds=cfg.rounds, title=cfg.title, start=cfg.start)
-        self.ai = AI(cfg.level) if cfg.mode == "ai" else None
+        self.ai = AI(cfg.level, personality=personality.of(cfg.p1)) if cfg.mode == "ai" else None
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
         self.figs = [
@@ -310,6 +312,7 @@ class FightScene(Scene):
         self.phase = "anim"
         dur = self._animate(ex, before)
         self.say(*describe(ex, self.names))
+        self._taunt(ex)
         if ex.finish:
             self.at(dur, self._finish)
         elif ex.round_over:
@@ -324,6 +327,7 @@ class FightScene(Scene):
         xs, idle, faces = layout(st)
         self._faces = faces
         figs = self.figs
+        self._momentum_popups(ex)
 
         if ex.in_sub:
             a = ex.sub_att
@@ -417,6 +421,29 @@ class FightScene(Scene):
             return 1.4
         self.at(settle_at, lambda: self._settle(xs, idle, 0.35 if changed else 0.25))
         return settle_at + 0.45
+
+    def _taunt(self, ex):
+        """The computer lets you know when it lands something big."""
+        import random
+        if not self.ai or ex.finish:
+            return
+        big = ex.knockdown == 0 or ex.rocked[0] or ex.dmg[1] >= 10 or ex.sub_start == 1
+        if big and random.random() < 0.5:
+            line = random.choice(personality.PERSONALITIES[self.ai.personality]["taunts"])
+            self.say(f'{self.names[1]}: "{line}"')
+
+    def _momentum_popups(self, ex):
+        """ALL IN when someone spends full momentum, MOMENTUM when it fills, boos for stalling."""
+        for i in (0, 1):
+            if ex.surging[i]:
+                self.at(0.0, lambda i=i: (self.popup(i, "ALL IN!", GOLD, 32, dy=-160),
+                                          self.snd("roar", 0.6), self.arena.cheer(1.5)))
+            if ex.surge_ready[i]:
+                self.at(0.5, lambda i=i: (self.popup(i, "MOMENTUM!", HYPE_COLOR, 28, dy=-190),
+                                          self.snd("crowd", 0.8), self.arena.cheer(1.2)))
+            if ex.booed[i]:
+                self.at(0.25, lambda i=i: (self.popup(i, "BOOO!", (170, 170, 180), 24, dy=-100),
+                                           self.snd("boo", 0.8)))
 
     def _settle(self, xs, idle, dur=0.3):
         faces = getattr(self, "_faces", (1, -1))
@@ -753,9 +780,16 @@ class FightScene(Scene):
             bar(surf, (x + 16, 50, 468, 18), fs.hp / 100, CORNER[i], flip=not left,
                 ghost=self.ghost[i] / 100)
             bar(surf, (x + 16, 72, 468, 8), fs.stamina / 100, (236, 200, 70), flip=not left)
+            # Momentum: purple while it builds, flashing gold when it is full
+            hype_col = HYPE_COLOR
+            if fs.surge:
+                hype_col = GOLD if (pygame.time.get_ticks() // 250) % 2 else (255, 240, 170)
+            bar(surf, (x + 16, 82, 468, 5), fs.hype / 100, hype_col, back=(30, 26, 40), flip=not left)
             if fs.rocked:
                 text(surf, "ROCKED", (x + 250, 52), 14, GOLD, "midtop", bold=True)
             tags = []
+            if fs.surge:
+                tags.append(("MOMENTUM", None))
             if fs.body >= 10:
                 tags.append(("BODY", fs.body))
             if fs.legs >= 10:
@@ -764,9 +798,12 @@ class FightScene(Scene):
                 tags.append(("CUT", fs.cut))
             tx = x + 16 if left else x + 484
             for label, v in tags:
-                c = (255, 200, 90) if v < 40 else (255, 140, 60) if v < 70 else (255, 80, 60)
-                r2 = text(surf, f"{label} {v:.0f}%", (tx, 94), 14, c, "topleft" if left else "topright",
-                          bold=True)
+                if v is None:
+                    c, s = GOLD, label
+                else:
+                    c = (255, 200, 90) if v < 40 else (255, 140, 60) if v < 70 else (255, 80, 60)
+                    s = f"{label} {v:.0f}%"
+                r2 = text(surf, s, (tx, 94), 14, c, "topleft" if left else "topright", bold=True)
                 tx = r2.right + 14 if left else r2.left - 14
         # Clock
         panel(surf, (CX - 84, 12, 168, 78), (10, 10, 14), alpha=230)

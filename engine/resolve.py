@@ -25,6 +25,19 @@ def _power(a, d):
             / (1 + max(0.0, -gap) * SIZE_TOUGH))
 
 
+# Momentum. Exciting work fills a fighter's hype, stalling drains it. Full hype makes
+# the next attack go all in.
+HYPE_DECAY = 1.0
+HYPE_PER_DAMAGE = 1.9
+HYPE_EVENTS = {"knockdown": 30, "rocked": 10, "takedown": 16, "reversal": 18, "sub_start": 16,
+               "counter": 8, "tighter": 6, "escape": 20}
+BOO_AFTER = 3          # defensive picks in a row that block nothing
+BOO_DRAIN = 15
+SURGE_ACC = 0.15
+SURGE_DMG = 1.3
+SURGE_GRAPPLE = 0.15
+
+
 # How much harder an escape from the bottom is when the top fighter's strike lands on
 # you at the same time. Without it, covering up was the only answer to ground and pound.
 SCRAMBLE = -0.5
@@ -58,6 +71,9 @@ class Exchange:
         self.combo = [0, 0]             # strikes in a row fighter i has landed
         self.effort = [1.0, 1.0]        # below 1 when fighter i could not pay for the move
         self.gassed = [False, False]
+        self.surging = [False, False]   # fighter i went all in with full momentum
+        self.surge_ready = [False, False]  # fighter i's momentum just filled up
+        self.booed = [False, False]     # the crowd is on fighter i for stalling
         self.transition = None          # (by, to)
         self.takedown_by = None
         self.reversal_by = None
@@ -143,6 +159,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     a, d = st.f[i], st.f[1 - i]
     p = move.acc + bonus_acc + (a.stat(move.stat) - d.stat(move.stat)) * 0.025
     p += a.wc["speed"]   # lighter classes are quicker
+    if ex.surging[i]:
+        p += SURGE_ACC
     p *= 0.55 + 0.45 * a.stamina_factor()
     p *= 0.35 + 0.65 * ex.effort[i]   # thrown on an empty tank
     if a.rocked:
@@ -157,6 +175,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
     dmg *= 0.5 + 0.5 * ex.effort[i]
     dmg *= _power(a, d)
+    if ex.surging[i]:
+        dmg *= SURGE_DMG
     dmg *= _damage_mult(st, i)
     if move.power:
         dmg *= a.mobility()  # no legs, no power
@@ -211,7 +231,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
 
     if move.power and standing:
         # A clean power shot can end it at any time, more likely when hurt
-        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin * move.ko * a.wc["ko"], 0, 0.5)
+        ko = _clamp(dmg / max(d.hp, 1.0) * 0.22 * chin * move.ko * a.wc["ko"]
+                    * (SURGE_DMG if ex.surging[i] else 1.0), 0, 0.5)
         if was_rocked:
             ko *= 1.5
         if rng.random() < ko:
@@ -300,6 +321,8 @@ def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     p -= 0.4 * (1 - ex.effort[i])
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
     p += _size(a, d) * SIZE_GRAPPLE   # the bigger fighter wins scrambles
+    if ex.surging[i]:
+        p += SURGE_GRAPPLE
     if d.rocked:
         p += 0.1
     if rng.random() < _clamp(p, 0.1, 0.97):
@@ -316,6 +339,7 @@ def _grapple_contest(st, ex, moves, rng):
     p += (a.stamina - b.stamina) * 0.002
     p += 0.35 * (ex.effort[0] - ex.effort[1])
     p += _size(a, b) * SIZE_GRAPPLE
+    p += SURGE_GRAPPLE * (ex.surging[0] - ex.surging[1])
     p += (b.legs - a.legs) * 0.002
     if a.rocked:
         p -= 0.15
@@ -359,8 +383,41 @@ def _end_of_exchange(st, ex, rocked_before):
                 ex.finish = (w, "KO", name.capitalize())
             else:
                 ex.finish = (w, "TKO", "Punches" if "elbow" not in name else "Elbows")
+    _momentum(st, ex)
     ex.pos = st.pos
     ex.top = st.top
+
+
+def _momentum(st, ex):
+    """Fill hype for exciting work, drain it for stalling, and spend it when used."""
+    for i in (0, 1):
+        f, o = st.f[i], 1 - i
+        gain = ex.dmg[i] * HYPE_PER_DAMAGE
+        gain += HYPE_EVENTS["knockdown"] * (ex.knockdown == o)
+        gain += HYPE_EVENTS["rocked"] * ex.rocked[o]
+        gain += HYPE_EVENTS["takedown"] * (ex.takedown_by == i)
+        gain += HYPE_EVENTS["reversal"] * (ex.reversal_by == i)
+        gain += HYPE_EVENTS["sub_start"] * (ex.sub_start == i)
+        gain += HYPE_EVENTS["counter"] * ex.countered[i]
+        if ex.in_sub:
+            gain += HYPE_EVENTS["tighter"] * (ex.sub_att == i and ex.sub_result == "tighter")
+            gain += HYPE_EVENTS["escape"] * (ex.sub_att == o and ex.sub_result == "escaped")
+        m = ex.moves[i]
+        if m is not None and base_class(m) == DEFEND and not ex.blocked[i]:
+            f.passive += 1
+        elif m is not None:
+            f.passive = 0
+        if f.passive >= BOO_AFTER:
+            gain -= BOO_DRAIN
+            ex.booed[i] = True
+        if ex.surging[i]:
+            f.surge = False
+            f.hype = 0.0
+            continue
+        f.hype = _clamp(f.hype + gain - HYPE_DECAY, 0.0, 100.0)
+        if f.hype >= 100.0 and not f.surge:
+            f.surge = True
+            ex.surge_ready[i] = True
 
 
 def resolve(st, picks, rng):
@@ -374,6 +431,7 @@ def resolve(st, picks, rng):
     for i in (0, 1):
         ex.effort[i] = st.f[i].effort(moves[i])
         ex.gassed[i] = ex.effort[i] < 1.0
+        ex.surging[i] = st.f[i].surge and base_class(moves[i]) != DEFEND
         st.f[i].spend(moves[i].cost)
 
     rel = matchup(moves[0], moves[1])

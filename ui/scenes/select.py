@@ -4,6 +4,7 @@ import pygame
 
 from engine.constants import STAT_NAMES
 from engine.cards import signature_names
+from engine import personality
 from engine.loadouts import Loadout, apply_saved
 from engine.weights import get as get_weight, gap as weight_gap
 from engine.roster import quick_fighters, division, ARCHETYPE_BLURB
@@ -158,7 +159,8 @@ class SelectScene(Scene):
             inner = rect.w - 24
             text(surf, p.name.upper(), (rect.centerx, rect.y + 12), 24, WHITE, "midtop", display=True,
                  max_width=inner)
-            text(surf, f'"{p.nickname}"', (rect.centerx, rect.y + 44), 16, GOLD, "midtop", max_width=inner)
+            text(surf, f'"{p.nickname}"  {personality.label(p)}', (rect.centerx, rect.y + 44), 16, GOLD,
+                 "midtop", max_width=inner)
             text(surf, f"{p.weight} {p.archetype}, {p.record()}", (rect.centerx, rect.y + 66), 16, GREY,
                  "midtop", max_width=inner)
             self.figs[i].x = rect.centerx

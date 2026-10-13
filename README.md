@@ -26,6 +26,8 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
 
 ## Modes
 
+- **Tutorial**. New players get a prompt on the menu (press T), and it is also under
+  How to play. A coach walks you through a first fight in five short lessons.
 - **Quick fight** against the computer on easy, normal or hard.
 - **Local 2 player** on one keyboard. Red uses Q W E R A S D F, blue uses U I O P J K L ;
   Picks stay hidden until both players have locked in.
@@ -92,6 +94,16 @@ and tells you what the other guy keeps doing, what he is reading from you, and h
 round went.
 
 Knockouts get a slow motion replay.
+
+**Momentum.** Landing shots, knockdowns, takedowns, reversals and submission attempts fill
+a fighter's hype meter (the purple bar under stamina). When it is full the crowd is on
+its feet and the next attack goes **all in**: more accurate, harder hitting, harder to
+stop. Covering up three times in a row without blocking anything gets you booed and
+drains it.
+
+**Personalities.** Every computer fighter has a way they like to fight: pressure fighters
+keep coming, counter punchers wait behind the guard, grinders hold you down, showboats go
+for the highlight reel. You will hear about it in the walkout too.
 
 ## Fight cards
 

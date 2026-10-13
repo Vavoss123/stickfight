@@ -333,7 +333,9 @@ class HubScene(Scene):
              max_width=r2.w - 30)
         if opp.nickname:
             text(surf, f'"{opp.nickname}"', (r2.centerx, r2.y + 116), 16, GOLD, "midtop")
-        text(surf, f"{opp.archetype}, {opp.record()}", (r2.centerx, r2.y + 138), 16, GREY, "midtop")
+        from engine import personality
+        text(surf, f"{opp.archetype}, {opp.record()}, {personality.label(opp).lower()}",
+             (r2.centerx, r2.y + 138), 16, GREY, "midtop", max_width=r2.w - 30)
         self.opp_fig.shorts = opp.color
         self.opp_fig.x, self.opp_fig.y = r2.centerx, r2.y + 318
         self.opp_fig.draw(surf)

@@ -23,7 +23,7 @@ PAGES = [
         "    A Takedown walks through a Jab, a Body shot or a kick. A Power punch stops it.",
         "    Clinching up smothers a Power punch.",
         "    A Leg kick goes under a block. A Head kick does not.",
-        "Power shots can rock, drop and knock out. A rocked fighter is easier to hit.",
+        "Big moments fill the purple momentum bar. Full, your next attack goes ALL IN.",
         "Stamina is tight. Every move costs it and the break between rounds",
         "only gives some back. Tired fighters hit softer, miss more and get",
         "taken down and submitted. Defending moves recover stamina.",
@@ -86,8 +86,14 @@ class HowToScene(Scene):
         self.prev = Button((CX - 280, H - 80, 160, 48), "Previous", size=18)
         self.next = Button((CX + 120, H - 80, 160, 48), "Next", size=18)
         self.back = Button((20, H - 70, 120, 40), "Back", size=18)
+        self.tutorial = Button((W - 260, H - 70, 240, 44), "Play the tutorial", color=(150, 110, 30),
+                               size=18)
 
     def handle(self, e):
+        if self.tutorial.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_t):
+            from .tutorial import TutorialScene
+            self.app.goto(TutorialScene(self.app))
+            return
         if self.prev.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_LEFT):
             self.page = max(0, self.page - 1)
         if self.next.handle(e) or (e.type == pygame.KEYDOWN and e.key in (pygame.K_RIGHT, pygame.K_SPACE)):
@@ -118,3 +124,4 @@ class HowToScene(Scene):
         self.prev.draw(surf)
         self.next.draw(surf)
         self.back.draw(surf)
+        self.tutorial.draw(surf)

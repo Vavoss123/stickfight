@@ -54,7 +54,7 @@ class MenuScene(Scene):
             ("Local 2 player", "Same keyboard, hidden picks", "versus"),
             ("Career", "Continue your career" if has_save else "Start from the bottom", "career"),
             ("Tournament", "Eight fighters, one night", "tournament"),
-            ("How to play", "Rules and controls", "help"),
+            ("How to play", "Tutorial, rules and controls", "help"),
             ("Settings", "Sound, screen and speed", "settings"),
             ("Quit", "", "quit"),
         ]
@@ -104,6 +104,11 @@ class MenuScene(Scene):
                 self._go(self.buttons[self.focus].pick)
             elif e.key == pygame.K_ESCAPE:
                 self.app.running = False
+            elif e.key == pygame.K_t:
+                self.app.sounds.play("click")
+                from .tutorial import TutorialScene
+                self.app.goto(TutorialScene(self.app))
+                return
             elif e.key == pygame.K_u and updater.state["status"] in ("available", "failed"):
                 if updater.state["status"] == "failed":
                     updater.state["status"] = "available"
@@ -140,6 +145,10 @@ class MenuScene(Scene):
             b.draw(surf)
         text(surf, "M mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")
         text(surf, f"v{VERSION}", (20, H - 16), 14, GREY, "bottomleft")
+        if not self.app.settings["tutorial_done"]:
+            r = panel(surf, (430, 236, 330, 62), (40, 34, 14), alpha=230, border=GOLD)
+            text(surf, "New here?", (r.x + 16, r.y + 10), 18, GOLD, bold=True)
+            text(surf, "Press T for a two minute tutorial", (r.x + 16, r.y + 34), 15, WHITE)
         self._draw_update(surf)
 
     def _draw_update(self, surf):
