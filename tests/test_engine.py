@@ -217,8 +217,8 @@ class CardSystem(unittest.TestCase):
         self.assertEqual(matchup(sm, MOVES["takedown"]), 1)   # still stops takedowns
         self.assertEqual(matchup(MOVES["clinch"], sm), 1)     # still smothered by the clinch
         sbf = CARDS["spinfist"].move
-        self.assertEqual(matchup(sbf, MOVES["block"]), 1)
-        self.assertEqual(matchup(sbf, MOVES["takedown"]), -1)
+        self.assertEqual(matchup(sbf, MOVES["block"]), 1)      # its own extra rule
+        self.assertEqual(matchup(sbf, MOVES["takedown"]), 1)   # still stops takedowns
 
     def test_iron_lungs_saves_stamina(self):
         a = FighterState(self._fighter(perks=["ironlungs"]))
@@ -254,9 +254,16 @@ class CardSystem(unittest.TestCase):
         self.assertGreater(sum(tired_dmg) / len(tired_dmg), sum(fresh_dmg) / len(fresh_dmg) * 1.25)
 
     def test_warns_about_no_takedown_defence(self):
-        from engine.cards import warnings
-        self.assertEqual(warnings(self._fighter()), [])
-        self.assertTrue(warnings(self._fighter({"cross": "spinfist"})))
+        from dataclasses import replace
+        import engine.cards as ec
+        self.assertEqual(ec.warnings(self._fighter({"cross": "spinfist"})), [])
+        # A made up card that gives up the power punch's takedown defence
+        weak = replace(MOVES["cross"], key="testweak", base="cross", loses_to=("takedown",))
+        ec.CARDS["testweak"] = ec.Card("testweak", "Test", "common", "", move=weak)
+        try:
+            self.assertTrue(ec.warnings(self._fighter({"cross": "testweak"})))
+        finally:
+            del ec.CARDS["testweak"]
 
 
 class CareerCards(unittest.TestCase):

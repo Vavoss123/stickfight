@@ -64,12 +64,15 @@ def main():
     ap.add_argument("--fights", type=int, default=100)
     ap.add_argument("--level", default="normal")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
+    ap.add_argument("--only", nargs="*", help="card ids to test, default all")
     args = ap.parse_args()
     rows = []
     err = 100 * 0.5 / (args.fights ** 0.5)
     print(f"{args.fights} fights per card, margin of error about +/-{2 * err:.0f} points")
     with Pool(args.jobs) as pool:
         for card in CARDS.values():
+            if args.only and card.id not in args.only:
+                continue
             rows.append((duel(card, args.fights, args.level, pool), card))
             print(f"  {card.name:22s} {rows[-1][0]:5.1f}%", flush=True)
     print("\nStrongest to weakest")

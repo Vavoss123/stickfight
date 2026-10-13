@@ -40,9 +40,13 @@ def position_value(st, me):
     return 0.0
 
 
+FINISH_VALUE = 400.0   # how much a finish is worth next to health and position
+REPEAT_COST = 14.0     # how much a smart AI avoids repeating itself
+
+
 def evaluate(st, ex, me):
     if ex.finish:
-        return 1000.0 if ex.finish[0] == me else -1000.0
+        return FINISH_VALUE if ex.finish[0] == me else -FINISH_VALUE
     m, o = st.f[me], st.f[1 - me]
     v = (m.hp - o.hp) + 0.15 * (m.stamina - o.stamina) + position_value(st, me)
     v += 0.12 * (o.body + o.legs - m.body - m.legs) + 0.15 * (o.cut - m.cut)
@@ -75,6 +79,7 @@ class AI:
         self.sim_rng = random.Random(self.rng.random())
         # (pos, role, in_sub) -> {move: weight}
         self.habits = defaultdict(lambda: defaultdict(float))
+        self.mine = defaultdict(lambda: defaultdict(float))  # its own picks, to stay unreadable
 
     def _context(self, st, i):
         return (st.pos, st.role(i), st.sub is not None and st.sub.att == i)
@@ -120,6 +125,16 @@ class AI:
                     total += evaluate(sim, ex, me)
                 ev += p * total / self.samples
             scores[m] = ev
+        # The opponent is reading habits too, so lean away from what it has been doing
+        mine = self.mine[self._context(st, me)]
+        total = sum(mine.values())
+        if total >= 2:
+            for m in opts:
+                scores[m] -= self.habit_w * REPEAT_COST * mine.get(m, 0) / total
         best = max(scores.values())
         weights = [math.exp((scores[m] - best) / self.temp) for m in opts]
-        return self.rng.choices(opts, weights)[0]
+        pick = self.rng.choices(opts, weights)[0]
+        for k in mine:
+            mine[k] *= 0.85
+        mine[pick] += 1.0
+        return pick
