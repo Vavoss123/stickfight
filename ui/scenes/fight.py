@@ -1169,40 +1169,15 @@ class FightScene(Scene):
 
     def _draw_rules(self, surf):
         """What beats what, in the corner. The class of the move under the mouse lights up."""
-        import math
         r = panel(surf, (W - 250, 118, 230, 206), (10, 11, 16), alpha=215)
         text(surf, "WHAT BEATS WHAT", (r.centerx, r.y + 8), 13, GOLD, "midtop", bold=True)
-        cx, cy, rad = r.centerx, r.y + 112, 62
-        nodes = {STRIKE: (cx, cy - rad), GRAPPLE: (cx + rad * 0.95, cy + rad * 0.55),
-                 DEFEND: (cx - rad * 0.95, cy + rad * 0.55)}
         hover = None
         hb = next((b for b in self.buttons[0] if b.hover), None) if self.cfg.mode == "ai" else None
         if hb and not self.fight.state.sub:
             hover = self.mv(0, hb.pick).cls
             hover = GRAPPLE if hover == SUB else hover
-        for a, b in ((STRIKE, GRAPPLE), (GRAPPLE, DEFEND), (DEFEND, STRIKE)):
-            (x0, y0), (x1, y1) = nodes[a], nodes[b]
-            dx, dy = x1 - x0, y1 - y0
-            d = math.hypot(dx, dy)
-            ux, uy = dx / d, dy / d
-            sx, sy = x0 + ux * 24, y0 + uy * 24
-            ex_, ey = x1 - ux * 26, y1 - uy * 26
-            lit = hover in (a, b)
-            col = GOLD if lit else (120, 110, 70)
-            pygame.draw.line(surf, col, (sx, sy), (ex_, ey), 3)
-            px, py = -uy, ux
-            pygame.draw.polygon(surf, col, [(ex_ + ux * 8, ey + uy * 8),
-                                            (ex_ - ux * 6 + px * 7, ey - uy * 6 + py * 7),
-                                            (ex_ - ux * 6 - px * 7, ey - uy * 6 - py * 7)])
-            mx, my = (sx + ex_) / 2 + px * 14, (sy + ey) / 2 + py * 14
-            text(surf, "beats", (mx, my), 11, col, "center", shadow=False)
-        for cls, (x, y) in nodes.items():
-            lit = hover == cls
-            col = CLASS_COLOR[cls]
-            pygame.draw.circle(surf, tuple(min(255, int(c * 1.3)) for c in col) if lit else col,
-                               (int(x), int(y)), 22)
-            pygame.draw.circle(surf, WHITE if lit else (0, 0, 0), (int(x), int(y)), 22, 2)
-            text(surf, CLASS_NAME[cls], (x, y), 13, WHITE, "center", bold=True)
+        from ..diagrams import rules_triangle
+        rules_triangle(surf, (r.centerx, r.y + 112), hover=hover if hover != FEINT else None)
         if hover == FEINT:
             note = "Feint: beats Defend, loses to the rest"
         elif hover:
