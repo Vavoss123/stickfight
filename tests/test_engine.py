@@ -203,7 +203,7 @@ class CardSystem(unittest.TestCase):
         opts = st.options(0)
         self.assertIn("superman", opts)
         self.assertNotIn("cross", opts)
-        self.assertEqual(len(opts), 9)   # with the feint
+        self.assertEqual(len(opts), 12)   # with the knee, check, weave and feint
 
     def test_levels_make_cards_better(self):
         from engine.cards import build_kit
@@ -261,10 +261,15 @@ class CardSystem(unittest.TestCase):
         # A made up card that gives up the power punch's takedown defence
         weak = replace(MOVES["cross"], key="testweak", base="cross", loses_to=("takedown",))
         ec.CARDS["testweak"] = ec.Card("testweak", "Test", "common", "", move=weak)
+        # The knee stops takedowns too, so swap that out for a weak one as well
+        weak_knee = replace(MOVES["knee"], key="testknee", base="knee", loses_to=("takedown",))
+        ec.CARDS["testknee"] = ec.Card("testknee", "Test", "common", "", move=weak_knee)
         try:
-            self.assertTrue(ec.warnings(self._fighter({"cross": "testweak"})))
+            self.assertEqual(ec.warnings(self._fighter({"cross": "testweak"})), [])
+            self.assertTrue(ec.warnings(self._fighter({"cross": "testweak", "knee": "testknee"})))
         finally:
             del ec.CARDS["testweak"]
+            del ec.CARDS["testknee"]
 
 
 class CareerCards(unittest.TestCase):

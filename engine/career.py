@@ -23,7 +23,9 @@ SHOP_SIZE = 4
 # Spending money and spare training points
 TRAINING_PRICE = 15000       # one extra training point, up 35% each time
 DECK_POINT_PRICE = 75000     # one extra deck point, doubling each time
-MAX_BONUS_DECK = 6           # extra deck points you can get from money and training points
+MAX_BONUS_DECK = 10          # extra deck points from the shop, training points and the gym
+GYM_PRICE = 1500             # times your deck budget squared: the bigger the deck, the dearer
+GYM_REPS = 8
 RESTOCK_PRICE = 5000
 POINTS_PER_DECK_POINT = 5    # training points traded for a deck point
 POINTS_PER_PACK = 3          # training points traded for a card pack
@@ -100,6 +102,9 @@ class Career:
         self.bonus_deck = 0           # deck points bought or traded for
         self.bought_training = 0      # training points bought, for the price
         self.gloves_owned = []
+        self.gym_used = False         # one gym session between fights
+        self.story_seen = set()       # story beats already shown
+        self.story_queue = ["intro"]  # beats waiting for the hub
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
             apply_deck(player, deck, perks, 1)
@@ -214,6 +219,16 @@ class Career:
             self.titles_won += 1
         self.most_defenses = max(self.most_defenses, self.defenses)
         reward["story"] = self._story(opp, won, draw, grudge)
+        from .story import after_fight
+        streak = 0
+        for h in reversed(self.history):
+            if h["result"] != "Loss":
+                break
+            streak += 1
+        for beat in after_fight(self, won, draw, was_champ, before != "Unranked", streak):
+            if beat not in self.story_queue:
+                self.story_queue.append(beat)
+        self.gym_used = False
         self.news = list(reward["story"])
         self.refresh_shop()
         return reward
@@ -460,6 +475,55 @@ class Career:
         self.player.gloves = GLOVES[name]
         return True
 
+    # The gym
+
+    def gym_price(self):
+        """A session costs more the bigger your deck already is."""
+        return int(round(GYM_PRICE * self.budget() ** 2, -3))
+
+    def gym_open(self):
+        """None if you can go, otherwise why not."""
+        if self.gym_used:
+            return "One session a week. Fight first."
+        if self.money < self.gym_price():
+            return "Not enough money for a session."
+        return None
+
+    def start_gym(self):
+        if self.gym_open():
+            return False
+        self.money -= self.gym_price()
+        self.gym_used = True
+        return True
+
+    def gym_reward(self, hits):
+        """What a session earned. Returns a line for the coach to say."""
+        if hits >= GYM_REPS - 1:
+            if self.bonus_deck < MAX_BONUS_DECK:
+                self.bonus_deck += 1
+                extra = " and a training point for the perfect round" if hits == GYM_REPS else ""
+                if hits == GYM_REPS:
+                    self.points += 1
+                return f"Sharp. That's a deck point{extra}. Deck budget is {self.budget()} now."
+            self.points += 2
+            return "Sharp. You're as good as the deck gets, so have two training points."
+        if hits >= 5:
+            self.points += 2
+            return "Not bad. Two training points."
+        if hits >= 3:
+            self.points += 1
+            return "Sloppy, but you worked. One training point."
+        return "That was a waste of both our time. Nothing this week."
+
+    def next_story(self):
+        """The next story beat to show, marking it seen."""
+        while self.story_queue:
+            beat = self.story_queue.pop(0)
+            if beat not in self.story_seen or beat == "losing_streak":
+                self.story_seen.add(beat)
+                return beat
+        return None
+
     # Spare training points
 
     def trade_for_deck_point(self):
@@ -520,6 +584,9 @@ class Career:
             "bonus_deck": self.bonus_deck,
             "bought_training": self.bought_training,
             "gloves_owned": self.gloves_owned,
+            "gym_used": self.gym_used,
+            "story_seen": sorted(self.story_seen),
+            "story_queue": self.story_queue,
         }
 
     @classmethod
@@ -545,6 +612,10 @@ class Career:
         c.bonus_deck = d.get("bonus_deck", 0)
         c.bought_training = d.get("bought_training", 0)
         c.gloves_owned = [g for g in d.get("gloves_owned", []) if g in GLOVES]
+        c.gym_used = d.get("gym_used", False)
+        c.story_seen = set(d.get("story_seen", []))
+        # Old saves skip the intro, they have met the coach already
+        c.story_queue = list(d.get("story_queue", []))
         return c
 
     def save(self, path=SAVE_PATH):

@@ -1,6 +1,7 @@
 """The fight itself: picking moves, the reveal, animating each exchange."""
 
 import copy
+import math
 
 import pygame
 
@@ -12,6 +13,7 @@ from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, FEINT, SUB_ATTACK_LA
                               SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
                               EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
+from engine.moves import zone
 from engine.weights import get as weight_class
 
 from .. import gamepad
@@ -29,13 +31,20 @@ CLASS_NAME = {STRIKE: "Strike", GRAPPLE: "Grapple", SUB: "Submission", DEFEND: "
 SUB_COLOR = (150, 80, 205)
 HYPE_COLOR = (190, 110, 255)
 
-KEYS_P1 = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r,
-           pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f, pygame.K_z]
-KEYS_P2 = [pygame.K_u, pygame.K_i, pygame.K_o, pygame.K_p,
-           pygame.K_j, pygame.K_k, pygame.K_l, pygame.K_SEMICOLON, pygame.K_m]
-KEYS_SOLO = [[getattr(pygame, f"K_{n + 1}"), KEYS_P1[n]] for n in range(9)]
-LABEL_P1 = "QWERASDFZ"
-LABEL_P2 = "UIOPJKL;M"
+KEYS_P1 = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r, pygame.K_a, pygame.K_s,
+           pygame.K_d, pygame.K_f, pygame.K_z, pygame.K_x, pygame.K_c, pygame.K_v]
+KEYS_P2 = [pygame.K_u, pygame.K_i, pygame.K_o, pygame.K_p, pygame.K_j, pygame.K_k,
+           pygame.K_l, pygame.K_SEMICOLON, pygame.K_m, pygame.K_COMMA, pygame.K_PERIOD, pygame.K_SLASH]
+NUMBER_KEYS = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7,
+               pygame.K_8, pygame.K_9, pygame.K_0, pygame.K_MINUS, pygame.K_EQUALS]
+KEYS_SOLO = [[NUMBER_KEYS[n], KEYS_P1[n]] for n in range(12)]
+LABEL_P1 = "QWERASDFZXCV"
+LABEL_P2 = "UIOPJKL;M,./"
+LABEL_SOLO = "1234567890-="
+ZONES = ["head", "body", "legs", "arms", "neck", "position", "defence", "trick"]
+ZONE_LABEL = {"head": "HEAD", "body": "BODY", "legs": "LEGS", "arms": "ARMS", "neck": "NECK",
+              "position": "POSITION", "defence": "DEFENCE", "trick": "TRICK"}
+ATTACK_ZONES = {"head", "body", "legs", "arms", "neck"}
 
 POS_NAME = {STANDING: "Standing", CLINCH: "Clinch", GUARD: "Guard", MOUNT: "Mount",
             BACK: "Back control"}
@@ -210,37 +219,70 @@ class FightScene(Scene):
                 tuple(min(255, int(c * 1.25)) for c in CLASS_COLOR[m.cls])
         return m.name, f"{CLASS_NAME[m.cls]}, {cost}", CLASS_COLOR[m.cls]
 
+    def _display_order(self, i):
+        """The options grouped by what they go after, attacks first."""
+        opts = self.fight.options(i)
+        if self.fight.state.sub:
+            return list(opts)
+        return sorted(opts, key=lambda k: ZONES.index(zone(self.mv(i, k))))
+
+    def _rows(self, i, order):
+        """Attacks on the top row, position, defence and tricks underneath."""
+        if self.fight.state.sub:
+            return [order]
+        top = [k for k in order if zone(self.mv(i, k)) in ATTACK_ZONES]
+        bottom = [k for k in order if k not in top]
+        return [r for r in (top, bottom) if r]
+
     def _build_buttons(self):
         self.buttons = [[], []]
-        if self.cfg.mode == "ai":
-            opts = self.fight.options(0)
-            n = len(opts)
-            gap = 10
-            bw = (W - 40 - gap * (n - 1)) // n
-            for j, k in enumerate(opts):
-                label, sub, color = self._option_label(0, k)
-                key = gamepad.PICK_LABELS[j] if self._pad_for(0) is not None else f"{j + 1}"
-                b = Button((20 + j * (bw + gap), 634, bw, 74), label, key=key,
-                           sub=sub, color=color, size=21)
-                b.pick = k
-                b.badge = self._badge(0, k)
-                self.buttons[0].append(b)
-        else:
-            for i in (0, 1):
-                opts = self.fight.options(i)
-                x0 = 20 if i == 0 else W // 2 + 10
-                per_row = 4 if len(opts) <= 8 else 5
-                bw, bh = (W // 2 - 30 - 6 * (per_row - 1)) // per_row, 36
+        self.order = [self._display_order(0), self._display_order(1)]
+        self.zone_heads = [[], []]
+        sides = (0,) if self.cfg.mode == "ai" else (0, 1)
+        for i in sides:
+            order = self.order[i]
+            if self.cfg.mode == "ai":
+                x0, width = 20, W - 40
+                keys = gamepad.PICK_LABELS if self._pad_for(0) is not None else LABEL_SOLO
+            else:
+                x0, width = (20, W // 2 - 30) if i == 0 else (W // 2 + 10, W // 2 - 30)
                 keys = LABEL_P1 if i == 0 else LABEL_P2
                 if self._pad_for(i) is not None:
                     keys = gamepad.PICK_LABELS
-                for j, k in enumerate(opts):
+            rows = self._rows(i, order)
+            ys = [618, 672] if len(rows) == 2 else [628]
+            hs = [42, 40] if len(rows) == 2 else [72]
+            for row, y, h in zip(rows, ys, hs):
+                gap = 8
+                bw = (width - gap * (len(row) - 1)) // len(row)
+                last_zone = None
+                for n, k in enumerate(row):
+                    j = order.index(k)
                     label, sub, color = self._option_label(i, k)
-                    b = Button((x0 + (j % per_row) * (bw + 6), 632 + (j // per_row) * (bh + 6), bw, bh),
-                               label, key=keys[j], color=color, size=16)
+                    x = x0 + n * (bw + gap)
+                    two_p = self.cfg.mode != "ai"
+                    b = Button((x, y, bw, h), label, key=keys[j] if j < len(keys) else None,
+                               sub="" if two_p else sub, color=color,
+                               size=15 if two_p else (16 if len(rows) == 2 else 21),
+                               sub_size=11 if len(rows) == 2 else 15)
                     b.pick = k
                     b.badge = self._badge(i, k)
                     self.buttons[i].append(b)
+                    if not self.fight.state.sub:
+                        z = zone(self.mv(i, k))
+                        if z != last_zone:
+                            self.zone_heads[i].append((ZONE_LABEL[z], x, y - 12))
+                            last_zone = z
+        # Buttons in key order, so key n presses button n
+        for i in sides:
+            self.buttons[i].sort(key=lambda b, i=i: self.order[i].index(b.pick))
+
+    def _lock_display(self, i, j):
+        """Key or pad press j, in the order shown on screen."""
+        order = getattr(self, "order", None)
+        if not order or j >= len(order[i]):
+            return
+        self._lock(i, self.fight.options(i).index(order[i][j]))
 
     # Controllers
 
@@ -279,7 +321,7 @@ class FightScene(Scene):
         if self.phase == "pick" and button in gamepad.PICK_BUTTONS:
             side = self._side_for_pad(slot)
             if side is not None and self.picks[side] is None:
-                self._lock(side, gamepad.PICK_BUTTONS.index(button))
+                self._lock_display(side, gamepad.PICK_BUTTONS.index(button))
             return True
         if name == "a":
             self.handle(gamepad.key_event(pygame.K_SPACE))
@@ -313,8 +355,8 @@ class FightScene(Scene):
         self.picks[i] = opts[idx]
         self.snd("click")
         if self.cfg.mode == "ai":
-            for j, b in enumerate(self.buttons[0]):
-                b.selected = j == idx
+            for b in self.buttons[0]:
+                b.selected = b.pick == opts[idx]
         if self.picks[0] is not None and self.picks[1] is not None:
             self._reveal()
 
@@ -518,6 +560,22 @@ class FightScene(Scene):
 
     def _momentum_popups(self, ex):
         """Feints, ALL IN when someone spends full momentum, MOMENTUM when it fills, boos."""
+        for i in (0, 1):
+            o = 1 - i
+            if ex.checked[i]:
+                self.at(0.22, lambda i=i, o=o: (self.popup(i, "CHECKED!", (150, 220, 255), 26, dy=-110),
+                                                self.popup(o, "LEG!", (255, 140, 60), 22, dy=30),
+                                                self.snd("kick"), self.figs[o].hit(1.0)))
+            if ex.slipped[i]:
+                self.at(0.18, lambda i=i: (self.popup(i, "SLIPPED!", (150, 220, 255), 26, dy=-110),
+                                           self.snd("whoosh", 0.8)))
+            if ex.walked_in[i]:
+                self.at(0.2, lambda i=i: self.popup(i, "WALKED INTO IT!", (255, 120, 90), 24, dy=-140))
+        if ex.broken:
+            who, what = ex.broken
+            label = "CRACKED RIBS!" if what == "ribs" else "BROKEN LEG!"
+            self.at(0.35, lambda who=who, label=label: (self.popup(who, label, (255, 70, 60), 32, dy=-170),
+                                                        self.snd("boom"), self.snd("roar")))
         for i in (0, 1):
             if ex.feinted[i]:
                 self.at(0.12, lambda i=i: (self.popup(i, "FEINT!", (230, 180, 90), 26, dy=-120),
@@ -818,19 +876,19 @@ class FightScene(Scene):
         if self.cfg.mode == "ai":
             for b in self.buttons[0]:
                 if b.handle(e):
-                    self._lock(0, self.buttons[0].index(b))
+                    self._lock(0, self.fight.options(0).index(b.pick))
                 if e.type == pygame.MOUSEMOTION and b.hover:
                     self.hover_desc = b
             if e.type == pygame.KEYDOWN:
                 for idx, keys in enumerate(KEYS_SOLO):
                     if e.key in keys:
-                        self._lock(0, idx)
+                        self._lock_display(0, idx)
         else:
             if e.type == pygame.KEYDOWN:
                 if e.key in KEYS_P1:
-                    self._lock(0, KEYS_P1.index(e.key))
+                    self._lock_display(0, KEYS_P1.index(e.key))
                 elif e.key in KEYS_P2:
-                    self._lock(1, KEYS_P2.index(e.key))
+                    self._lock_display(1, KEYS_P2.index(e.key))
 
     def _toggle_pause(self):
         self.paused = not self.paused
@@ -977,6 +1035,8 @@ class FightScene(Scene):
                 tags.append(("BODY", fs.body))
             if fs.legs >= 10:
                 tags.append(("LEGS", fs.legs))
+            if fs.arms >= 10:
+                tags.append(("ARMS", fs.arms))
             if fs.cut > 0:
                 tags.append(("CUT", fs.cut))
             tx = x + 16 if left else x + 484
@@ -1063,42 +1123,63 @@ class FightScene(Scene):
     def _draw_picks(self, surf):
         st = self.fight.state
         if self.cfg.mode == "ai":
-            panel(surf, (10, 604, W - 20, 112), (10, 11, 16), alpha=225)
+            panel(surf, (10, 584, W - 20, 132), (10, 11, 16), alpha=225)
+            self._draw_zone_heads(surf, 0)
             for b in self.buttons[0]:
                 b.draw(surf)
-            hint = "Pick a move with the number keys, QWER ASDF Z or the mouse"
+            hint = "Pick a move: number keys, the letters in the corners, or the mouse"
             if self._pad_for(0) is not None:
-                hint = "Pick a move: A B X Y, then the d-pad for 5 to 8"
+                hint = "Pick a move with the button in its corner"
             if st.sub:
                 hint = ("Attacking: pick a side they will not guess" if st.sub.att == 0
                         else "Defending: match their side to escape")
             hb = next((b for b in self.buttons[0] if b.hover), None)
             if hb and not st.sub:
-                hint = self.mv(0, hb.pick).desc
-            text(surf, hint, (24, 609), 16, WHITE, bold=True)
-            if not st.sub and not self.app.settings["show_rules"]:
-                text(surf, "Strike beats grapple, grapple beats defend, defend beats strike",
-                     (W - 24, 610), 14, GREY, "topright")
+                m = self.mv(0, hb.pick)
+                hint = f"{ZONE_LABEL[zone(m)]}: {m.desc}"
+                self._draw_target(surf, zone(m))
+            text(surf, hint, (24, 588), 15, WHITE, bold=True, max_width=W - 60)
         else:
             for i in (0, 1):
                 x0 = 10 if i == 0 else W // 2
-                panel(surf, (x0, 604, W // 2 - 10, 112), (10, 11, 16), alpha=225)
+                panel(surf, (x0, 584, W // 2 - 10, 132), (10, 11, 16), alpha=225)
+                self._draw_zone_heads(surf, i)
                 for b in self.buttons[i]:
                     b.draw(surf)
                 who = self.names[i].upper()
-                keys = " ".join(LABEL_P1 if i == 0 else LABEL_P2)
                 if st.sub:
                     role = "attacking, hide a side" if st.sub.att == i else "defending, match their side"
                     tip = f"{who}  {role}"
                 else:
-                    tip = f"{who}  keys {keys}"
+                    tip = f"{who}  keys {' '.join(LABEL_P1 if i == 0 else LABEL_P2)}"
                     if self._pad_for(i) is not None:
-                        tip = f"{who}  controller: A B X Y, d-pad"
-                text(surf, tip, (x0 + 14, 608), 15, CORNER[i], bold=True)
+                        tip = f"{who}  controller: the button in each corner"
+                text(surf, tip, (x0 + 14, 588), 14, CORNER[i], bold=True)
                 if self.picks[i] is not None:
-                    panel(surf, (x0, 604, W // 2 - 10, 112), CORNER[i], alpha=255)
-                    text(surf, "LOCKED IN", (x0 + (W // 2 - 10) // 2, 660), 34, WHITE, "center",
+                    panel(surf, (x0, 584, W // 2 - 10, 132), CORNER[i], alpha=255)
+                    text(surf, "LOCKED IN", (x0 + (W // 2 - 10) // 2, 650), 34, WHITE, "center",
                          display=True)
+
+    def _draw_zone_heads(self, surf, i):
+        for label, x, y in getattr(self, "zone_heads", [[], []])[i]:
+            text(surf, label, (x + 2, y), 11, GOLD, bold=True, shadow=False)
+
+    def _draw_target(self, surf, where):
+        """Light up where on the opponent the move under the mouse goes."""
+        from ..stickman import joints
+        f = self.figs[1]
+        j = joints(f.cur, f.x, f.y, f.facing, f.scale)
+        mid = lambda a, b: ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        spot = {"head": j["head"], "neck": j["neck"], "body": mid(j["neck"], j["hip"]),
+                "legs": mid(j["fknee"], j["bknee"]), "arms": j["felbow"]}.get(where)
+        if not spot:
+            return
+        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 120)
+        r = int((24 + 6 * pulse) * f.scale)
+        glow = pygame.Surface((r * 2 + 8, r * 2 + 8), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (255, 210, 80, int(40 + 30 * pulse)), (r + 4, r + 4), r)
+        pygame.draw.circle(glow, (255, 220, 100, int(150 + 80 * pulse)), (r + 4, r + 4), r, 4)
+        surf.blit(glow, (spot[0] - r - 4, spot[1] - r - 4))
 
     def _draw_reveal(self, surf):
         st = self.fight.state

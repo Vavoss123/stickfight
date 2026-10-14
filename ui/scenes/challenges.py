@@ -87,9 +87,9 @@ class ChallengesScene(Scene):
         if self.message:
             text_block(surf, self.message, (r.centerx, r.y + 502), 14, r.w - 30, WHITE, bold=True)
 
-    def _draw_achievements(self, surf):
+    def _draw_achievements(self, surf, at=(450, 84, 800, 400)):
         rec = self.app.record
-        r = panel(surf, (450, 84, 800, 400), (22, 24, 34))
+        r = panel(surf, at, (22, 24, 34))
         got = len(rec.unlocked)
         text(surf, f"ACHIEVEMENTS  {got} / {len(achievements.LIST)}", (r.x + 20, r.y + 14), 18, GOLD, bold=True)
         for k, (aid, name, desc) in enumerate(achievements.LIST):
@@ -101,9 +101,9 @@ class ChallengesScene(Scene):
             text(surf, desc, (x + 24, y + 18), 12, (200, 200, 210) if have else (110, 112, 124),
                  max_width=350)
 
-    def _draw_secrets(self, surf):
+    def _draw_secrets(self, surf, at=(450, 498, 800, 146)):
         rec = self.app.record
-        r = panel(surf, (450, 498, 800, 146), (22, 24, 34))
+        r = panel(surf, at, (22, 24, 34))
         text(surf, "SECRET FIGHTERS", (r.x + 20, r.y + 12), 18, GOLD, bold=True)
         for k, (aid, build) in enumerate(UNLOCKABLES):
             x = r.x + 20 + k * 192
@@ -119,3 +119,22 @@ class ChallengesScene(Scene):
             else:
                 text(surf, "???", (box.centerx, box.y + 10), 22, GREY, "midtop", display=True)
                 text_block(surf, achievements.NAMES[aid], (box.centerx, box.y + 46), 13, 170, GREY)
+
+
+class TrophiesScene(ChallengesScene):
+    """Just the achievements and the secret fighters, from anywhere."""
+
+    def __init__(self, app, back):
+        super().__init__(app)
+        self.back_to = back
+
+    def handle(self, e):
+        if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key in (pygame.K_ESCAPE, pygame.K_RETURN)):
+            self.app.goto(self.back_to())
+
+    def draw(self, surf):
+        surf.fill((14, 15, 22))
+        text(surf, "TROPHIES", (CX, 18), 46, GOLD, "midtop", display=True)
+        self._draw_achievements(surf, (240, 84, 800, 400))
+        self._draw_secrets(surf, (240, 498, 800, 146))
+        self.back.draw(surf)

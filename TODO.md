@@ -30,6 +30,19 @@
 - [x] Max card level 5, seven new perks
 - [x] Money sinks: training points, deck points, restock, glove colours
 
+## Second round of ideas (Oct 2026)
+
+- [x] Gym mini game: pad work, price grows with your deck, a deck point for a good session
+- [x] Story: Coach Ray at the big career moments
+- [x] Trophies button on the career hub
+- [x] Cracked ribs and broken legs at 100% body or leg damage
+- [x] Check kick separate from block and counter, and it hurts the kicker
+- [x] Moves laid out by target (head, body, legs, arms, neck), armbar added
+- [x] Knee counters a takedown hard, jab never stops one
+- [x] Blocking hurts the arms, weave move
+- [x] Perks on a maxed stat go past 10 (up to 12)
+- [x] Hover a stat to see what a point does
+
 ## Roadmap (from the Oct 2026 plan)
 
 - [x] Between round card swaps, two a break, with coach suggestions
@@ -64,6 +77,11 @@
 - [ ] Online multiplayer (needs a server)
 
 ## Balance notes
+
+- After knee, check, weave, arms and limb TKOs (1800 fights on hard): BJJ 51%, Striker 50%,
+  Wrestler 48%, Brawler 48%. Subs 25%, KOs 11%, broken legs and cracked ribs under 1%.
+  The knee only beats takedowns (punches and tying up beat it) or the AI spammed it and
+  grapplers fell to 37%. BJJ grappling is back to 10
 
 - After feints, fouls and referee breaks (3600 fights on hard): Striker 54%, BJJ 48%,
   Brawler 47%, Wrestler 46%. Strikers are a touch ahead again, worth a look after playtesting

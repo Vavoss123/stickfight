@@ -36,7 +36,22 @@ ROUND_RECOVERY = 22.0     # stamina back between rounds, plus 2 per cardio point
 TIRED_DAMAGE = 0.4        # an empty fighter takes this much extra damage
 
 STAT_NAMES = ("striking", "wrestling", "grappling", "cardio", "chin")
-STAT_MAX = 10
+STAT_MAX = 10      # as high as training goes
+STAT_LIMIT = 12    # perks and training camp can go past training, up to this
+
+# What one more point in each stat does, for the screens that let you raise them
+STAT_INFO = {
+    "striking": "Punches and kicks. Each point: about 2.5% more accurate, 7% more damage, "
+                "and better counters.",
+    "wrestling": "Takedowns, trips, ground and pound. Each point: about 3% better takedowns "
+                 "and takedown defence, and harder shots from the top.",
+    "grappling": "Submissions, sweeps and escapes. Each point: about 5% more likely to win "
+                 "each turn of a submission, and better sweeps and passes.",
+    "cardio": "Your gas tank. Each point: every move costs about 6% less stamina, and you "
+              "get 2 more back between rounds.",
+    "chin": "Taking a shot. Each point: head shots hurt about 6% less and you are less "
+            "likely to be rocked or knocked out.",
+}
 STAT_MIN = 1
 
 # Submission contest options. The defender escapes by matching the attacker.

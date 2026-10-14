@@ -174,6 +174,8 @@ class HubScene(Scene):
                           idle="victory" if career.is_champ() else "stance")
         self.opp_fig = None
         self.confirm_retire = False
+        self._tip = None
+        self._story_checked = False
         self._build()
         app.sounds.ambience(False)
 
@@ -189,9 +191,11 @@ class HubScene(Scene):
         self.menu_btn = Button((20, H - 56, 150, 40), "Main menu", size=17)
         self.retire_btn = Button((180, H - 56, 150, 40), "Retire", size=17, color=(90, 40, 40))
         self.hall_btn = Button((340, H - 56, 140, 40), "Hall of fame", size=16, color=(150, 110, 30))
-        self.deck_btn = Button((CX - 150, 628, 96, 42), "Deck", size=18, color=(60, 50, 110))
-        self.scout_btn = Button((CX - 48, 628, 96, 42), "Scout", size=18, color=(40, 90, 130))
-        self.shop_btn = Button((CX + 54, 628, 96, 42), "Shop", size=18, color=(150, 110, 30))
+        self.deck_btn = Button((CX - 150, 624, 72, 38), "Deck", size=16, color=(60, 50, 110))
+        self.scout_btn = Button((CX - 74, 624, 72, 38), "Scout", size=16, color=(40, 90, 130))
+        self.gym_btn = Button((CX + 2, 624, 72, 38), "Gym", size=16, color=(40, 110, 60))
+        self.shop_btn = Button((CX + 78, 624, 72, 38), "Shop", size=16, color=(150, 110, 30))
+        self.trophy_btn = Button((488, H - 56, 110, 40), "Trophies", size=16, color=(110, 90, 30))
         opp, *_ = self.c.next_fight()
         self.grudge_text = self.c.grudge_line() if self.c.next_fight()[4] == "Grudge match" else ""
         self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0)
@@ -221,6 +225,14 @@ class HubScene(Scene):
         if self.menu_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
             from .menu import MenuScene
             self.app.goto(MenuScene(self.app))
+        if self.gym_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_g):
+            from .gym import GymScene
+            self.app.goto(GymScene(self.app, self.c, lambda: HubScene(self.app, self.c, self.message)))
+            return
+        if self.trophy_btn.handle(e):
+            from .challenges import TrophiesScene
+            self.app.goto(TrophiesScene(self.app, lambda: HubScene(self.app, self.c, self.message)))
+            return
         if self.scout_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_s):
             from .scout import ScoutScene
             opp = self.c.next_fight()[0]
@@ -308,6 +320,16 @@ class HubScene(Scene):
         self.app.goto(WalkoutScene(self.app, cfg, label))
 
     def update(self, dt):
+        if not self._story_checked:
+            # A story beat waiting from the last fight (or the start of the career)
+            self._story_checked = True
+            beat = self.c.next_story()
+            if beat:
+                self.c.save()
+                from .story import StoryScene
+                c, msg = self.c, self.message
+                self.app.goto(StoryScene(self.app, c, beat, lambda: HubScene(self.app, c, msg)))
+                return
         self.fig.update(dt)
         if self.opp_fig:
             self.opp_fig.update(dt)
@@ -336,22 +358,35 @@ class HubScene(Scene):
         pts = c.points
         text(surf, f"{pts} point{'s' if pts != 1 else ''} to spend", (rect.right - 20, rect.y + 352), 16,
              GREEN if pts else GREY, "topright")
+        from engine.cards import build_kit
+        eff = build_kit(p).stats
+        mouse = pygame.mouse.get_pos()
+        hover = None
         for k, s in enumerate(STAT_NAMES):
             yy = 400 + k * 34
             v = p.stats.get(s)
+            row = pygame.Rect(rect.x + 10, yy, 360, 30)
+            if row.collidepoint(mouse) or self.plus[k].hover:
+                hover = (s, yy)
+                pygame.draw.rect(surf, (36, 40, 56), row, border_radius=6)
             text(surf, s.capitalize(), (rect.x + 20, yy + 4), 16, WHITE)
             bar(surf, (rect.x + 120, yy + 8, 200, 14), v / 10, RED)
-            text(surf, str(v), (rect.x + 330, yy + 4), 16, WHITE)
+            text(surf, str(v), (rect.x + 326, yy + 4), 16, WHITE)
+            extra = eff.get(s) - v
+            if extra > 0:
+                text(surf, f"+{extra}", (rect.x + 344, yy + 6), 12, GOLD, bold=True)
             b = self.plus[k]
             b.enabled = v < STAT_MAX and pts >= train_cost(v)
             b.draw(surf)
+
         from engine.career import POINTS_PER_DECK_POINT, POINTS_PER_PACK, MAX_BONUS_DECK
         self.trade_deck.enabled = pts >= POINTS_PER_DECK_POINT and c.bonus_deck < MAX_BONUS_DECK
         self.trade_pack.enabled = pts >= POINTS_PER_PACK
         self.trade_deck.draw(surf)
         self.trade_pack.draw(surf)
-        text(surf, "Stats under 7 cost 1 point, 7 and up cost 2", (rect.centerx, rect.bottom - 4), 11, GREY,
-             "midbottom")
+        self._tip = (hover, p, eff) if hover else None
+        text(surf, "Hover a stat to see what it does. Under 7 costs 1 point, 7 and up 2",
+             (rect.centerx, rect.bottom - 4), 11, GREY, "midbottom")
 
         # Next fight
         opp, rounds, title, level, label = c.next_fight()
@@ -402,7 +437,9 @@ class HubScene(Scene):
         self.fight_btn.draw(surf)
         self.deck_btn.draw(surf)
         self.scout_btn.draw(surf)
+        self.gym_btn.draw(surf)
         self.shop_btn.draw(surf)
+        self.trophy_btn.draw(surf)
 
         # Rankings
         r3 = panel(surf, (860, 20, 400, 600), (22, 24, 34))
@@ -432,6 +469,23 @@ class HubScene(Scene):
         self.menu_btn.draw(surf)
         self.retire_btn.draw(surf)
         self.hall_btn.draw(surf)
+        if self._tip:   # drawn last so it sits on top of the next fight panel
+            (stat, y), p, eff = self._tip
+            self._stat_tip(surf, stat, y, p, eff)
+
+    def _stat_tip(self, surf, stat, y, p, eff):
+        """What a point in this stat does, and where the number comes from."""
+        from engine.constants import STAT_INFO, STAT_LIMIT
+        v, e = p.stats.get(stat), eff.get(stat)
+        r = panel(surf, (446, y - 10, 400, 112), (20, 24, 36), alpha=245, border=GOLD)
+        text(surf, f"{stat.upper()}  {v}" + (f"  (+{e - v} from perks = {e})" if e > v else ""),
+             (r.x + 14, r.y + 10), 15, GOLD, bold=True, max_width=r.w - 28)
+        y2 = text_block(surf, STAT_INFO[stat], (r.x + 14, r.y + 34), 14, r.w - 28, WHITE, "topleft")
+        if v >= STAT_MAX:
+            note = f"Maxed by training. Perks and camp can still take it to {STAT_LIMIT}."
+        else:
+            note = f"Next point costs {train_cost(v)} training point{'s' if train_cost(v) > 1 else ''}."
+        text(surf, note, (r.x + 14, min(y2 + 2, r.bottom - 20)), 12, GREY, max_width=r.w - 28)
 
     def _belt(self, surf, x, y):
         pygame.draw.rect(surf, (30, 26, 18), (x - 60, y + 10, 120, 22), border_radius=8)

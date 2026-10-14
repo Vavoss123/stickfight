@@ -44,6 +44,12 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
     Every few fights they demand a grudge match, which pays a bonus and can jump you
     up the rankings. Beat them twice to settle it.
   - Before a title fight you pick a **training camp** that adds 1 to a stat for that fight.
+  - **Coach Ray** talks you through the big moments: your first fight, first win and
+    loss, getting ranked, your rival, your first title shot, the belt.
+  - The **gym** is pad work: hit the button while the marker is in the zone. A good
+    session earns a deck point. It costs money, more the bigger your deck already is,
+    and you get one session between fights.
+  - **Trophies** on the hub shows your achievements and the secret fighters.
   - **Retire** to put your career in the **hall of fame**. A world title or a big enough
     legacy score gets you inducted.
 - **Tournament**. Pick any fighter and win an eight fighter bracket in one night:
@@ -114,6 +120,21 @@ Quick fight and tournaments show what to expect from the opponent as well.
 
 Knockouts get a slow motion replay.
 
+**Defence and counters.** Block and counter is a high guard for punches and head kicks,
+but blocking heavy shots hurts your arms, and hurt arms leak damage through the guard,
+punch softer and give up armbars. A **check kick** lifts the shin against leg kicks and
+hurts the kicker's leg more than their kick would have hurt you. A **weave** costs
+stamina and either slips the strike clean or walks into it for 1.5 times the damage. A
+**knee** is the answer to a takedown and hits twice as hard on someone shooting in,
+while a jab never stops one.
+
+**Limbs.** Full health is not safe. Body damage at 100% cracks the ribs and leg damage at
+100% breaks the leg: either ends the fight as a TKO.
+
+**What you are going after.** The moves are laid out by target, HEAD, BODY, LEGS, ARMS
+and NECK, and hovering one lights up the spot on your opponent. The armbar goes after
+the arms, from guard or from mount.
+
 **Feints and follow ups.** A feint is cheap and beats a block: they freeze, get no rest,
 and you get a read that makes your next strike faster and more accurate. Feint into a
 strike or a takedown and you are the one caught. Landing clean gives you a follow up:
@@ -151,6 +172,10 @@ shop restocks after every fight. A duplicate levels a card up to a maximum of 5.
 cost 1 to 3 deck points depending on how strong they tested (shown on each card), and
 the budget grows as you climb the rankings. The shop and packs mark which cards are
 already in your deck.
+
+Stats run from 1 to 10 through training. Hover a stat on the hub to see what each point
+does. Perks and training camp can take a stat past 10, up to 12, so a perk on a maxed
+stat still counts.
 
 Money and spare points have uses once your fighter is built: the shop sells extra
 training points, extra deck points (up to 6), a restock and glove colours, and on the

@@ -17,8 +17,12 @@ B = pygame
 PICK_BUTTONS = [B.CONTROLLER_BUTTON_A, B.CONTROLLER_BUTTON_B, B.CONTROLLER_BUTTON_X,
                 B.CONTROLLER_BUTTON_Y, B.CONTROLLER_BUTTON_DPAD_UP, B.CONTROLLER_BUTTON_DPAD_RIGHT,
                 B.CONTROLLER_BUTTON_DPAD_DOWN, B.CONTROLLER_BUTTON_DPAD_LEFT,
-                B.CONTROLLER_BUTTON_LEFTSHOULDER] if controller else []
-PICK_LABELS = ["A", "B", "X", "Y", "Up", "Rt", "Dn", "Lt", "LB"]
+                B.CONTROLLER_BUTTON_LEFTSHOULDER, B.CONTROLLER_BUTTON_RIGHTSHOULDER] if controller else []
+# The triggers are axes, so they get made up button numbers
+TRIGGER_LT, TRIGGER_RT = 1001, 1002
+if controller:
+    PICK_BUTTONS += [TRIGGER_LT, TRIGGER_RT]
+PICK_LABELS = ["A", "B", "X", "Y", "Up", "Rt", "Dn", "Lt", "LB", "RB", "LT", "RT"]
 
 AS_KEYS = {
     "dpad_up": pygame.K_UP, "dpad_down": pygame.K_DOWN, "dpad_left": pygame.K_LEFT,
@@ -89,6 +93,16 @@ class Pads:
         if e.type == pygame.CONTROLLERBUTTONDOWN:
             s = self.slot(e.instance_id)
             return ("button", s, e.button) if s is not None else None
+        if e.type == pygame.CONTROLLERAXISMOTION and e.axis in (B.CONTROLLER_AXIS_TRIGGERLEFT,
+                                                                 B.CONTROLLER_AXIS_TRIGGERRIGHT):
+            key = (e.instance_id, e.axis)
+            down = e.value > 16000
+            was = self.stick.get(key, False)
+            self.stick[key] = down
+            s = self.slot(e.instance_id)
+            if down and not was and s is not None:
+                return ("button", s, TRIGGER_LT if e.axis == B.CONTROLLER_AXIS_TRIGGERLEFT else TRIGGER_RT)
+            return None
         if e.type == pygame.CONTROLLERAXISMOTION and e.axis in (B.CONTROLLER_AXIS_LEFTX, B.CONTROLLER_AXIS_LEFTY):
             v = e.value / 32767
             x, y = self.stick.get(e.instance_id, (0, 0))

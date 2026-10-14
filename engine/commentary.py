@@ -87,6 +87,19 @@ def describe(ex, names):
         lines.insert(1, f"{n[i]} is warned." if result == "warning" else
                      f"That is a point taken from {n[i]}!")
         return lines[:2]
+    if ex.broken:
+        who, what = ex.broken
+        lines.insert(0, f"{n[who]}'s ribs are cracked! The referee waves it off!" if what == "ribs" else
+                     f"{n[who]}'s leg is broken! It's all over!")
+        return lines[:2]
+    for i in (0, 1):
+        if ex.checked[i]:
+            lines.append(_pick(f"{n[i]} checks the kick! {n[1 - i]} felt that one.",
+                               f"Shin on shin, and {n[1 - i]} came off worse."))
+        elif ex.slipped[i]:
+            lines.append(_pick(f"{n[i]} slips it clean!", f"Nice head movement from {n[i]}."))
+        elif ex.walked_in[i]:
+            lines.append(_pick(f"{n[i]} ducks right into it!", f"{n[i]} weaves straight into the shot!"))
     if ex.ref_break:
         lines.append("The referee breaks them up." if ex.ref_break == "clinch" else
                      "Nothing happening down there. The referee stands them up.")

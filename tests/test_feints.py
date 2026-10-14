@@ -78,5 +78,18 @@ class Feints(unittest.TestCase):
         self.assertEqual(st.clone().f[0].opening, "read")
 
 
+class Animations(unittest.TestCase):
+    def test_every_move_can_be_drawn(self):
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from engine.cards import CARDS
+        from engine.constants import SUB
+        from ui.choreo import ACTION, SUB_POSES
+        moves = list(MOVES.values()) + [c.move for c in CARDS.values() if c.move]
+        for m in moves:
+            self.assertIn(m.anim, ACTION, m.key)
+            if m.cls == SUB:
+                self.assertIn(m.anim, SUB_POSES, m.key)
+
+
 if __name__ == "__main__":
     unittest.main()

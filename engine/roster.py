@@ -8,7 +8,7 @@ from .fighter import Profile, Stats
 ARCHETYPES = {
     "Striker":  dict(striking=8, wrestling=4, grappling=4, cardio=5, chin=5),
     "Wrestler": dict(striking=4, wrestling=9, grappling=6, cardio=8, chin=6),
-    "BJJ":      dict(striking=4, wrestling=6, grappling=9, cardio=6, chin=5),
+    "BJJ":      dict(striking=4, wrestling=6, grappling=10, cardio=6, chin=5),
     "Brawler":  dict(striking=7, wrestling=4, grappling=3, cardio=6, chin=8),
 }
 

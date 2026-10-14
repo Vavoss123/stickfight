@@ -76,7 +76,7 @@ class Move:
 _ALL = [
     # Standing
     Move("jab", "Jab", STRIKE, "striking", 3, dmg=4.5, acc=0.88, speed=3, cuts=0.03,
-         desc="Quick and cheap. Beats power shots to the punch."),
+         desc="Quick and cheap. Beats power shots to the punch, but a takedown ducks right under it."),
     Move("cross", "Power punch", STRIKE, "striking", 10, dmg=10.5, acc=0.62, power=True, cuts=0.06,
          desc="Big right hand. Can drop them."),
     Move("body", "Body shot", STRIKE, "striking", 6, dmg=7, acc=0.78, target=BODY,
@@ -91,6 +91,12 @@ _ALL = [
          desc="Shoot for the legs. Beats jabs and kicks, eats power shots."),
     Move("clinch", "Clinch up", GRAPPLE, "wrestling", 5, to="clinch",
          desc="Tie up against the fence. Smothers power shots."),
+    Move("knee", "Knee", STRIKE, "striking", 10, dmg=8, acc=0.72, target=BODY, catch=1.8, anim="knees",
+         desc="A knee up the middle. Catches a shooting takedown hard, but punches beat it to the spot."),
+    Move("check", "Check kick", DEFEND, "striking", -3,
+         desc="Lift the shin. Stops leg kicks and hurts their leg. Punches and head kicks get through."),
+    Move("weave", "Weave", DEFEND, "striking", 4,
+         desc="Slip under strikes. Either no damage at all, or you walk into it for 1.5 times."),
     Move("feint", "Feint", FEINT, "striking", 2, speed=3,
          desc="Fake it. Freezes someone who is blocking and gives you a read for your next strike. "
               "Leaves you open to anything else."),
@@ -128,6 +134,8 @@ _ALL = [
          desc="Flip them and come up on top. Can scramble through their punches."),
     Move("triangle", "Triangle choke", SUB, "grappling", 12,
          desc="Lock a triangle from guard."),
+    Move("armbar", "Armbar", SUB, "grappling", 12, anim="triangle",
+         desc="Attack the arm from guard. Hurt arms give way sooner."),
     Move("getup", "Get up", GRAPPLE, "wrestling", 8, to="standing",
          desc="Wall walk back to the feet. Can scramble through their punches."),
     Move("cover", "Cover up", DEFEND, "grappling", -5,
@@ -140,6 +148,8 @@ _ALL = [
          desc="Heavy elbows from mount. Opens cuts."),
     Move("armtri", "Arm triangle", SUB, "grappling", 12,
          desc="Squeeze the arm triangle."),
+    Move("marmbar", "Armbar", SUB, "grappling", 13, sub_fail="bottom", anim="armtri",
+         desc="Spin for the armbar from mount. Miss it and you end up underneath."),
     Move("mposture", "Hold mount", DEFEND, "grappling", -6,
          desc="Keep the position and recover."),
     Move("takeback", "Take the back", GRAPPLE, "grappling", 8, to="back_top",
@@ -173,12 +183,12 @@ _ALL = [
 MOVES = {m.key: m for m in _ALL}
 
 MOVESETS = {
-    (STANDING, NEUTRAL): ["jab", "cross", "body", "legkick", "kick", "block", "takedown", "clinch",
-                          "feint"],
+    (STANDING, NEUTRAL): ["jab", "cross", "kick", "body", "knee", "clinch", "legkick", "takedown",
+                          "block", "check", "weave", "feint"],
     (CLINCH, NEUTRAL): ["knees", "dirty", "trip", "break", "frame", "guillotine"],
     (GUARD, TOP): ["gnp", "elbows", "pass", "posture", "standup"],
-    (GUARD, BOTTOM): ["upkick", "sweep", "triangle", "getup", "cover"],
-    (MOUNT, TOP): ["mgnp", "melbows", "armtri", "takeback", "mposture"],
+    (GUARD, BOTTOM): ["upkick", "sweep", "triangle", "armbar", "getup", "cover"],
+    (MOUNT, TOP): ["mgnp", "melbows", "armtri", "marmbar", "takeback", "mposture"],
     (MOUNT, BOTTOM): ["mcover", "bridge", "shrimp"],
     (BACK, TOP): ["bpunch", "rnc", "bhold"],
     (BACK, BOTTOM): ["bcover", "turnin", "bstand"],
@@ -193,6 +203,13 @@ OVERRIDES = {
     ("legkick", "takedown"): -1,  # kick gets caught
     ("body", "takedown"): -1,   # dipping to the body opens up the shot
     ("kick", "clinch"): -1,
+    # The check is a shin block for leg kicks, nothing more
+    ("legkick", "check"): -1,
+    ("jab", "check"): 1, ("cross", "check"): 1, ("body", "check"): 1, ("kick", "check"): 1,
+    ("knee", "check"): 1,
+    # The knee is a read on a takedown. Punches at range get there first, and tying up
+    # (or pulling guard) smothers it
+    ("jab", "knee"): 1, ("cross", "knee"): 1, ("knee", "clinch"): -1,
     # Under mount and back control, throwing strikes gives the bottom fighter a way out.
     # In guard, escapes can scramble out through the punches instead (see resolve.py).
     ("bridge", "melbows"): 1,   # sitting up high for elbows, bridge them off
@@ -202,6 +219,25 @@ OVERRIDES = {
 
 # Triangle: who beats whom by class. Subs count as grappling.
 _BEATS = {STRIKE: GRAPPLE, GRAPPLE: DEFEND, DEFEND: STRIKE}
+
+
+# What a move goes after, for showing it plainly in the fight
+ARM_SUBS = {"kimura", "armbar", "marmbar"}
+LEG_SUBS = {"suloev", "imanari"}
+LEG_GRAPPLES = {"takedown", "trip"}
+
+
+def zone(move):
+    """head, body, legs, arms, neck, position or defence."""
+    if move.cls == STRIKE:
+        return move.target
+    if move.cls == SUB:
+        return "arms" if move.base in ARM_SUBS else "legs" if move.base in LEG_SUBS else "neck"
+    if move.cls == GRAPPLE:
+        if move.base in LEG_GRAPPLES and move.key not in ("hiptoss",):
+            return "legs"
+        return "body" if move.base == "clinch" and move.to == "clinch" else "position"
+    return "trick" if move.cls == FEINT else "defence"
 
 
 def base_class(move):

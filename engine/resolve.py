@@ -54,6 +54,16 @@ FOULS = {"head": "Eye poke", "legs": "Low blow", "body": "Low blow", "ground": "
 IDLE_LIMIT = {CLINCH: 2, GUARD: 4, MOUNT: 4, BACK: 4}
 
 
+# Limbs. Body or leg damage at 100 ends the fight: cracked ribs, a broken leg. Blocking
+# heavy shots hurts the arms, and hurt arms leak through the guard and punch softer.
+BROKEN = {"ribs": "Cracked ribs", "leg": "Broken leg"}
+ARM_FROM_BLOCK = 1.2       # arm damage per point of a blocked power shot
+ARM_FROM_TAP = 0.4         # and of a blocked light shot
+CHECK_LEG = 4.5            # leg damage to a checked kicker per point (a landed kick does 3.2)
+WEAVE_SLIP = 0.5           # chance to slip a strike clean, before skill
+WEAVE_EAT = 1.5            # damage when the weave walks into it
+
+
 # How much harder an escape from the bottom is when the top fighter's strike lands on
 # you at the same time. Without it, covering up was the only answer to ground and pound.
 SCRAMBLE = -0.5
@@ -91,6 +101,10 @@ class Exchange:
         self.opening = [f.opening for f in st.f]   # read / follow / None, see OPENINGS
         self.foul = None                # (fighter, what, "warning" or "point")
         self.ref_break = None           # "clinch" or "ground" when the referee resets them
+        self.checked = [False, False]   # fighter i checked a leg kick
+        self.slipped = [False, False]   # fighter i weaved under a strike
+        self.walked_in = [False, False] # fighter i weaved straight into one
+        self.broken = None              # (fighter, "ribs" or "leg") when a limb gives out
         self.feinted = [False, False]   # fighter i's feint froze the other
         self.frozen = [False, False]    # fighter i bit on a feint
         self.surging = [False, False]   # fighter i went all in with full momentum
@@ -219,6 +233,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     dmg = move.dmg * (0.65 + 0.07 * a.stat(move.stat)) * a.stamina_factor() * mult
     dmg *= 0.5 + 0.5 * ex.effort[i]
     dmg *= _power(a, d)
+    if move.target != LEGS and move.base not in ("kick", "knee", "knees", "upkick"):
+        dmg *= 1 - a.arms * 0.003     # hurt arms, softer punches
     if op:
         dmg *= op[2]
     if ex.surging[i]:
@@ -244,6 +260,9 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         limb = move.limb * (1 + a.perk("bodysnatcher"))
         d.take(dmg * 0.7)
         d.body = min(100.0, d.body + dmg * 2.4 * limb)
+        if d.body >= 100 and not ex.finish:
+            ex.broken = (1 - i, "ribs")
+            ex.finish = (i, "TKO", BROKEN["ribs"])
         d.stamina = max(0.0, d.stamina - dmg * 0.9 * limb)
         fold = max(0.0, (d.body - 45) / 300) * chin * move.limb
         if standing and rng.random() < fold:
@@ -258,6 +277,9 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         was_ok = d.legs < 60
         d.take(dmg * 0.6)
         d.legs = min(100.0, d.legs + dmg * 3.2 * limb)
+        if d.legs >= 100 and not ex.finish:
+            ex.broken = (1 - i, "leg")
+            ex.finish = (i, "TKO", BROKEN["leg"])
         d.stamina = max(0.0, d.stamina - dmg * 0.3)
         if was_ok and d.legs >= 60:
             ex.limping[1 - i] = True
@@ -317,6 +339,7 @@ def _counter(st, ex, i, rng, move, open_shot=False):
     a, d = st.f[i], st.f[1 - i]
     p = 0.45 + (0.2 if open_shot else 0.0) + (a.stats.striking - d.stats.striking) * 0.04
     p += move.counter + a.perk("counter")
+    p -= a.arms * 0.002
     if a.rocked:
         p -= 0.2
     if rng.random() >= _clamp(p, 0.05, 0.92):
@@ -335,6 +358,40 @@ def _counter(st, ex, i, rng, move, open_shot=False):
     if rng.random() < max(0.0, (dmg - 5) * 0.06) * _chin_factor(d):
         d.rocked = 1
         ex.rocked[1 - i] = True
+
+
+def _check(st, ex, w, l, kick, rng):
+    """Fighter w lifts the shin into a leg kick. The kicker's own leg pays for it."""
+    a = st.f[l]
+    ex.checked[w] = True
+    ex.success[w] = True
+    ex.blocked[w] = True
+    hurt = kick.dmg * (0.65 + 0.07 * st.f[w].stat("striking")) * rng.uniform(0.85, 1.15)
+    was_ok = a.legs < 60
+    a.legs = min(100.0, a.legs + hurt * CHECK_LEG)
+    a.take(hurt * 0.5)
+    ex.dmg[w] += hurt * 0.5
+    ex.target_hit[w] = LEGS
+    if was_ok and a.legs >= 60:
+        ex.limping[l] = True
+    if a.legs >= 100 and not ex.finish:
+        ex.broken = (l, "leg")
+        ex.finish = (w, "TKO", "Broken leg, checked kick")
+
+
+def _weave(st, ex, w, l, strike, rng):
+    """Fighter w ducks a strike: clean, or straight into it."""
+    p = WEAVE_SLIP + (st.f[w].stat("striking") - st.f[l].stat("striking")) * 0.03
+    if rng.random() < _clamp(p, 0.2, 0.8):
+        ex.slipped[w] = True
+        ex.success[w] = True
+        ex.blocked[w] = True       # not stalling, it is defence
+        ex.missed[l] = True
+        st.f[w].opening = None     # set properly at the end of the exchange
+        ex.feinted[w] = False
+    else:
+        ex.walked_in[w] = True
+        _strike(st, ex, l, strike, rng, bonus_acc=0.2, mult=WEAVE_EAT)
 
 
 def _grapple_success(st, ex, i, move):
@@ -364,7 +421,7 @@ def _grapple_edge(st, i, move):
 
 def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     a, d = st.f[i], st.f[1 - i]
-    p = 0.78 + bonus + _grapple_edge(st, i, move) + (a.stat(move.stat) - d.stat(move.stat)) * 0.03
+    p = 0.84 + bonus + _grapple_edge(st, i, move) + (a.stat(move.stat) - d.stat(move.stat)) * 0.03
     p *= 0.7 + 0.3 * a.stamina_factor()
     p -= 0.4 * (1 - ex.effort[i])
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
@@ -416,6 +473,7 @@ def _end_of_exchange(st, ex, rocked_before):
         # Strikes landed in a row
         m = ex.moves[i]
         clean = m is not None and base_class(m) == STRIKE and ex.landed[i] and not ex.countered[1 - i]
+        clean = clean or ex.slipped[i]
         f.opening = "read" if ex.feinted[i] else "follow" if clean and not ex.finish else None
         if m is not None and base_class(m) == STRIKE and ex.landed[i]:
             f.combo = min(3, f.combo + 1)
@@ -530,12 +588,18 @@ def resolve(st, picks, rng):
                   and st.f[l].hp > 0 and ex.knockdown is None):
                 # Eating shots on the bottom but still scrambling out
                 _grapple_uncontested(st, ex, l, ml, rng, bonus=SCRAMBLE)
+        elif cw == DEFEND and mw.base == "check":
+            _check(st, ex, w, l, ml, rng)
+        elif cw == DEFEND and mw.base == "weave":
+            _weave(st, ex, w, l, ml, rng)
         elif cw == DEFEND:
             ex.blocked[w] = True
             ex.success[w] = True
             st.f[l].spend(5 if ml.power else 2)
-            if ml.power:
-                chip = ml.dmg * 0.12
+            arms = st.f[w].arms
+            st.f[w].arms = min(100.0, arms + ml.dmg * (ARM_FROM_BLOCK if ml.power else ARM_FROM_TAP))
+            chip = ml.dmg * ((0.12 if ml.power else 0.0) + arms / 100 * 0.5)   # a hurt guard leaks
+            if chip > 0:
                 st.f[w].take(chip)
                 ex.dmg[l] += chip
             _counter(st, ex, w, rng, mw, open_shot=ml.power)
@@ -624,6 +688,8 @@ def _resolve_sub(st, picks, rng):
     else:
         p = 0.52 + (A.stats.grappling - D.stats.grappling) * 0.05
         p += hold.bonus + A.perk("subhunter") - D.perk("ironwill")
+        if hold.base in ("kimura", "armbar", "marmbar"):
+            p += D.arms * 0.003
         p += 0.3 * (1 - D.stamina / 100) - 0.3 * (1 - A.stamina / 100)
         if D.rocked:
             p += 0.15

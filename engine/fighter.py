@@ -20,9 +20,9 @@ class Stats:
     def total(self):
         return sum(self.get(n) for n in STAT_NAMES)
 
-    def clamp(self):
+    def clamp(self, limit=STAT_MAX):
         for n in STAT_NAMES:
-            setattr(self, n, max(STAT_MIN, min(STAT_MAX, self.get(n))))
+            setattr(self, n, max(STAT_MIN, min(limit, self.get(n))))
         return self
 
 
@@ -70,11 +70,11 @@ class FighterState:
     """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
 
     __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut", "kit",
-                 "combo", "wc", "hype", "surge", "passive", "opening", "fouls")
+                 "combo", "wc", "hype", "surge", "passive", "opening", "fouls", "arms")
 
     def __init__(self, profile, hp=MAX_HP, stamina=MAX_STAMINA, rocked=0, body=0.0, legs=0.0,
                  cut=0.0, kit=None, combo=0, hype=0.0, surge=False, passive=0, opening=None,
-                 fouls=0):
+                 fouls=0, arms=0.0):
         if kit is None:
             from .cards import build_kit
             kit = build_kit(profile)
@@ -94,11 +94,12 @@ class FighterState:
         self.passive = passive  # defensive picks in a row that did nothing
         self.opening = opening  # "read" or "follow": the next strike is quicker
         self.fouls = fouls      # fouls this fight: the first is a warning, then points go
+        self.arms = arms        # 0 to 100, from blocking heavy shots: the guard leaks, punches soften
 
     def clone(self):
         return FighterState(self.profile, self.hp, self.stamina, self.rocked, self.body, self.legs,
                             self.cut, self.kit, self.combo, self.hype, self.surge, self.passive,
-                            self.opening, self.fouls)
+                            self.opening, self.fouls, self.arms)
 
     def perk(self, pid):
         return self.kit.perk(pid)

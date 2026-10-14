@@ -153,8 +153,9 @@ def lighten(c, f=1.3):
 
 class Button:
     def __init__(self, rect, label, key=None, sub="", color=(52, 58, 78), enabled=True,
-                 size=22):
+                 size=22, sub_size=15):
         self.rect = pygame.Rect(rect)
+        self.sub_size = sub_size
         self.label = label
         self.key = key
         self.sub = sub
@@ -186,10 +187,11 @@ class Button:
         if self.key and not self.sub:
             fit -= 24  # leave room for the key letter in the corner
         if self.sub:
-            text(surf, self.label, (self.rect.centerx, self.rect.centery - 10), self.size,
+            gap = 10 if self.sub_size >= 15 else 7
+            text(surf, self.label, (self.rect.centerx, self.rect.centery - gap), self.size,
                  col, "center", bold=True, max_width=fit)
-            text(surf, self.sub, (self.rect.centerx, self.rect.centery + 14), 15, GREY, "center",
-                 max_width=fit)
+            text(surf, self.sub, (self.rect.centerx, self.rect.centery + gap + 4 * (self.sub_size >= 15)),
+                 self.sub_size, GREY, "center", max_width=fit)
         else:
             c = (self.rect.centerx + (8 if self.key else 0), self.rect.centery)
             text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)

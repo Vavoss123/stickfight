@@ -20,7 +20,7 @@ PAGES = [
     ("Standing tricks", [
         "The triangle has a few twists on the feet:",
         "    A Jab is fast, so it beats a Power punch to the punch.",
-        "    A Takedown walks through a Jab, a Body shot or a kick. A Power punch stops it.",
+        "    A Takedown ducks under a Jab, a Body shot or a kick. A Power punch or Knee stops it.",
         "    Clinching smothers a Power punch. A Feint freezes someone who blocks.",
         "    A Leg kick goes under a block. A Head kick does not.",
         "Big moments fill the purple momentum bar. Full, your next attack goes ALL IN.",
@@ -29,17 +29,29 @@ PAGES = [
         "taken down and submitted. Defending moves recover stamina.",
         "    A move you cannot pay for comes out slow and weak: it marks as GASSED.",
     ]),
-    ("Head, body and legs", [
+    ("Head, body, legs and arms", [
         "Head shots do the damage and set up knockouts.",
-        "Body shots and knees drain stamina and slow how fast it comes back.",
-        "    Pile up enough body damage and one shot can fold them.",
-        "Leg kicks chop down the legs. Bad legs mean weaker power shots,",
-        "worse takedowns and worse takedown defence. Past 60% they start limping.",
-        "",
+        "Body shots and knees drain stamina. At 100% body damage the ribs crack: TKO.",
+        "Leg kicks take away power and takedowns. Past 60% they limp, at 100% the leg breaks.",
+        "Blocking heavy shots hurts your arms. Hurt arms let shots leak through the",
+        "guard, punch softer, and give way to an armbar sooner.",
+        "Full health is not safe: a broken leg or cracked ribs end the fight anyway.",
         "Elbows, and sometimes big punches, open cuts. Blood in the eyes hurts",
         "accuracy, and if the cut gets bad enough the doctor stops the fight.",
-        "Body, leg and cut damage show under each health bar.",
+        "Body, leg, arm and cut damage show under each health bar.",
         "Some of it heals between rounds, but not all.",
+    ]),
+    ("Defence and counters", [
+        "Block and counter: a high guard. Stops punches and head kicks, fires back.",
+        "    A leg kick goes under it, and heavy shots hurt the arms holding it up.",
+        "Check kick: lift the shin. Stops a leg kick and hurts the kicker's leg",
+        "    more than their kick would have hurt you. Punches and head kicks get through.",
+        "Weave: costs stamina. Slip the strike for nothing, or walk into it for 1.5x.",
+        "Knee: the counter to a takedown. A knee to someone shooting hits twice as hard.",
+        "A Jab never stops a takedown, they duck right under it.",
+        "Moves are grouped by what they go after: HEAD, BODY, LEGS, ARMS, NECK.",
+        "Hover a move to see the spot light up on your opponent.",
+        "Feint: freezes someone who blocks, checks or weaves. Loses to everything else.",
     ]),
     ("The ground", [
         "Takedowns, trips and knockdowns take the fight to the mat.",
@@ -65,9 +77,9 @@ PAGES = [
         "Tired fighters take more damage, so watch both stamina bars.",
     ]),
     ("Controls", [
-        "Quick fight: number keys, Q W E R A S D F Z, or click a move.",
-        "Local 2 player: red uses Q W E R A S D F Z, blue uses U I O P J K L ; M",
-        "Controllers: A B X Y then the d-pad pick moves. One pad plays blue.",
+        "Quick fight: 1 to 9, 0, - and =, the letters on each button, or click.",
+        "2 player: red uses Q W E R A S D F Z X C V, blue uses U I O P J K L ; M , . /",
+        "Controllers: the button shown on each move (A B X Y, d-pad, shoulders, triggers).",
         "Between rounds the coach suggests card swaps. C opens your deck (N for blue).",
         "SPACE continues between rounds and skips the KO replay.",
         "ESC pauses. M mutes sound. F11 fullscreen. F1 writes a feedback note.",
@@ -116,7 +128,8 @@ class HowToScene(Scene):
         panel(surf, (CX - 470, 150, 940, 440), (22, 24, 34))
         y = 180
         for ln in lines:
-            text(surf, ln, (CX - 430, y), 21, WHITE if not ln.startswith("    ") else (200, 210, 230))
+            text(surf, ln, (CX - 430, y), 21, WHITE if not ln.startswith("    ") else (200, 210, 230),
+                 max_width=880)
             y += 40
         text(surf, f"{self.page + 1} / {len(PAGES)}", (CX, H - 58), 18, GREY, "midtop")
         self.prev.enabled = self.page > 0
