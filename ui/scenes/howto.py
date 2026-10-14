@@ -68,7 +68,7 @@ PAGES = [
         "Quick fight: number keys, Q W E R A S D F Z, or click a move.",
         "Local 2 player: red uses Q W E R A S D F Z, blue uses U I O P J K L ; M",
         "Controllers: A B X Y then the d-pad pick moves. One pad plays blue.",
-        "Between rounds your corner tells you what they have seen.",
+        "Between rounds the coach suggests card swaps. C opens your deck (N for blue).",
         "SPACE continues between rounds and skips the KO replay.",
         "ESC pauses. M mutes sound. F11 fullscreen. F1 writes a feedback note.",
         "Volume, fight speed and skipping walkouts are in Settings.",

@@ -1,4 +1,4 @@
-"""Tournament mode: pick a fighter, then fight through an eight man bracket in one night."""
+"""Tournament mode: pick a fighter, then fight through an eight fighter bracket in one night."""
 
 import copy
 import random
@@ -300,6 +300,10 @@ class BracketScene(Scene):
                 text(surf, p.name.upper(), (r.x + 20, yy), 22, color, display=True, max_width=r.w - 40)
                 text(surf, f"{p.archetype}, {p.record()}", (r.right - 20, yy + 4), 14, GREY, "topright")
                 yy = self._draw_condition(surf, t.cond[i], r.x + 20, yy + 34, r.w - 40) + 18
+            from engine import coach
+            expect, _ = coach.scout(t.entrants[opp_i], t.player, 0)
+            if expect:
+                text_block(surf, "Expect: " + expect[0], (r.centerx, yy), 14, r.w - 40, (150, 200, 255))
         else:
             text(surf, "YOU ARE OUT", (r.centerx, r.y + 20), 22, (255, 120, 100), "midtop", bold=True)
             text_block(surf, "Watch how the rest of the bracket plays out.", (r.centerx, r.y + 56), 16,

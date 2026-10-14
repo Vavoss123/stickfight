@@ -115,7 +115,7 @@ def describe(ex, names):
             i = 0 if dmg[0] >= dmg[1] else 1
             m = ex.moves[i]
             if ex.landed[0] and ex.landed[1]:
-                lines.append(_pick("They trade shots!", "Both men land!", "Wild exchange!"))
+                lines.append(_pick("They trade shots!", "Both fighters land!", "Wild exchange!"))
             elif ex.target_hit[i] == "body":
                 lines.append(_pick(f"{n[i]} digs to the body.", f"Hard shot downstairs from {n[i]}."))
             elif ex.target_hit[i] == "legs":
@@ -124,7 +124,7 @@ def describe(ex, names):
                 lines.append(_pick(f"{n[i]} lands the {m.name.lower()}.",
                                    f"Good {m.name.lower()} from {n[i]}."))
         elif ex.stall:
-            lines.append(_pick("Both men reset.", "A quiet moment.", "Some boos from the crowd."))
+            lines.append(_pick("Both fighters reset.", "A quiet moment.", "Some boos from the crowd."))
         elif ex.missed[0] or ex.missed[1]:
             lines.append(_pick("Nothing lands clean.", "Swing and a miss."))
         else:

@@ -189,8 +189,9 @@ class HubScene(Scene):
         self.menu_btn = Button((20, H - 56, 150, 40), "Main menu", size=17)
         self.retire_btn = Button((180, H - 56, 150, 40), "Retire", size=17, color=(90, 40, 40))
         self.hall_btn = Button((340, H - 56, 140, 40), "Hall of fame", size=16, color=(150, 110, 30))
-        self.deck_btn = Button((CX - 150, 628, 145, 42), "Deck", size=19, color=(60, 50, 110))
-        self.shop_btn = Button((CX + 5, 628, 145, 42), "Shop", size=19, color=(150, 110, 30))
+        self.deck_btn = Button((CX - 150, 628, 96, 42), "Deck", size=18, color=(60, 50, 110))
+        self.scout_btn = Button((CX - 48, 628, 96, 42), "Scout", size=18, color=(40, 90, 130))
+        self.shop_btn = Button((CX + 54, 628, 96, 42), "Shop", size=18, color=(150, 110, 30))
         opp, *_ = self.c.next_fight()
         self.grudge_text = self.c.grudge_line() if self.c.next_fight()[4] == "Grudge match" else ""
         self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0)
@@ -220,6 +221,11 @@ class HubScene(Scene):
         if self.menu_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
             from .menu import MenuScene
             self.app.goto(MenuScene(self.app))
+        if self.scout_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_s):
+            from .scout import ScoutScene
+            opp = self.c.next_fight()[0]
+            self.app.goto(ScoutScene(self.app, opp, self.c, lambda: HubScene(self.app, self.c, self.message)))
+            return
         if self.deck_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_d):
             from .deck import DeckScene
             self.app.goto(DeckScene(self.app, self.c, lambda: HubScene(self.app, self.c)))
@@ -296,7 +302,7 @@ class HubScene(Scene):
         if label == "Grudge match" and title:
             label = "Grudge match for the title"
         cfg = FightConfig(p, opp_view, mode="ai", level=level, rounds=rounds, title=title,
-                          start=(c.camp_start(), None),
+                          start=(c.camp_start(), None), deck_budget=c.budget(),
                           on_done=done, event=label)
         from .walkout import WalkoutScene
         self.app.goto(WalkoutScene(self.app, cfg, label))
@@ -395,6 +401,7 @@ class HubScene(Scene):
             self.fight_btn.label = "GO TO CAMP"
         self.fight_btn.draw(surf)
         self.deck_btn.draw(surf)
+        self.scout_btn.draw(surf)
         self.shop_btn.draw(surf)
 
         # Rankings

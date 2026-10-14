@@ -42,6 +42,18 @@ class Fight:
         self.result = None
         self.between_rounds = False
 
+    def refit(self, i, profile):
+        """Give fighter i a new deck mid fight, keeping their damage and stamina."""
+        from .cards import build_kit
+        f = self.state.f[i]
+        f.profile = profile
+        f.kit = build_kit(profile)
+        f.stats = f.kit.stats
+        f.wc = f.kit.weight
+        profiles = list(self.profiles)
+        profiles[i] = profile
+        self.profiles = tuple(profiles)
+
     # Info
 
     @property

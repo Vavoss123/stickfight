@@ -30,6 +30,16 @@
 - [x] Max card level 5, seven new perks
 - [x] Money sinks: training points, deck points, restock, glove colours
 
+## Roadmap (from the Oct 2026 plan)
+
+- [x] Between round card swaps, two a break, with coach suggestions
+- [x] Scouting report before career fights, what to expect in quick fight and tournaments
+- [x] Contextual dialogue by personality: hurt, tired, takedowns, subs, momentum, last round
+- [ ] Deeper character customisation (more stats, abilities, signature styles)
+- [ ] Career: more progression, training choices and unlocks
+- [ ] Grappling polish and balance
+- [ ] Online PvP with your own fighter and deck (needs a server)
+
 ## Making it more fun for other people
 
 - [x] Interactive tutorial (press T on the menu)

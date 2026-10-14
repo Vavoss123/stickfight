@@ -100,8 +100,17 @@ you do not have the stamina for still comes out, but slow and weak (it shows as 
 
 Elbows and big shots can open cuts. Blood in the eyes hurts accuracy, and a bad enough
 cut gets the fight stopped by the doctor. Between rounds your corner reads the fight
-and tells you what the other guy keeps doing, what he is reading from you, and how the
-round went.
+and tells you what your opponent keeps doing, what they are reading from you, and how
+the round went.
+
+**Changing cards between rounds.** The coach looks at the round and suggests cards you
+own: they kept shooting, put in Sprawl; you are gassed, put in Iron Lungs. Click an idea
+to swap it in, or press **C** (blue presses **N** in 2 player) to open the deck. Two
+changes a break, for that fight only. The computer's corner makes its own changes too.
+
+**Scouting.** Before a career fight, **Scout** on the hub shows the opponent's style,
+personality and cards, what to expect, and which of your cards the coach would bring.
+Quick fight and tournaments show what to expect from the opponent as well.
 
 Knockouts get a slow motion replay.
 
@@ -124,7 +133,9 @@ drains it.
 
 **Personalities.** Every computer fighter has a way they like to fight: pressure fighters
 keep coming, counter punchers wait behind the guard, grinders hold you down, showboats go
-for the highlight reel. You will hear about it in the walkout too.
+for the highlight reel. They talk in character too: in the walkout, when they land or
+get hurt, when either of you tires, on takedowns and submissions, and before the last
+round.
 
 ## Fight cards
 

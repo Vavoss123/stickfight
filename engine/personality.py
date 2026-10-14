@@ -31,6 +31,42 @@ PERSONALITIES = {
 }
 NAMES = list(PERSONALITIES)
 
+# What a computer fighter says when something happens, by personality. "any" is the fallback.
+LINES = {
+    "hurt": {
+        "pressure": ["That all you got?", "Is that it?"], "counter": ["Lucky shot.", "Okay, you got one."],
+        "grinder": ["I've been hit harder in practice."], "showboat": ["Ooh, nice one!", "Okay, now it's a show."],
+        "any": ["Okay. Now we fight."]},
+    "tired": {
+        "pressure": ["Keep coming... I'm fine."], "counter": ["I only need one shot."],
+        "grinder": ["Just hold on..."], "showboat": ["I'm just warming up!"], "any": ["Deep breaths..."]},
+    "you_tired": {
+        "pressure": ["You're breathing hard! I'm just getting started."], "counter": ["You're slowing down."],
+        "grinder": ["You're tired. Good."], "showboat": ["Need a nap?"], "any": ["You're running on empty."]},
+    "takedown": {
+        "grinder": ["Welcome to my world.", "Get comfortable down there."], "pressure": ["Stay down!"],
+        "any": ["Now you're mine."]},
+    "taken_down": {
+        "grinder": ["You think you can hold ME down?"], "showboat": ["Rude!"], "any": ["Get off me!"]},
+    "sub": {"any": ["Tap!", "Nowhere to go now."], "grinder": ["Squeeze..."]},
+    "escaped": {"any": ["Not today.", "You'll need more than that."], "showboat": ["Houdini!"]},
+    "momentum": {"showboat": ["Hear that crowd? They love me!"], "pressure": ["Here I come!"],
+                 "any": ["The crowd's with me now."]},
+    "booed": {"showboat": ["Boo all you want, I'm still pretty."], "counter": ["Patience wins fights."],
+              "any": ["Let them boo."]},
+    "last_round": {"pressure": ["Five more minutes of hell for you."], "counter": ["One mistake. That's all I need."],
+                   "grinder": ["Last round. I'm taking you down."], "showboat": ["Time for the finish!"],
+                   "any": ["This is my round."]},
+}
+
+
+def line(name, event, rng):
+    """Something fitting for this personality to say, or None."""
+    by = LINES.get(event)
+    if not by:
+        return None
+    return rng.choice(by.get(name) or by["any"])
+
 # The usual personality for each style when a fighter does not have their own
 BY_STYLE = {"Striker": "counter", "Wrestler": "grinder", "BJJ": "balanced", "Brawler": "pressure"}
 

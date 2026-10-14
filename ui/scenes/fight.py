@@ -1,8 +1,10 @@
 """The fight itself: picking moves, the reveal, animating each exchange."""
 
+import copy
+
 import pygame
 
-from engine import personality
+from engine import coach, personality
 from engine.ai import AI
 from engine.commentary import describe, finish_line
 from engine.corner import advice
@@ -15,7 +17,7 @@ from engine.weights import get as weight_class
 from .. import gamepad
 from ..arena import Arena
 from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
-from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, panel,
+from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel,
                       bar, Button, font, text_block)
 from ..stickman import Figure
 from .base import Scene
@@ -54,7 +56,7 @@ def gloves_of(profile, corner):
 
 class FightConfig:
     def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
-                 on_done=None, event="", start=None):
+                 on_done=None, event="", start=None, deck_budget=None):
         self.p0, self.p1 = p0, p1
         self.mode = mode
         self.level = level
@@ -63,13 +65,22 @@ class FightConfig:
         self.on_done = on_done   # called with (app, fight) when the player leaves the result
         self.event = event
         self.start = start       # carried damage, see Fight
+        self.deck_budget = deck_budget   # deck points for swaps between rounds
 
 
 class FightScene(Scene):
     def __init__(self, app, cfg):
         super().__init__(app)
         self.cfg = cfg
-        self.fight = Fight(cfg.p0, cfg.p1, rounds=cfg.rounds, title=cfg.title, start=cfg.start)
+        # Copies, so swapping cards between rounds never changes a career or a saved deck
+        self.fight = Fight(copy.deepcopy(cfg.p0), copy.deepcopy(cfg.p1), rounds=cfg.rounds,
+                           title=cfg.title, start=cfg.start)
+        if cfg.mode == "ai":
+            coach.give_bench(self.fight.profiles[1])   # the computer's corner has a few cards to bring in
+        self.coach_cards = [[], []]     # card swaps the coach suggests at the break
+        self.break_start = [None, None]
+        self.coach_buttons = []
+        self.their_swap = ""
         self.ai = AI(cfg.level, personality=personality.of(cfg.p1)) if cfg.mode == "ai" else None
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
@@ -159,6 +170,9 @@ class FightScene(Scene):
         self.ref.set_pose("ref_fight", idle="ref_fight")
         title = "TITLE FIGHT" if self.cfg.title else self.cfg.event
         self.set_banner(f"ROUND {self.fight.round}", title, GOLD, 1.5)
+        if self.ai and self.fight.round == self.fight.rounds and self.fight.rounds > 1:
+            import random
+            self.say(f'{self.names[1]}: "{personality.line(self.ai.personality, "last_round", random)}"')
         self.at(1.5, self._fight_call)
 
     def _fight_call(self):
@@ -438,14 +452,46 @@ class FightScene(Scene):
         return settle_at + 0.45
 
     def _taunt(self, ex):
-        """The computer lets you know when it lands something big."""
+        """The computer talks: when it lands something big, gets hurt, tires, takes you
+        down, and so on. In its own voice, and not every exchange."""
         import random
         if not self.ai or ex.finish:
             return
-        big = ex.knockdown == 0 or ex.rocked[0] or ex.dmg[1] >= 10 or ex.sub_start == 1
-        if big and random.random() < 0.5:
-            line = random.choice(personality.PERSONALITIES[self.ai.personality]["taunts"])
-            self.say(f'{self.names[1]}: "{line}"')
+        self.taunt_wait = max(0, getattr(self, "taunt_wait", 0) - 1)
+        if self.taunt_wait:
+            return
+        me, you = self.fight.state.f[1], self.fight.state.f[0]
+        event = None
+        if ex.sub_start == 1:
+            event = "sub"
+        elif ex.in_sub and ex.sub_result == "escaped" and ex.sub_att == 0:
+            event = "escaped"
+        elif ex.surge_ready[1]:
+            event = "momentum"
+        elif ex.knockdown == 0 or ex.rocked[0] or ex.dmg[1] >= 10:
+            event = "big"
+        elif ex.rocked[1] or ex.dmg[0] >= 10:
+            event = "hurt"
+        elif ex.takedown_by == 1:
+            event = "takedown"
+        elif ex.takedown_by == 0:
+            event = "taken_down"
+        elif ex.booed[1]:
+            event = "booed"
+        elif you.stamina < 25 and random.random() < 0.5:
+            event = "you_tired"
+        elif me.stamina < 20 and random.random() < 0.5:
+            event = "tired"
+        if event is None or random.random() > 0.55:
+            return
+        name = self.ai.personality
+        if event == "big":
+            said = random.choice(personality.PERSONALITIES[name]["taunts"])
+        else:
+            said = personality.line(name, event, random)
+        if said:
+            self.say(f'{self.names[1]}: "{said}"')
+            self.taunt_wait = 2
 
     def _referee_moments(self, ex):
         """Fouls, breaks, and a moment of slow motion when something big lands."""
@@ -558,6 +604,8 @@ class FightScene(Scene):
     def _round_end(self):
         self.phase = "round_end"
         self.corner_tips = [advice(self.fight, 0), advice(self.fight, 1)]
+        if not self.fight.over:
+            self._coach_break()
         self.snd("bell")
         self.at(0.25, lambda: self.snd("bell"))
         self.can_continue = False
@@ -566,6 +614,71 @@ class FightScene(Scene):
             self.set_banner("TIME!", "We go to the judges", GOLD, 2.0)
             self.at(2.2, self._to_result)
             self.phase = "decision"
+
+    # Card swaps between rounds
+
+    def _budget(self, i):
+        from engine.cards import deck_points
+        from engine.loadouts import BUDGET
+        p = self.fight.profiles[i]
+        if i == 0 and self.cfg.deck_budget:
+            return max(self.cfg.deck_budget, deck_points(p))
+        return max(BUDGET, deck_points(p))
+
+    def _human(self, i):
+        return i == 0 or self.cfg.mode != "ai"
+
+    def _coach_break(self):
+        self.break_start = [copy.deepcopy(p) for p in self.fight.profiles]
+        self.their_swap = ""
+        for i in (0, 1):
+            self.coach_cards[i] = coach.suggest(self.fight, i, self._budget(i)) if self._human(i) else []
+        if self.ai:
+            ideas = coach.suggest(self.fight, 1, self._budget(1), limit=1)
+            if ideas:
+                p = self.fight.profiles[1]
+                ideas[0].apply(p)
+                self.fight.refit(1, p)
+                self.their_swap = f"Their corner put in {coach.CARDS[ideas[0].card].name}."
+        self._build_coach_buttons()
+
+    def _build_coach_buttons(self):
+        self.coach_buttons = []
+        sides = (0,) if self.cfg.mode == "ai" else (0, 1)
+        for i in sides:
+            x0 = 180 if self.cfg.mode == "ai" else (40 if i == 0 else CX + 20)
+            width = 920 if self.cfg.mode == "ai" else 580
+            ideas = self.coach_cards[i]
+            per = (width - 200 - 8 * len(ideas)) // max(1, len(ideas)) if ideas else 0
+            for k, s in enumerate(ideas):
+                b = Button((x0 + k * (per + 8), 592, per, 46), f"Put in {coach.CARDS[s.card].name}",
+                           sub=s.why, size=16, color=(40, 70, 50))
+                b.pick = ("idea", i, s)
+                self.coach_buttons.append(b)
+            key = "C" if i == 0 else "N"
+            b = Button((x0 + width - 190, 592, 190, 46), "Adjust deck", key=key, size=17, color=(60, 50, 110))
+            b.pick = ("deck", i, None)
+            self.coach_buttons.append(b)
+
+    def _swaps_left(self, i):
+        if self.break_start[i] is None:
+            return coach.SWAPS_PER_BREAK
+        return coach.SWAPS_PER_BREAK - coach.changes(self.break_start[i], self.fight.profiles[i])
+
+    def _use_idea(self, i, s):
+        if self._swaps_left(i) <= 0:
+            self.say("No more changes this break.")
+            return
+        p = self.fight.profiles[i]
+        s.apply(p)
+        self.fight.refit(i, p)
+        self.coach_cards[i] = [x for x in self.coach_cards[i] if x is not s]
+        self._build_coach_buttons()
+        self.snd("levelup", 0.6)
+
+    def _open_deck(self, i):
+        from .deck import DeckScene
+        self.app.goto(DeckScene(self.app, CornerDeck(self, i), lambda: self))
 
     def _next_round(self):
         self.can_continue = False
@@ -648,6 +761,25 @@ class FightScene(Scene):
 
     # Input
 
+    def _handle_break(self, e):
+        """Coach ideas and the deck button at the end of a round. True if the event was used."""
+        for b in self.coach_buttons:
+            if b.handle(e):
+                kind, i, s = b.pick
+                if kind == "idea":
+                    self._use_idea(i, s)
+                else:
+                    self._open_deck(i)
+                return True
+        if e.type == pygame.KEYDOWN and e.key in (pygame.K_c, pygame.K_n) and not self.fight.over:
+            i = 0 if e.key == pygame.K_c else 1
+            if self._human(i):
+                self._open_deck(i)
+                return True
+        if e.type == pygame.MOUSEBUTTONDOWN and any(b.rect.collidepoint(e.pos) for b in self.coach_buttons):
+            return True
+        return False
+
     def handle(self, e):
         if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
             self._toggle_pause()
@@ -670,6 +802,8 @@ class FightScene(Scene):
             return
         cont = (e.type == pygame.KEYDOWN and e.key in (pygame.K_SPACE, pygame.K_RETURN)) or \
                (e.type == pygame.MOUSEBUTTONDOWN and e.button == 1)
+        if self.phase == "round_end" and not self.fight.over and self._handle_break(e):
+            return
         if self.phase == "round_end" and self.can_continue and cont:
             self._next_round()
             return
@@ -781,6 +915,8 @@ class FightScene(Scene):
             self._draw_banner(surf)
         if self.phase == "round_end":
             self._draw_round_summary(surf)
+            if not self.fight.over:
+                self._draw_coach(surf)
         if self.phase == "finished" and self.can_continue:
             text(surf, "Press SPACE to continue", (CX, 410), 20, WHITE, "center", bold=True)
         if self.paused:
@@ -1035,6 +1171,23 @@ class FightScene(Scene):
             text(surf, f"Press SPACE for round {f.round + 1}", (CXs, rect.bottom - 40), 18, WHITE,
                  "midtop", bold=True)
 
+    def _draw_coach(self, surf):
+        ai = self.cfg.mode == "ai"
+        r = panel(surf, (160, 548, 960, 100) if ai else (20, 548, W - 40, 100), (12, 20, 16), alpha=235,
+                  border=GREEN)
+        sides = (0,) if ai else (0, 1)
+        for i in sides:
+            x = r.x + 20 if (ai or i == 0) else CX + 20
+            left = self._swaps_left(i)
+            who = "COACH" if ai else f"{self.names[i].upper()}'S COACH"
+            ideas = "card ideas" if self.coach_cards[i] else "no card changes needed"
+            text(surf, f"{who}: {ideas}, {left} change{'s' if left != 1 else ''} left this break",
+                 (x, r.y + 12), 15, GREEN, bold=True)
+        if self.their_swap:
+            text(surf, self.their_swap, (r.right - 20, r.y + 12), 14, (150, 200, 255), "topright")
+        for b in self.coach_buttons:
+            b.draw(surf)
+
     def _draw_corner(self, surf, rect):
         pygame.draw.line(surf, (60, 60, 70), (rect.x - 6, rect.y), (rect.x - 6, rect.bottom), 2)
         corners = [0] if self.cfg.mode == "ai" else [0, 1]
@@ -1048,6 +1201,53 @@ class FightScene(Scene):
                 pygame.draw.circle(surf, GOLD, (rect.x + 16, y + 10), 4)
                 y = text_block(surf, tip, (rect.x + 28, y), 16, rect.w - 34, WHITE, "topleft") + 8
             y += 10
+
+
+class CornerDeck:
+    """Lets the deck builder change a fighter's cards between rounds, a couple at most."""
+
+    money = None
+
+    def __init__(self, scene, i):
+        self.scene = scene
+        self.i = i
+        self.player = scene.fight.profiles[i]
+        self.title = "BETWEEN ROUNDS"
+
+    @property
+    def hint(self):
+        left = self.scene._swaps_left(self.i)
+        return f"{left} change{'s' if left != 1 else ''} left this break. Changes last for this fight only."
+
+    def budget(self):
+        return self.scene._budget(self.i)
+
+    def _try(self, change):
+        from engine.cards import equip, toggle_perk
+        before = (dict(self.player.deck), list(self.player.perks))
+        err = change(equip, toggle_perk)
+        if err:
+            return err
+        if self.scene._swaps_left(self.i) < 0:
+            self.player.deck, self.player.perks = before
+            return f"Only {coach.SWAPS_PER_BREAK} changes a break"
+        self.scene.fight.refit(self.i, self.player)
+        return None
+
+    def equip(self, slot, cid):
+        return self._try(lambda equip, _: equip(self.player, slot, cid, self.budget()))
+
+    def toggle_perk(self, pid):
+        return self._try(lambda _, toggle: toggle(self.player, pid, self.budget()))
+
+    def save(self):
+        self.scene.fight.refit(self.i, self.player)
+        self.scene._build_coach_buttons()
+
+    def reset(self):
+        start = self.scene.break_start[self.i]
+        self.player.deck, self.player.perks = dict(start.deck), list(start.perks)
+        self.scene.fight.refit(self.i, self.player)
 
 
 def _ctrl(n):

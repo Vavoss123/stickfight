@@ -187,6 +187,12 @@ class SelectScene(Scene):
                     yy = text(surf, ln, (rect.centerx, yy), 13, (210, 190, 255), "midtop").bottom + 1
         text(surf, "VS", (CX, 300), 40, GOLD, "center", display=True)
         if self.mode == "ai":
+            from engine import coach
+            expect, _ = coach.scout(self.roster[self.sel[1]], self.roster[self.sel[0]], 0)
+            if expect:
+                text(surf, "Expect: " + expect[0], (CX + 20 + 140, 520), 13, (150, 200, 255), "midtop",
+                     max_width=260)
+        if self.mode == "ai":
             text(surf, "Difficulty", (CX - 230, 570), 16, GREY, "topright")
         text(surf, "Length", (CX - 120, 618), 16, GREY, "topright")
         for b in self.opts:

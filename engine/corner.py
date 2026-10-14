@@ -10,37 +10,37 @@ from .constants import STANDING, GUARD, MOUNT, BACK, BOTTOM, TOP
 
 # What to do about an opponent who keeps throwing the same thing on the feet
 COUNTERS = {
-    "takedown": "He keeps shooting. Throw the power punch when he changes levels.",
-    "cross": "He's loading up on the right hand. Block and counter, or clinch up on him.",
-    "jab": "He's living on the jab. Shoot a takedown under it.",
-    "block": "He's shelling up. Leg kicks and takedowns go right through that guard.",
-    "body": "He keeps going to the body. Time the takedown when he dips.",
-    "legkick": "He's chopping your legs. Catch the next one with a takedown.",
-    "kick": "He's throwing head kicks. Keep the guard up or shoot under it.",
-    "clinch": "He wants the clinch. Stick the jab in his face on the way in.",
+    "takedown": "They keep shooting. Throw the power punch when they change levels.",
+    "cross": "They're loading up on the right hand. Block and counter, or clinch up.",
+    "jab": "They're living on the jab. Shoot a takedown under it.",
+    "block": "They're shelling up. Leg kicks, takedowns and feints go right through that guard.",
+    "body": "They keep going to the body. Time the takedown when they dip.",
+    "legkick": "They're chopping your legs. Catch the next one with a takedown.",
+    "kick": "They're throwing head kicks. Keep the guard up or shoot under it.",
+    "clinch": "They want the clinch. Stick the jab in their face on the way in.",
 }
 
 # What the opponent keeps doing on the ground
 GROUND = {
-    ("getup", BOTTOM): "When he's on his back he tries to get up. Pass as he turns and take the back.",
-    ("sweep", BOTTOM): "He's hunting sweeps from the bottom. Hit him and make him cover up.",
-    ("triangle", BOTTOM): "Watch the triangle from his guard. Strike first, don't sit there.",
-    ("cover", BOTTOM): "He just covers up down there. Pass the guard or go for the choke.",
-    ("gnp", TOP): "He's pounding you from the top. Cover up, then get up when he lets off.",
+    ("getup", BOTTOM): "On their back they try to get up. Pass as they turn and take the back.",
+    ("sweep", BOTTOM): "They're hunting sweeps from the bottom. Hit them and make them cover up.",
+    ("triangle", BOTTOM): "Watch the triangle from their guard. Strike first, don't sit there.",
+    ("cover", BOTTOM): "They just cover up down there. Pass the guard or go for the choke.",
+    ("gnp", TOP): "They're pounding you from the top. Cover up, then scramble when they let off.",
     ("elbows", TOP): "Those elbows are hurting you. Cover up and look for the sweep.",
-    ("pass", TOP): "He wants to pass. Don't just lie there, sweep him or get up.",
-    ("posture", TOP): "He's stalling on top. Get up or sweep, he's not doing anything.",
+    ("pass", TOP): "They want to pass. Don't just lie there, sweep or get up.",
+    ("posture", TOP): "They're stalling on top. Get up or sweep, they're not doing anything.",
 }
 
 TELLS = {
-    "takedown": "You're shooting every time. He's waiting with the right hand.",
-    "cross": "You keep loading up the right hand. He's reading it, mix it up.",
-    "block": "You're shelling up too much. He's going to take you down.",
+    "takedown": "You're shooting every time. They're waiting with the right hand.",
+    "cross": "You keep loading up the right hand. They're reading it, mix it up.",
+    "block": "You're shelling up too much. They're going to feint you or take you down.",
     "jab": "You're only throwing the jab. Change it up.",
-    "kick": "Too many head kicks. He's going to catch one.",
-    "legkick": "He's timing the leg kick. Go upstairs or shoot.",
-    "body": "You're going to the body every time. He sees it coming.",
-    "clinch": "You're clinching every exchange. He's ready for it.",
+    "kick": "Too many head kicks. They're going to catch one.",
+    "legkick": "They're timing the leg kick. Go upstairs or shoot.",
+    "body": "You're going to the body every time. They see it coming.",
+    "clinch": "You're clinching every exchange. They're ready for it.",
 }
 
 
@@ -90,13 +90,13 @@ def advice(fight, me):
     elif m.cut > 0:
         tips.append((5, "We closed the cut, but protect it."))
     if o.cut >= 25:
-        tips.append((8, "He's cut and bleeding. Go after that eye with elbows and punches."))
+        tips.append((8, "They're cut and bleeding. Go after that eye with elbows and punches."))
     if m.legs >= 45:
         tips.append((8, "Your leg is hurt. Stop shooting off it, keep the fight tight."))
     if o.legs >= 40:
-        tips.append((7, "His lead leg is going. Keep kicking it."))
+        tips.append((7, "Their lead leg is going. Keep kicking it."))
     if o.body >= 40:
-        tips.append((6, "The body shots are working. He's breathing hard, keep digging."))
+        tips.append((6, "The body shots are working. They're breathing hard, keep digging."))
 
     # Opponent habits
     stand = _habit(_picks(fight, opp, STANDING))
@@ -117,12 +117,12 @@ def advice(fight, me):
     if m.stamina < 35:
         tips.append((6, "You're gassed. Block and recover, pick your moments."))
     elif o.stamina < 35:
-        tips.append((6, "He's tired. Push the pace and make him work."))
+        tips.append((6, "They're tired. Push the pace and make them work."))
 
     # How the round went
     diff = _round_points(fight, me) - _round_points(fight, opp)
     if diff > 15:
-        tips.append((4, "You won that round. Stay smart, don't give him anything."))
+        tips.append((4, "You won that round. Stay smart, don't give them anything."))
     elif diff < -15:
         tips.append((5, "You lost that round. You need to make something happen."))
     else:
