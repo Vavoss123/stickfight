@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from engine.ai import AI
 from engine.career import Career, new_player
+from engine.cards import MAX_LEVEL
 from engine.constants import STANDING, CLINCH, GUARD, MOUNT, BACK, SUB_TAP
 from engine.fight import Fight
 from engine.fighter import FighterState
@@ -288,9 +289,9 @@ class CareerCards(unittest.TestCase):
     def test_duplicates_level_up_then_refund(self):
         c = self._career()
         self.assertEqual(c.gain_card("superman"), "new")
-        self.assertEqual(c.gain_card("superman"), "level")
-        self.assertEqual(c.gain_card("superman"), "level")
-        self.assertEqual(c.player.cards["superman"], 3)
+        for _ in range(MAX_LEVEL - 1):
+            self.assertEqual(c.gain_card("superman"), "level")
+        self.assertEqual(c.player.cards["superman"], MAX_LEVEL)
         before = c.money
         self.assertEqual(c.gain_card("superman"), "refund")
         self.assertGreater(c.money, before)

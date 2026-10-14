@@ -11,13 +11,21 @@ duplicate. A deck has a point budget, so you cannot equip everything you own.
 from dataclasses import dataclass, replace
 
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, NEUTRAL, TOP, BOTTOM,
-                        STRIKE, GRAPPLE, SUB, DEFEND, HEAD, BODY, LEGS, STAT_NAMES)
+                        STRIKE, GRAPPLE, SUB, DEFEND, HEAD, BODY, LEGS, STAT_NAMES, STAT_MAX)
 from .moves import Move, MOVES, MOVESETS
 
 COMMON, RARE, LEGENDARY = "common", "rare", "legendary"
 DECK_COST = {COMMON: 1, RARE: 2, LEGENDARY: 3}
+# Deck points for cards that are stronger or weaker than their rarity says. From
+# tools/cardsim.py: a card that wins well over half its mirror matches costs more.
+POINTS = {
+    "ironlungs": 3,                                          # 60%
+    "base": 2, "secondwind": 2, "heavyhands": 2, "gastank": 2,   # 54 to 56% for a common
+    "imanari": 2, "twister": 2, "showtime": 2, "gogo": 2,    # legendaries that only win about half
+    "flyknee": 1, "granite": 1, "killer": 1, "spinelbow": 1, "plum": 1, "butterfly": 1,
+}
 PRICE = {COMMON: 5000, RARE: 12000, LEGENDARY: 30000}
-MAX_LEVEL = 3
+MAX_LEVEL = 5
 MAX_PERKS = 3
 
 
@@ -33,6 +41,11 @@ class Card:
     @property
     def is_perk(self):
         return self.perk is not None
+
+    @property
+    def points(self):
+        """What it costs to put in a deck."""
+        return POINTS.get(self.id, DECK_COST[self.rarity])
 
 
 def _m(key, name, base, cls, stat, cost, **kw):
@@ -53,7 +66,7 @@ _MOVE_CARDS = [
                    power=True, speed=0, cuts=0.08, ko=1.3, anim="kick", beats=("takedown", "clinch"),
                    desc="Off the fence, over their shot or their clinch. Huge knockout power."),
      "Off the fence, over their shot or their clinch. Huge knockout power."),
-    (RARE, _m("flyknee", "Flying Knee", "kick", STRIKE, "striking", 15, dmg=14, acc=0.62,
+    (RARE, _m("flyknee", "Flying Knee", "kick", STRIKE, "striking", 12, dmg=14, acc=0.64,
               power=True, speed=1, cuts=0.08, catch=1.8, anim="kick", loses_to=(),
               beats=("takedown",),
               desc="Catches them shooting in. Costs a lot of gas."),
@@ -163,35 +176,50 @@ _MOVE_CARDS = [
 
 # Perks. Values are the effect at level 1, 2 and 3.
 _PERKS = [
-    ("nevergiveup", "Never Say Die", RARE, (0.3, 0.4, 0.5),
+    ("nevergiveup", "Never Say Die", RARE, (0.3, 0.4, 0.5, 0.58, 0.65),
      "Hit {pct} harder when your health is under 40%."),
-    ("combo", "Combination Puncher", RARE, (0.1, 0.13, 0.16),
+    ("combo", "Combination Puncher", RARE, (0.1, 0.13, 0.16, 0.18, 0.2),
      "Every strike that lands in a row hits {pct} harder, up to 3 in a row."),
-    ("dutch", "Dutch Kickboxing", COMMON, (0.4, 0.6, 0.8),
+    ("dutch", "Dutch Kickboxing", COMMON, (0.4, 0.6, 0.8, 0.95, 1.1),
      "Leg kicks do {pct} more leg damage."),
-    ("bodysnatcher", "Body Snatcher", COMMON, (0.4, 0.6, 0.8),
+    ("bodysnatcher", "Body Snatcher", COMMON, (0.4, 0.6, 0.8, 0.95, 1.1),
      "Body shots drain {pct} more stamina."),
-    ("ironlungs", "Iron Lungs", RARE, (0.18, 0.24, 0.3),
+    ("ironlungs", "Iron Lungs", RARE, (0.18, 0.24, 0.3, 0.34, 0.38),
      "Every move costs {pct} less stamina."),
-    ("granite", "Granite Chin", RARE, (0.4, 0.5, 0.6),
+    ("granite", "Granite Chin", RARE, (0.4, 0.5, 0.6, 0.65, 0.7),
      "{pct} less chance of being rocked or knocked out."),
-    ("killer", "Killer Instinct", RARE, (0.35, 0.45, 0.55),
+    ("killer", "Killer Instinct", RARE, (0.35, 0.45, 0.55, 0.62, 0.7),
      "Hit {pct} harder when they are rocked."),
-    ("subhunter", "Submission Hunter", RARE, (0.05, 0.08, 0.11),
+    ("subhunter", "Submission Hunter", RARE, (0.05, 0.08, 0.11, 0.13, 0.15),
      "Submissions sink in {pts} more often."),
-    ("getup", "Get Up Artist", COMMON, (0.14, 0.2, 0.26),
+    ("getup", "Get Up Artist", COMMON, (0.14, 0.2, 0.26, 0.3, 0.34),
      "Escapes and getting up work {pts} more often."),
-    ("heavytop", "Heavy Top", RARE, (0.25, 0.35, 0.45),
+    ("heavytop", "Heavy Top", RARE, (0.25, 0.35, 0.45, 0.52, 0.6),
      "Ground strikes from the top do {pct} more and escapes are harder."),
-    ("counter", "Counter Striker", COMMON, (0.18, 0.24, 0.3),
+    ("counter", "Counter Striker", COMMON, (0.18, 0.24, 0.3, 0.34, 0.38),
      "Counters land {pts} more often."),
-    ("secondwind", "Second Wind", COMMON, (12, 18, 24),
+    ("secondwind", "Second Wind", COMMON, (12, 18, 24, 28, 32),
      "Get {num} extra stamina back between rounds."),
-    ("heavyhands", "Heavy Hands", COMMON, (1, 1, 2), "+{num} striking."),
-    ("base", "Wrestling Base", COMMON, (1, 1, 2), "+{num} wrestling."),
-    ("blackbelt", "Black Belt", COMMON, (1, 1, 2), "+{num} grappling."),
-    ("gastank", "Gas Tank", COMMON, (1, 1, 2), "+{num} cardio."),
-    ("glass", "Glass Cannon", LEGENDARY, (2, 3, 3), "+{num} striking, but -2 chin."),
+    ("heavyhands", "Heavy Hands", COMMON, (1, 1, 2, 2, 3), "+{num} striking."),
+    ("base", "Wrestling Base", COMMON, (1, 1, 2, 2, 3), "+{num} wrestling."),
+    ("blackbelt", "Black Belt", COMMON, (1, 1, 2, 2, 3), "+{num} grappling."),
+    ("gastank", "Gas Tank", COMMON, (1, 1, 2, 2, 3), "+{num} cardio."),
+    ("glass", "Glass Cannon", LEGENDARY, (2, 3, 3, 4, 4), "+{num} striking, but -2 chin."),
+    # Newer perks
+    ("ironwill", "Iron Will", RARE, (0.06, 0.09, 0.12, 0.14, 0.16),
+     "Submissions get tighter {pts} less often on you."),
+    ("relentless", "Relentless", RARE, (0.25, 0.35, 0.45, 0.52, 0.6),
+     "Head shots that land also drain {pct} of their damage as stamina."),
+    ("sprawl", "Sprawl", COMMON, (0.06, 0.09, 0.12, 0.14, 0.16),
+     "Takedowns and trips on you work {pts} less often."),
+    ("cutman", "Cut Man", COMMON, (10, 15, 20, 24, 28),
+     "Your corner closes {num} more of a cut between rounds, and the doctor is more patient."),
+    ("feintmaster", "Feint Master", COMMON, (6, 9, 12, 14, 16),
+     "A feint that freezes them also drains {num} of their stamina."),
+    ("slick", "Slick", RARE, (0.04, 0.06, 0.08, 0.09, 0.1),
+     "Strikes against you land {pts} less often."),
+    ("showman", "Showman", COMMON, (0.25, 0.35, 0.45, 0.52, 0.6),
+     "Your momentum builds {pct} faster."),
 ]
 
 STAT_PERKS = {"heavyhands": "striking", "base": "wrestling", "blackbelt": "grappling",
@@ -246,10 +274,11 @@ def variants(slot):
 
 
 def leveled(move, level):
-    """A move card gets a bit better with each level."""
+    """A move card gets a bit better with each level, a little less from level 4 on."""
     n = max(0, level - 1)
     if n == 0:
         return move
+    n = min(n, 2) + 0.5 * max(0, n - 2)   # levels 2 and 3 count fully, 4 and 5 half
     cost = move.cost * (1 - 0.08 * n) if move.cost > 0 else move.cost
     return replace(move, dmg=move.dmg * (1 + 0.1 * n), acc=move.acc + 0.03 * n, cost=cost,
                    bonus=move.bonus + 0.04 * n, counter=move.counter + 0.04 * n if move.counter else 0.0)
@@ -306,6 +335,9 @@ def build_kit(profile):
             stats.striking += v
             stats.chin -= 2
     stats.clamp()
+    boost = getattr(profile, "camp_boost", None)   # training camp, see Career.fighter_for_fight
+    if boost:
+        setattr(stats, boost, min(STAT_MAX + 1, stats.get(boost) + 1))
     from .weights import get
     return Kit(moves, movesets, perks, stats, get(getattr(profile, "weight", None)))
 
@@ -314,10 +346,10 @@ def deck_points(profile):
     pts = 0
     for cid in (profile.deck or {}).values():
         if cid in CARDS:
-            pts += DECK_COST[CARDS[cid].rarity]
+            pts += CARDS[cid].points
     for pid in profile.perks or []:
         if pid in CARDS:
-            pts += DECK_COST[CARDS[pid].rarity]
+            pts += CARDS[pid].points
     return pts
 
 

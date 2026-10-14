@@ -60,7 +60,7 @@ PAGES = [
         "Perk cards change how you fight. Edit any deck from the fighter select.",
         "Career fights pay purse money. Wins give a pack: pick one of three cards.",
         "The shop has new cards after every fight. A duplicate levels a card up.",
-        "Cards cost deck points (common 1, rare 2, legendary 3). Your budget",
+        "Cards cost 1 to 3 deck points, by how strong they are. Your budget",
         "grows as you climb, so choose what fits your style.",
         "Tired fighters take more damage, so watch both stamina bars.",
     ]),

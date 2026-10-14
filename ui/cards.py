@@ -2,7 +2,7 @@
 
 import pygame
 
-from engine.cards import CARDS, group_of, perk_text, leveled
+from engine.cards import CARDS, MAX_LEVEL, group_of, perk_text, leveled
 from engine.constants import STRIKE, GRAPPLE, SUB, DEFEND, FEINT
 from engine.moves import MOVES
 
@@ -54,12 +54,12 @@ def draw_card(surf, rect, card_id, level=1, owned=True, selected=False, equipped
     pad = 8 if small else 10
     name = MOVES[card_id].name if basic else card.name
     text(surf, name, (rect.x + pad, rect.y + pad), 15 if small else 18, WHITE, bold=True,
-         max_width=rect.w - pad * 2 - (30 if not basic else 0))
+         max_width=rect.w - pad * 2 - (42 if not basic else 0))
     # Level pips
     if not basic and owned:
-        for n in range(3):
+        for n in range(MAX_LEVEL):
             c = GOLD if n < level else (60, 60, 70)
-            pygame.draw.circle(surf, c, (rect.right - pad - 4 - (2 - n) * 11, rect.y + pad + 8), 4)
+            pygame.draw.circle(surf, c, (rect.right - pad - 3 - (MAX_LEVEL - 1 - n) * 8, rect.y + pad + 8), 3)
 
     # Type line
     if card and card.is_perk:
@@ -103,7 +103,7 @@ def draw_card(surf, rect, card_id, level=1, owned=True, selected=False, equipped
                    WHITE, "topleft", line_gap=1)
 
     # Footer
-    foot = "Basic" if basic else rarity.capitalize()
+    foot = "Basic" if basic else f"{rarity.capitalize()}, {card.points} pt"
     if not owned:
         foot = "Not owned"
     if equipped:

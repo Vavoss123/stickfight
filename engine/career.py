@@ -19,6 +19,17 @@ from .fighter import Profile, Stats
 from .roster import ARCHETYPES, division, prospect
 
 SHOP_SIZE = 4
+
+# Spending money and spare training points
+TRAINING_PRICE = 15000       # one extra training point, up 35% each time
+DECK_POINT_PRICE = 75000     # one extra deck point, doubling each time
+MAX_BONUS_DECK = 6           # extra deck points you can get from money and training points
+RESTOCK_PRICE = 5000
+POINTS_PER_DECK_POINT = 5    # training points traded for a deck point
+POINTS_PER_PACK = 3          # training points traded for a card pack
+GLOVES = {"Gold": (240, 196, 60), "Black": (30, 30, 34), "Pink": (240, 110, 180),
+          "White": (235, 235, 235)}
+GLOVE_PRICE = 150000
 # (purse, win bonus) by the kind of fight
 PURSES = {"prospect": (4000, 4000), "ranked": (10000, 10000), "contender": (20000, 20000),
           "title": (50000, 50000), "defence": (60000, 60000)}
@@ -33,7 +44,9 @@ CAMPS = {
     "wrestling": ("Wrestling camp", "Hard rounds with college wrestlers."),
     "grappling": ("Jiu-jitsu camp", "Rolling with black belts."),
     "cardio": ("Altitude camp", "Running hills in the mountains."),
+    "film": ("Film study", "Watch their tapes. Start with a read on them and the crowd behind you."),
 }
+FILM_START = {"opening": "read", "hype": 45.0}
 
 CALLOUTS = [
     '"{player} is not ready for the top. I want {player} next." - {rival}',
@@ -83,6 +96,10 @@ class Career:
         self.titles_won = 0
         self.best_rank = None
         self.most_defenses = 0
+        # Spending
+        self.bonus_deck = 0           # deck points bought or traded for
+        self.bought_training = 0      # training points bought, for the price
+        self.gloves_owned = []
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
             apply_deck(player, deck, perks, 1)
@@ -253,12 +270,17 @@ class Career:
         return title and self.camp is None
 
     def fighter_for_fight(self):
-        """The player's profile for the next fight, with the camp's boost on a copy."""
-        if not self.camp:
+        """The player's profile for the next fight, with the camp's boost on a copy.
+        A camp can take a stat one past the usual max, so it still helps a maxed fighter."""
+        if not self.camp or self.camp == "film":
             return self.player
         p = copy.deepcopy(self.player)
-        setattr(p.stats, self.camp, min(STAT_MAX, p.stats.get(self.camp) + 1))
+        p.camp_boost = self.camp
         return p
+
+    def camp_start(self):
+        """How the player starts the next fight, for a film study camp."""
+        return dict(FILM_START) if self.camp == "film" else None
 
     def _win_vs(self, opp):
         r = self.rank()
@@ -306,13 +328,15 @@ class Career:
     # Cards and money
 
     def budget(self):
-        """Deck points you can spend. It grows as you climb."""
+        """Deck points you can spend. It grows as you climb, plus any you bought."""
         r = self.rank()
         if r is None:
-            return 6
-        if r == 0:
-            return 12
-        return 10 if r <= 5 else 8
+            base = 6
+        elif r == 0:
+            base = 12
+        else:
+            base = 10 if r <= 5 else 8
+        return base + self.bonus_deck
 
     def fight_kind(self):
         r = self.rank()
@@ -366,18 +390,90 @@ class Career:
 
     def refresh_shop(self):
         self.shop = []
-        for _ in range(SHOP_SIZE):
+        for _ in range(SHOP_SIZE):   # _roll_card skips maxed cards
             cid = self._roll_card({COMMON: 45, RARE: 40, LEGENDARY: 15}, exclude=self.shop)
             if cid:
                 self.shop.append(cid)
 
+    def maxed(self, cid):
+        return self.player.cards.get(cid, 0) >= MAX_LEVEL
+
+    def in_deck(self, cid):
+        p = self.player
+        return cid in (p.deck or {}).values() or cid in (p.perks or [])
+
+    def shop_cards(self):
+        """What is on sale. Cards you have maxed come off the shelf."""
+        self.shop = [cid for cid in self.shop if not self.maxed(cid)]
+        return self.shop
+
     def buy(self, cid):
         price = PRICE[CARDS[cid].rarity]
-        if cid not in self.shop or self.money < price:
+        if cid not in self.shop or self.money < price or self.maxed(cid):
             return None
         self.money -= price
         self.shop.remove(cid)
         return self.gain_card(cid)
+
+    # Other things to spend money on
+
+    def training_price(self):
+        return int(round(TRAINING_PRICE * 1.35 ** self.bought_training, -3))
+
+    def buy_training(self):
+        price = self.training_price()
+        if self.money < price:
+            return False
+        self.money -= price
+        self.bought_training += 1
+        self.points += 1
+        return True
+
+    def deck_point_price(self):
+        """None once you have every extra deck point."""
+        if self.bonus_deck >= MAX_BONUS_DECK:
+            return None
+        return DECK_POINT_PRICE * 2 ** self.bonus_deck
+
+    def buy_deck_point(self):
+        price = self.deck_point_price()
+        if price is None or self.money < price:
+            return False
+        self.money -= price
+        self.bonus_deck += 1
+        return True
+
+    def restock(self):
+        if self.money < RESTOCK_PRICE:
+            return False
+        self.money -= RESTOCK_PRICE
+        self.refresh_shop()
+        return True
+
+    def buy_gloves(self, name):
+        """Buy a glove colour, or put on one you own. Returns False if you cannot afford it."""
+        if name not in self.gloves_owned:
+            if self.money < GLOVE_PRICE:
+                return False
+            self.money -= GLOVE_PRICE
+            self.gloves_owned.append(name)
+        self.player.gloves = GLOVES[name]
+        return True
+
+    # Spare training points
+
+    def trade_for_deck_point(self):
+        if self.points < POINTS_PER_DECK_POINT or self.bonus_deck >= MAX_BONUS_DECK:
+            return False
+        self.points -= POINTS_PER_DECK_POINT
+        self.bonus_deck += 1
+        return True
+
+    def trade_for_pack(self):
+        if self.points < POINTS_PER_PACK:
+            return False
+        self.points -= POINTS_PER_PACK
+        return True
 
     def equip(self, slot, cid):
         """Put a card in a move slot, or None for the basic move. Returns an error or None."""
@@ -421,6 +517,9 @@ class Career:
             "titles_won": self.titles_won,
             "best_rank": self.best_rank,
             "most_defenses": self.most_defenses,
+            "bonus_deck": self.bonus_deck,
+            "bought_training": self.bought_training,
+            "gloves_owned": self.gloves_owned,
         }
 
     @classmethod
@@ -443,6 +542,9 @@ class Career:
         c.titles_won = d.get("titles_won", 1 if c.is_champ() else 0)
         c.best_rank = d.get("best_rank", c.rank())
         c.most_defenses = d.get("most_defenses", c.defenses)
+        c.bonus_deck = d.get("bonus_deck", 0)
+        c.bought_training = d.get("bought_training", 0)
+        c.gloves_owned = [g for g in d.get("gloves_owned", []) if g in GLOVES]
         return c
 
     def save(self, path=SAVE_PATH):

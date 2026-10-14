@@ -178,6 +178,8 @@ class HubScene(Scene):
         app.sounds.ambience(False)
 
     def _build(self):
+        self.trade_deck = Button((40, 572, 190, 32), "+1 deck point (5 pts)", size=14, color=(60, 50, 110))
+        self.trade_pack = Button((240, 572, 180, 32), "Card pack (3 pts)", size=14, color=(150, 110, 30))
         self.plus = []
         for k, s in enumerate(STAT_NAMES):
             b = Button((380, 400 + k * 34, 36, 28), "+", size=18, color=(40, 120, 70))
@@ -195,6 +197,19 @@ class HubScene(Scene):
         self.opp_fig.set_pose("stance", idle="stance")
 
     def handle(self, e):
+        if self.trade_deck.handle(e):
+            if self.c.trade_for_deck_point():
+                self.app.sounds.play("levelup")
+                self.message = f"Traded 5 training points. Your deck budget is now {self.c.budget()}."
+                self.c.save()
+            return
+        if self.trade_pack.handle(e):
+            if self.c.trade_for_pack():
+                self.c.save()
+                from .deck import PackScene
+                c = self.c
+                self.app.goto(PackScene(self.app, c, "normal", lambda: HubScene(self.app, c)))
+            return
         for b in self.plus:
             if b.handle(e):
                 if self.c.train(b.pick):
@@ -281,6 +296,7 @@ class HubScene(Scene):
         if label == "Grudge match" and title:
             label = "Grudge match for the title"
         cfg = FightConfig(p, opp_view, mode="ai", level=level, rounds=rounds, title=title,
+                          start=(c.camp_start(), None),
                           on_done=done, event=label)
         from .walkout import WalkoutScene
         self.app.goto(WalkoutScene(self.app, cfg, label))
@@ -323,7 +339,13 @@ class HubScene(Scene):
             b = self.plus[k]
             b.enabled = v < STAT_MAX and pts >= train_cost(v)
             b.draw(surf)
-        text(surf, "Stats under 7 cost 1 point, 7 and up cost 2", (rect.x + 20, rect.bottom - 26), 13, GREY)
+        from engine.career import POINTS_PER_DECK_POINT, POINTS_PER_PACK, MAX_BONUS_DECK
+        self.trade_deck.enabled = pts >= POINTS_PER_DECK_POINT and c.bonus_deck < MAX_BONUS_DECK
+        self.trade_pack.enabled = pts >= POINTS_PER_PACK
+        self.trade_deck.draw(surf)
+        self.trade_pack.draw(surf)
+        text(surf, "Stats under 7 cost 1 point, 7 and up cost 2", (rect.centerx, rect.bottom - 4), 11, GREY,
+             "midbottom")
 
         # Next fight
         opp, rounds, title, level, label = c.next_fight()

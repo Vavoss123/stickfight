@@ -21,7 +21,7 @@ class CampScene(Scene):
         self.back_to = back
         self.buttons = []
         for k, (stat, (name, blurb)) in enumerate(CAMPS.items()):
-            b = Button((CX - 470 + k * 240, 260, 220, 200), name, sub=blurb, size=22,
+            b = Button((CX - 595 + k * 240, 260, 226, 200), name, sub=blurb, size=22,
                        color=(50, 56, 80))
             b.pick = stat
             self.buttons.append(b)
@@ -58,16 +58,19 @@ class CampScene(Scene):
         opp = self.c.next_fight()[0]
         text(surf, f"Eight weeks out from {opp.name}. Where do you spend them?", (CX, 112), 19, GREY,
              "midtop")
-        text(surf, "The camp adds 1 to that stat for this fight only.", (CX, 140), 16, GOLD, "midtop")
+        text(surf, "A stat camp adds 1 for this fight only, even past 10.", (CX, 140), 16, GOLD, "midtop")
         p = self.c.player
         for k, b in enumerate(self.buttons):
             b.selected = k == self.focus
             b.draw(surf)
-            v = p.stats.get(b.pick)
-            after = min(STAT_MAX, v + 1)
-            note = f"{b.pick.capitalize()} {v} > {after}" if after > v else f"{b.pick.capitalize()} already 10"
-            text(surf, note, (b.rect.centerx, b.rect.bottom + 14), 17, GREEN if after > v else GREY,
-                 "midtop", bold=True)
+            if b.pick == "film":
+                note, sub = "A read and 45 momentum", "to start the fight"
+            else:
+                v = p.stats.get(b.pick)
+                note = f"{b.pick.capitalize()} {v} > {v + 1}"
+                sub = "past the usual max for this fight" if v >= STAT_MAX else "for this fight"
+            text(surf, note, (b.rect.centerx, b.rect.bottom + 14), 17, GREEN, "midtop", bold=True)
+            text(surf, sub, (b.rect.centerx, b.rect.bottom + 36), 13, GREY, "midtop")
         self.back.draw(surf)
 
 

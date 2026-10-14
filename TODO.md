@@ -18,6 +18,18 @@
 - [x] Tournament mode: 8 fighter bracket in one night, injuries carry over
 - [x] Shared card collection: use career cards to build decks for quick fight and 2 player
 
+## Playtest feedback (Oct 2026)
+
+- [x] What beats what diagram during fights (Settings can hide it)
+- [x] Deck screen: active deck strip, click a card to see its replacements, smaller cards
+- [x] Spare training points: 5 for a deck point, 3 for a card pack
+- [x] Shop and packs say whether a card is in your deck and what level it goes to
+- [x] Bug: maxed cards could still be bought. They leave the shop now
+- [x] Training camp still helps a maxed fighter (stat to 11, or film study)
+- [x] Deck costs by tested strength, not rarity (POINTS in engine/cards.py)
+- [x] Max card level 5, seven new perks
+- [x] Money sinks: training points, deck points, restock, glove colours
+
 ## Making it more fun for other people
 
 - [x] Interactive tutorial (press T on the menu)

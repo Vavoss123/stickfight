@@ -199,6 +199,7 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
     a, d = st.f[i], st.f[1 - i]
     p = move.acc + bonus_acc + (a.stat(move.stat) - d.stat(move.stat)) * 0.025
     p += a.wc["speed"]   # lighter classes are quicker
+    p -= d.perk("slick")
     op = OPENINGS.get(ex.opening[i])
     if op:
         p += op[0]
@@ -263,6 +264,8 @@ def _strike(st, ex, i, move, rng, bonus_acc=0.0, mult=1.0):
         return
 
     d.take(dmg)
+    if a.perk("relentless"):
+        d.stamina = max(0.0, d.stamina - dmg * a.perk("relentless"))
     _cut(st, ex, i, move, dmg, rng)
     if ex.finish:
         return
@@ -305,7 +308,7 @@ def _cut(st, ex, i, move, dmg, rng):
     elif rng.random() < move.cuts:
         d.cut = 15 + dmg * 1.5
         ex.cut_opened[1 - i] = True
-    if d.cut >= 65 and rng.random() < (d.cut - 55) / 90:
+    if d.cut >= 65 and rng.random() < (d.cut - 55) / 90 * (1 - 0.01 * d.perk("cutman")):
         ex.finish = (i, "TKO", "Doctor stoppage, cut")
 
 
@@ -365,6 +368,8 @@ def _grapple_uncontested(st, ex, i, move, rng, bonus=0.0):
     p *= 0.7 + 0.3 * a.stamina_factor()
     p -= 0.4 * (1 - ex.effort[i])
     p += (d.legs - a.legs) * 0.0015  # bad legs cannot shoot or sprawl
+    if move.base in ("takedown", "trip"):
+        p -= d.perk("sprawl")
     p += _size(a, d) * SIZE_GRAPPLE   # the bigger fighter wins scrambles
     if ex.surging[i]:
         p += SURGE_GRAPPLE
@@ -384,6 +389,9 @@ def _grapple_contest(st, ex, moves, rng):
     p += (a.stamina - b.stamina) * 0.002
     p += 0.35 * (ex.effort[0] - ex.effort[1])
     p += _size(a, b) * SIZE_GRAPPLE
+    for k, sign in ((0, -1), (1, 1)):
+        if moves[k].base in ("takedown", "trip"):
+            p += sign * st.f[1 - k].perk("sprawl")
     p += SURGE_GRAPPLE * (ex.surging[0] - ex.surging[1])
     p += (b.legs - a.legs) * 0.002
     if a.rocked:
@@ -474,6 +482,8 @@ def _momentum(st, ex):
             f.surge = False
             f.hype = 0.0
             continue
+        if gain > 0:
+            gain *= 1 + f.perk("showman")
         f.hype = _clamp(f.hype + gain - HYPE_DECAY, 0.0, 100.0)
         if f.hype >= 100.0 and not f.surge:
             f.surge = True
@@ -589,6 +599,7 @@ def _feint(st, ex, moves, rng):
         st.f[o].stamina = min(st.f[o].stamina, ex.stamina_before[o])
         ex.feinted[i] = True
         ex.frozen[o] = True
+        st.f[o].stamina = max(0.0, st.f[o].stamina - st.f[i].perk("feintmaster"))
         ex.success[i] = True
     elif c == STRIKE:
         _strike(st, ex, o, mo, rng, bonus_acc=FEINT_PUNISH)
@@ -612,7 +623,7 @@ def _resolve_sub(st, picks, rng):
         ex.success[d] = True
     else:
         p = 0.52 + (A.stats.grappling - D.stats.grappling) * 0.05
-        p += hold.bonus + A.perk("subhunter")
+        p += hold.bonus + A.perk("subhunter") - D.perk("ironwill")
         p += 0.3 * (1 - D.stamina / 100) - 0.3 * (1 - A.stamina / 100)
         if D.rocked:
             p += 0.15

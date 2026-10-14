@@ -16,6 +16,7 @@ DEFAULTS = {
     "skip_walkouts": False,
     "card_pool": "all",   # quick fight decks: "all" cards or your "collection"
     "tutorial_done": False,
+    "show_rules": True,   # the what beats what diagram during fights
 }
 
 

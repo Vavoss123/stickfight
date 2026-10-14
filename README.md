@@ -136,8 +136,16 @@ trade strikes for Guard Pull, Single Leg or a Flying Triangle. Perk cards change
 Combination Puncher, Dutch Kickboxing, Iron Lungs, Granite Chin and others.
 
 In career mode fights pay purse money, wins give a pack to pick one card from, and the
-shop restocks after every fight. A duplicate levels a card up to a maximum of 3. Cards
-cost deck points by rarity and the budget grows as you climb the rankings.
+shop restocks after every fight. A duplicate levels a card up to a maximum of 5. Cards
+cost 1 to 3 deck points depending on how strong they tested (shown on each card), and
+the budget grows as you climb the rankings. The shop and packs mark which cards are
+already in your deck.
+
+Money and spare points have uses once your fighter is built: the shop sells extra
+training points, extra deck points (up to 6), a restock and glove colours, and on the
+hub you can trade 5 training points for a deck point or 3 for a card pack. Training
+camp before a title fight can take a stat to 11 for that fight, or you can do film study
+to start the fight with a read on them.
 
 In quick fight, 2 player and tournaments, press **Edit deck** on the select screen. The
 deck has a 10 point budget and is remembered for that fighter. The button at the top

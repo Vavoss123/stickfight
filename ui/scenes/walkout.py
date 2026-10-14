@@ -30,9 +30,11 @@ class WalkoutScene(Scene):
         self.cfg = cfg
         self.label = label
         self.arena = Arena()
-        from .fight import size_of
-        self.figs = [Figure(-80, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE * size_of(cfg.p0)),
-                     Figure(W + 80, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE * size_of(cfg.p1))]
+        from .fight import size_of, gloves_of
+        self.figs = [Figure(-80, FLOOR_Y, 1, cfg.p0.color, glove=gloves_of(cfg.p0, RED),
+                            scale=SCALE * size_of(cfg.p0)),
+                     Figure(W + 80, FLOOR_Y, -1, cfg.p1.color, glove=gloves_of(cfg.p1, BLUE),
+                            scale=SCALE * size_of(cfg.p1))]
         self.ref = Figure(CX, FLOOR_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)
         self.ref.set_pose("ref", idle="ref")

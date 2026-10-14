@@ -47,6 +47,11 @@ def size_of(profile):
     return weight_class(getattr(profile, "weight", None))["size"]
 
 
+def gloves_of(profile, corner):
+    """Gloves bought in the career shop, otherwise the corner colour."""
+    return getattr(profile, "gloves", None) or corner
+
+
 class FightConfig:
     def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
                  on_done=None, event="", start=None):
@@ -69,8 +74,10 @@ class FightScene(Scene):
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
         self.figs = [
-            Figure(CX - 330, FLOOR_Y, 1, cfg.p0.color, glove=RED, scale=SCALE * size_of(cfg.p0)),
-            Figure(CX + 330, FLOOR_Y, -1, cfg.p1.color, glove=BLUE, scale=SCALE * size_of(cfg.p1)),
+            Figure(CX - 330, FLOOR_Y, 1, cfg.p0.color, glove=gloves_of(cfg.p0, RED),
+                   scale=SCALE * size_of(cfg.p0)),
+            Figure(CX + 330, FLOOR_Y, -1, cfg.p1.color, glove=gloves_of(cfg.p1, BLUE),
+                   scale=SCALE * size_of(cfg.p1)),
         ]
         self.ref = Figure(CX, FLOOR_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)
@@ -764,6 +771,8 @@ class FightScene(Scene):
         self._draw_hud(surf)
         if self.phase in ("pick",):
             self._draw_picks(surf)
+            if self.app.settings["show_rules"] and not st.sub:
+                self._draw_rules(surf)
         if self.phase == "reveal":
             self._draw_reveal(surf)
         if st.sub and self.phase in ("pick", "reveal", "anim"):
@@ -868,6 +877,53 @@ class FightScene(Scene):
                 pos = POS_NAME[st.pos]
             text(surf, pos.upper(), (CX, 96), 15, GOLD, "midtop", bold=True)
 
+    def _draw_rules(self, surf):
+        """What beats what, in the corner. The class of the move under the mouse lights up."""
+        import math
+        r = panel(surf, (W - 250, 118, 230, 206), (10, 11, 16), alpha=215)
+        text(surf, "WHAT BEATS WHAT", (r.centerx, r.y + 8), 13, GOLD, "midtop", bold=True)
+        cx, cy, rad = r.centerx, r.y + 112, 62
+        nodes = {STRIKE: (cx, cy - rad), GRAPPLE: (cx + rad * 0.95, cy + rad * 0.55),
+                 DEFEND: (cx - rad * 0.95, cy + rad * 0.55)}
+        hover = None
+        hb = next((b for b in self.buttons[0] if b.hover), None) if self.cfg.mode == "ai" else None
+        if hb and not self.fight.state.sub:
+            hover = self.mv(0, hb.pick).cls
+            hover = GRAPPLE if hover == SUB else hover
+        for a, b in ((STRIKE, GRAPPLE), (GRAPPLE, DEFEND), (DEFEND, STRIKE)):
+            (x0, y0), (x1, y1) = nodes[a], nodes[b]
+            dx, dy = x1 - x0, y1 - y0
+            d = math.hypot(dx, dy)
+            ux, uy = dx / d, dy / d
+            sx, sy = x0 + ux * 24, y0 + uy * 24
+            ex_, ey = x1 - ux * 26, y1 - uy * 26
+            lit = hover in (a, b)
+            col = GOLD if lit else (120, 110, 70)
+            pygame.draw.line(surf, col, (sx, sy), (ex_, ey), 3)
+            px, py = -uy, ux
+            pygame.draw.polygon(surf, col, [(ex_ + ux * 8, ey + uy * 8),
+                                            (ex_ - ux * 6 + px * 7, ey - uy * 6 + py * 7),
+                                            (ex_ - ux * 6 - px * 7, ey - uy * 6 - py * 7)])
+            mx, my = (sx + ex_) / 2 + px * 14, (sy + ey) / 2 + py * 14
+            text(surf, "beats", (mx, my), 11, col, "center", shadow=False)
+        for cls, (x, y) in nodes.items():
+            lit = hover == cls
+            col = CLASS_COLOR[cls]
+            pygame.draw.circle(surf, tuple(min(255, int(c * 1.3)) for c in col) if lit else col,
+                               (int(x), int(y)), 22)
+            pygame.draw.circle(surf, WHITE if lit else (0, 0, 0), (int(x), int(y)), 22, 2)
+            text(surf, CLASS_NAME[cls], (x, y), 13, WHITE, "center", bold=True)
+        if hover == FEINT:
+            note = "Feint: beats Defend, loses to the rest"
+        elif hover:
+            beats = {STRIKE: "Grapple", GRAPPLE: "Defend", DEFEND: "Strike"}[hover]
+            loses = {STRIKE: "Defend", GRAPPLE: "Strike", DEFEND: "Grapple"}[hover]
+            note = f"{CLASS_NAME[hover]} beats {beats}, loses to {loses}"
+        else:
+            note = "Feint beats Defend only. Subs count as grapples."
+        text(surf, note, (r.centerx, r.bottom - 18), 11, GREY if not hover else WHITE, "midtop",
+             max_width=r.w - 16)
+
     def _draw_picks(self, surf):
         st = self.fight.state
         if self.cfg.mode == "ai":
@@ -884,7 +940,7 @@ class FightScene(Scene):
             if hb and not st.sub:
                 hint = self.mv(0, hb.pick).desc
             text(surf, hint, (24, 609), 16, WHITE, bold=True)
-            if not st.sub:
+            if not st.sub and not self.app.settings["show_rules"]:
                 text(surf, "Strike beats grapple, grapple beats defend, defend beats strike",
                      (W - 24, 610), 14, GREY, "topright")
         else:

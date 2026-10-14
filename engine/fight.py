@@ -104,7 +104,7 @@ class Fight:
             f.hp = min(100.0, f.hp + 4)
             f.body *= 0.8
             f.legs *= 0.85
-            f.cut = max(0.0, f.cut - 15)  # the cutman goes to work
+            f.cut = max(0.0, f.cut - 15 - f.perk("cutman"))  # the cutman goes to work
 
     def _decision(self):
         winner, detail, cards = score_fight(self.stats, self.rng)

@@ -2,16 +2,19 @@
 
 import pygame
 
-from engine.cards import (CARDS, GROUPS, MAX_PERKS, PRICE, DECK_COST, deck_points, group_slots,
-                          variants, warnings)
+from engine.cards import (CARDS, GROUPS, MAX_PERKS, MAX_LEVEL, PRICE, deck_points,
+                          group_of, group_slots, variants, warnings)
+from engine.career import GLOVES, GLOVE_PRICE, RESTOCK_PRICE
 from engine.moves import MOVES
 
-from ..cards import draw_card, RARITY_COLOR
+from ..cards import draw_card, RARITY_COLOR, CLASS_BG, PERK_BG
 from ..common import W, H, CX, GOLD, WHITE, GREY, GREEN, text, text_block, panel, Button, bar
 from .base import Scene
 
 TABS = [g for g, _ in GROUPS] + ["Perks"]
-CW, CH = 186, 262
+CW, CH = 150, 232          # card size for the choices, four to a row
+STRIP_Y = 462              # where the active deck strip starts
+CHIP_W, CHIP_H = 196, 44
 
 
 def money(n):
@@ -56,26 +59,59 @@ class DeckScene(Scene):
 
     def _slot_rects(self):
         out = []
-        for k, base in enumerate(self._slots()):
-            out.append((base, pygame.Rect(20, 132 + k * 34, 560, 30)))
+        slots = self._slots()
+        step = min(34, (STRIP_Y - 10 - 132) // max(1, len(slots)))
+        for k, base in enumerate(slots):
+            out.append((base, pygame.Rect(20, 132 + k * step, 560, step - 4)))
         return out
 
     def _card_rects(self, ids):
         out = []
-        per_row = 3
+        per_row = 4
         for k, cid in enumerate(ids):
-            x = 610 + (k % per_row) * (CW + 14)
-            y = 132 + (k // per_row) * (CH + 14)
+            x = 610 + (k % per_row) * (CW + 12)
+            y = 132 + (k // per_row) * (CH + 12)
             out.append((cid, pygame.Rect(x, y, CW, CH)))
         return out
 
     def _perk_rects(self, ids):
         out = []
         for k, cid in enumerate(ids):
-            x = 610 + (k % 2) * 330
-            y = 132 + (k // 2) * 54
-            out.append((cid, pygame.Rect(x, y, 320, 48)))
+            x = 610 + (k % 3) * 216
+            y = 132 + (k // 3) * 40
+            out.append((cid, pygame.Rect(x, y, 208, 36)))
         return out
+
+    def _active(self):
+        """Everything in the deck right now: (kind, slot or perk id, card id)."""
+        p = self.c.player
+        out = []
+        for group, _ in GROUPS:
+            for slot in group_slots(group):
+                if slot in p.deck:
+                    out.append(("move", slot, p.deck[slot]))
+        out += [("perk", pid, pid) for pid in p.perks]
+        return out
+
+    def _chip_rects(self):
+        out = []
+        for k, item in enumerate(self._active()):
+            x = 34 + (k % 6) * (CHIP_W + 8)
+            y = STRIP_Y + 34 + (k // 6) * (CHIP_H + 8)
+            out.append((item, pygame.Rect(x, y, CHIP_W, CHIP_H)))
+        return out
+
+    def _open(self, item):
+        """Clicking a card in the active deck opens what can replace it."""
+        kind, key, cid = item
+        if kind == "perk":
+            self.tab = TABS.index("Perks")
+            self.slot = None
+        else:
+            self.tab = TABS.index(group_of(key))
+            self.slot = key
+        self.message = ""
+        self.app.sounds.play("click")
 
     def _choices(self):
         if TABS[self.tab] == "Perks":
@@ -115,6 +151,10 @@ class DeckScene(Scene):
                 return
         if e.type != pygame.MOUSEBUTTONDOWN or e.button != 1:
             return
+        for item, r in self._chip_rects():
+            if r.collidepoint(e.pos):
+                self._open(item)
+                return
         if TABS[self.tab] != "Perks":
             for base, r in self._slot_rects():
                 if r.collidepoint(e.pos):
@@ -166,6 +206,7 @@ class DeckScene(Scene):
             self._draw_perks(surf)
         else:
             self._draw_slots(surf)
+        self._draw_active(surf)
 
         y = H - 96
         for w in warnings(p):
@@ -174,7 +215,7 @@ class DeckScene(Scene):
         if self.message:
             text(surf, self.message, (180, H - 44), 17, (255, 120, 100), bold=True)
         else:
-            hint = getattr(c, "hint", "Common cards cost 1 point, rare 2, legendary 3. "
+            hint = getattr(c, "hint", "Cards cost 1 to 3 points by how strong they are. "
                                       "Win fights to raise your budget.")
             text(surf, hint, (180, H - 44), 15, GREY)
         self.back.draw(surf)
@@ -206,6 +247,30 @@ class DeckScene(Scene):
             equipped = p.deck.get(self.slot) == cid or (cid == self.slot and self.slot not in p.deck)
             draw_card(surf, r, cid, p.cards.get(cid, 1), owned=owned, equipped=equipped)
 
+    def _draw_active(self, surf):
+        p = self.c.player
+        r = panel(surf, (20, STRIP_Y, W - 40, 142), (18, 30, 22), alpha=230, border=GREEN)
+        text(surf, "ACTIVE DECK", (r.x + 14, r.y + 8), 17, GREEN, bold=True)
+        text(surf, "Click a card to see what can replace it", (r.x + 140, r.y + 10), 14, GREY)
+        chips = self._chip_rects()
+        if not chips:
+            text(surf, "Nothing equipped yet. Pick a slot above and choose a card.", (r.centerx, r.y + 64),
+                 16, GREY, "midtop")
+        for (kind, key, cid), c in chips:
+            card = CARDS[cid]
+            open_now = (kind == "move" and key == self.slot and TABS[self.tab] != "Perks") or \
+                       (kind == "perk" and TABS[self.tab] == "Perks")
+            bg = PERK_BG if kind == "perk" else CLASS_BG[card.move.cls]
+            pygame.draw.rect(surf, bg, c, border_radius=8)
+            pygame.draw.rect(surf, WHITE if open_now else RARITY_COLOR[card.rarity], c,
+                             3 if open_now else 2, border_radius=8)
+            text(surf, card.name, (c.x + 10, c.y + 5), 15, WHITE, bold=True, max_width=c.w - 54)
+            lvl = p.cards.get(cid, 1)
+            text(surf, f"L{lvl}", (c.right - 10, c.y + 6), 14, GOLD, "topright", bold=True)
+            sub = "Perk" if kind == "perk" else f"Replaces {MOVES[key].name}"
+            text(surf, f"{sub}, {card.points} pt", (c.x + 10, c.y + 25), 12, (200, 205, 215),
+                 max_width=c.w - 20)
+
     def _draw_perks(self, surf):
         p = self.c.player
         text(surf, f"Equipped perks ({len(p.perks)} of {MAX_PERKS})", (20, 132), 18, WHITE, bold=True)
@@ -215,7 +280,7 @@ class DeckScene(Scene):
             if k < len(p.perks):
                 card = CARDS[p.perks[k]]
                 text(surf, card.name, (r.x + 12, r.centery), 18, RARITY_COLOR[card.rarity], "midleft", bold=True)
-                text(surf, f"L{p.cards.get(card.id, 1)}  {DECK_COST[card.rarity]} pt",
+                text(surf, f"L{p.cards.get(card.id, 1)}  {card.points} pt",
                      (r.right - 12, r.centery), 15, GREY, "midright")
             else:
                 text(surf, "empty", (r.x + 12, r.centery), 15, (90, 90, 100), "midleft")
@@ -231,11 +296,11 @@ class DeckScene(Scene):
             pygame.draw.rect(surf, (24, 74, 78) if on else (26, 28, 38), r, border_radius=6)
             pygame.draw.rect(surf, RARITY_COLOR[card.rarity], r, 2, border_radius=6)
             lvl = p.cards.get(cid, 1)
-            text(surf, f"{card.name}  L{lvl}", (r.x + 10, r.y + 4), 16, WHITE, bold=True, max_width=230)
-            text(surf, f"{DECK_COST[card.rarity]} pt" + ("  ON" if on else ""), (r.right - 10, r.y + 5), 13,
+            text(surf, f"{card.name}  L{lvl}", (r.x + 8, r.y + 2), 14, WHITE, bold=True, max_width=150)
+            text(surf, f"{card.points} pt" + (" ON" if on else ""), (r.right - 8, r.y + 3), 12,
                  GOLD if on else GREY, "topright", bold=True)
             from engine.cards import perk_text
-            text(surf, perk_text(card, lvl), (r.x + 10, r.y + 26), 12, (200, 210, 215), max_width=r.w - 20)
+            text(surf, perk_text(card, lvl), (r.x + 8, r.y + 19), 11, (200, 210, 215), max_width=r.w - 16)
 
 
 class PackScene(Scene):
@@ -334,8 +399,10 @@ class PackScene(Scene):
             if self._legendary(cid) and self.chosen is None:
                 text(surf, "LEGENDARY!", (r.centerx, r.y - 30), 26, GOLD, "midtop", display=True)
             if self.chosen is None:
-                note = f"You have it at level {have}" if have else "New"
-                text(surf, note, (r.centerx, r.bottom + 10), 15, GREEN if not have else GOLD, "midtop", bold=True)
+                note, col = card_note(self.c, cid)
+                if self.c.in_deck(cid):
+                    pygame.draw.rect(surf, GOLD, r.inflate(10, 10), 3, border_radius=12)
+                text(surf, note, (r.centerx, r.bottom + 10), 15, col, "midtop", bold=True)
                 text(surf, str(k + 1), (r.centerx, r.bottom + 32), 14, GREY, "midtop")
         if self.chosen is not None and self.result == "new":
             self._new_card_banner(surf)
@@ -345,7 +412,9 @@ class PackScene(Scene):
                    "level": f"{name} levelled up to level {p.cards[self.chosen]}!",
                    "refund": f"{name} is already maxed. Sold for {money(PRICE[CARDS[self.chosen].rarity] // 2)}."}[self.result]
             text(surf, msg, (CX, 540), 22, WHITE, "midtop", bold=True)
-            text(surf, "Equip it from the Deck screen.", (CX, 574), 16, GREY, "midtop")
+            tip = "It is in your deck, so it is already working for you." if self.c.in_deck(self.chosen) \
+                else "Equip it from the Deck screen."
+            text(surf, tip, (CX, 574), 16, GREY, "midtop")
             self.done.draw(surf)
 
 
@@ -382,6 +451,19 @@ class PackScene(Scene):
              alpha=max(0, alpha))
 
 
+def card_note(c, cid):
+    """Owned or not, in the active deck or not, and what the next copy does."""
+    p = c.player
+    have = p.cards.get(cid, 0)
+    deck = c.in_deck(cid)
+    if not have:
+        return "New card", GREEN
+    if have >= MAX_LEVEL:
+        return "Maxed", GREY
+    where = "IN YOUR DECK" if deck else "Not in your deck"
+    return f"{where}  L{have} > L{have + 1}", GOLD if deck else (200, 200, 210)
+
+
 class ShopScene(Scene):
     def __init__(self, app, career, back):
         super().__init__(app)
@@ -389,24 +471,58 @@ class ShopScene(Scene):
         self.back_to = back
         self.message = ""
         self.back = Button((20, H - 56, 140, 42), "Done", color=(40, 110, 60), size=18)
+        self.glove_pick = 0
         self._build()
 
     def _build(self):
         self.buy = []
-        n = len(self.c.shop)
+        cards = self.c.shop_cards()
+        n = len(cards)
         w = 230
         x0 = CX - (n * w + (n - 1) * 24) // 2
-        for k, cid in enumerate(self.c.shop):
-            b = Button((x0 + k * (w + 24), 530, w, 44), f"Buy {money(PRICE[CARDS[cid].rarity])}",
-                       color=(150, 110, 30), size=18)
+        for k, cid in enumerate(cards):
+            b = Button((x0 + k * (w + 24), 500, w, 40), f"Buy {money(PRICE[CARDS[cid].rarity])}",
+                       color=(150, 110, 30), size=17)
             b.pick = cid
             self.buy.append(b)
+        # Other ways to spend
+        self.extras = []
+        for k, pick in enumerate(("training", "deck", "restock", "gloves")):
+            b = Button((180 + k * 270, 580, 258, 56), "", sub="", size=17, color=(52, 58, 92))
+            b.pick = pick
+            self.extras.append(b)
 
     def _rects(self):
         n = len(self.c.shop)
         w = 230
         x0 = CX - (n * w + (n - 1) * 24) // 2
-        return [pygame.Rect(x0 + k * (w + 24), 150, w, 324) for k in range(n)]
+        return [pygame.Rect(x0 + k * (w + 24), 130, w, 324) for k in range(n)]
+
+    def _glove_name(self):
+        return list(GLOVES)[self.glove_pick % len(GLOVES)]
+
+    def _extra(self, pick):
+        c = self.c
+        if pick == "training":
+            ok = c.buy_training()
+            return "One extra training point. Spend it on the hub." if ok else "Not enough money."
+        if pick == "deck":
+            if c.deck_point_price() is None:
+                return "You already have every extra deck point."
+            ok = c.buy_deck_point()
+            return f"Deck budget is now {c.budget()} points." if ok else "Not enough money."
+        if pick == "restock":
+            ok = c.restock()
+            if ok:
+                self._build()
+            return "Fresh stock." if ok else "Not enough money."
+        name = self._glove_name()
+        owned = name in c.gloves_owned
+        ok = c.buy_gloves(name)
+        if not ok:
+            return "Not enough money."
+        self.glove_pick += 1 if owned else 0
+        return f"{name} gloves on." if not owned else f"{name} gloves on. Click again for the next colour."
 
     def handle(self, e):
         if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
@@ -421,30 +537,61 @@ class ShopScene(Scene):
                     self.message = "Not enough money."
                 else:
                     name = CARDS[cid].name
-                    self.message = {"new": f"Bought {name}.",
-                                    "level": f"{name} is now level {self.c.player.cards[cid]}.",
-                                    "refund": f"{name} was maxed, half refunded."}[res]
+                    lv = self.c.player.cards[cid]
+                    deck = " It is in your deck." if self.c.in_deck(cid) else " Equip it from the Deck screen."
+                    self.message = (f"Bought {name}." if res == "new" else f"{name} is now level {lv}.") + deck
                     self.app.sounds.play("cash")
                     self.c.save()
                     self._build()
                 return
+        for b in self.extras:
+            if b.handle(e):
+                self.message = self._extra(b.pick)
+                self.app.sounds.play("cash" if not self.message.startswith("Not") else "click")
+                self.c.save()
+                return
 
     def draw(self, surf):
         surf.fill((14, 15, 22))
-        text(surf, "CARD SHOP", (CX, 30), 48, WHITE, "midtop", display=True)
-        text(surf, "New stock after every fight. Buying a card you own levels it up.", (CX, 92), 17,
-             GREY, "midtop")
-        text(surf, money(self.c.money), (W - 20, 24), 26, GOLD, "topright", bold=True)
-        p = self.c.player
-        if not self.c.shop:
-            text(surf, "Sold out. Come back after your next fight.", (CX, 300), 22, GREY, "midtop")
-        for cid, r, b in zip(self.c.shop, self._rects(), self.buy):
+        c = self.c
+        text(surf, "CARD SHOP", (CX, 20), 44, WHITE, "midtop", display=True)
+        text(surf, self.message or "New stock after every fight. Buying a card you own levels it up.",
+             (CX, 76), 17, WHITE if self.message else GREY, "midtop", bold=bool(self.message))
+        text(surf, money(c.money), (W - 20, 24), 26, GOLD, "topright", bold=True)
+        cards = c.shop
+        if not cards:
+            text(surf, "Sold out. Restock below or come back after your next fight.", (CX, 280), 20,
+                 GREY, "midtop")
+        p = c.player
+        for cid, r, b in zip(cards, self._rects(), self.buy):
             have = p.cards.get(cid, 0)
+            if c.in_deck(cid):
+                pygame.draw.rect(surf, GOLD, r.inflate(10, 10), 3, border_radius=12)
             draw_card(surf, r, cid, max(1, have))
-            note = f"Owned, level {have}" if have else "Not owned"
-            text(surf, note, (r.centerx, r.bottom + 12), 15, GOLD if have else GREY, "midtop", bold=True)
-            b.enabled = self.c.money >= PRICE[CARDS[cid].rarity]
+            note, col = card_note(c, cid)
+            text(surf, note, (r.centerx, r.bottom + 10), 15, col, "midtop", bold=True)
+            b.enabled = c.money >= PRICE[CARDS[cid].rarity]
             b.draw(surf)
-        if self.message:
-            text(surf, self.message, (CX, 610), 20, WHITE, "midtop", bold=True)
+        text(surf, "MORE WAYS TO SPEND", (180, 556), 15, GOLD, bold=True)
+        for b in self.extras:
+            if b.pick == "training":
+                b.label, b.sub = "Extra training point", f"{money(c.training_price())}, {c.points} now"
+                b.enabled = c.money >= c.training_price()
+            elif b.pick == "deck":
+                price = c.deck_point_price()
+                b.label = "Extra deck point"
+                b.sub = f"{money(price)}, budget {c.budget()}" if price else f"Maxed, budget {c.budget()}"
+                b.enabled = price is not None and c.money >= price
+            elif b.pick == "restock":
+                b.label, b.sub = "Restock the shop", money(RESTOCK_PRICE)
+                b.enabled = c.money >= RESTOCK_PRICE
+            else:
+                name = self._glove_name()
+                owned = name in c.gloves_owned
+                b.label = f"{name} gloves"
+                b.sub = "Owned, click to wear" if owned else f"{money(GLOVE_PRICE)}, just for looks"
+                b.enabled = owned or c.money >= GLOVE_PRICE
+            b.draw(surf)
+            if b.pick == "gloves":
+                pygame.draw.circle(surf, GLOVES[self._glove_name()], (b.rect.right - 20, b.rect.centery), 9)
         self.back.draw(surf)

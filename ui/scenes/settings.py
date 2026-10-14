@@ -6,16 +6,17 @@ from ..common import W, H, CX, GOLD, WHITE, GREY, text, panel, bar, Button
 from ..settings import SPEEDS
 from .base import Scene
 
-ROWS = ["volume", "crowd", "fullscreen", "speed", "skip_walkouts"]
+ROWS = ["volume", "crowd", "fullscreen", "speed", "skip_walkouts", "show_rules"]
 LABELS = {"volume": "Volume", "crowd": "Crowd noise", "fullscreen": "Fullscreen",
-          "speed": "Fight speed", "skip_walkouts": "Skip walkouts"}
+          "speed": "Fight speed", "skip_walkouts": "Skip walkouts", "show_rules": "Rules diagram"}
 HELP = {"volume": "Every sound in the game.",
         "crowd": "The crowd, on top of the main volume.",
         "fullscreen": "F11 also switches it at any time.",
         "speed": "How fast exchanges play out. Knockout replays stay in slow motion.",
-        "skip_walkouts": "Go straight to the fight instead of the ring announcer."}
-TOP = 170
-ROW_H = 74
+        "skip_walkouts": "Go straight to the fight instead of the ring announcer.",
+        "show_rules": "Show what beats what in the corner while you pick a move."}
+TOP = 150
+ROW_H = 68
 
 
 class SettingsScene(Scene):

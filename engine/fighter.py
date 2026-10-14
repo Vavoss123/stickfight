@@ -40,6 +40,7 @@ class Profile:
     height: str = "6'0\""
     weight: str = "Welterweight"
     personality: str = ""      # how the computer fights them, see personality.py
+    gloves: tuple = None       # glove colour bought in the career shop, None for the corner colour
     deck: dict = field(default_factory=dict)    # basic move key -> card id in that slot
     perks: list = field(default_factory=list)   # equipped perk card ids
     cards: dict = field(default_factory=dict)   # owned card id -> level
@@ -59,6 +60,8 @@ class Profile:
         d = dict(d)
         d["stats"] = Stats(**d.get("stats", {}))
         d["color"] = tuple(d.get("color", (220, 60, 60)))
+        if d.get("gloves"):
+            d["gloves"] = tuple(d["gloves"])
         known = cls.__dataclass_fields__
         return cls(**{k: v for k, v in d.items() if k in known})
 

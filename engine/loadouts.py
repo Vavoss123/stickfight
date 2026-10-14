@@ -100,7 +100,7 @@ class Loadout:
         p.deck = {slot: cid for slot, cid in p.deck.items() if cid in p.cards}
         p.perks = [pid for pid in p.perks if pid in p.cards]
         if self.pool == "all":
-            self.hint = f"Every card unlocked. Common 1 point, rare 2, legendary 3, {BUDGET} to spend."
+            self.hint = f"Every card unlocked. Cards cost 1 to 3 points by how strong they are, {BUDGET} to spend."
         else:
             n = len(collection.load(self.collection_path))
             self.hint = (f"Your collection: {n} card{'s' if n != 1 else ''} from your careers, plus "

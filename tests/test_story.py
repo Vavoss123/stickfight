@@ -118,10 +118,21 @@ class Camp(unittest.TestCase):
         c.camp = "striking"
         self.assertFalse(c.camp_due())
         boosted = c.fighter_for_fight()
-        self.assertEqual(boosted.stats.striking, min(10, before + 1))
+        from engine.cards import build_kit
+        self.assertEqual(build_kit(boosted).stats.striking, before + 1)
         self.assertEqual(c.player.stats.striking, before)   # only for this fight
         win(c)
         self.assertIsNone(c.camp)
+
+    def test_camp_helps_a_maxed_fighter(self):
+        from engine.cards import build_kit
+        c = self._title_shot()
+        c.player.stats.wrestling = 10
+        c.camp = "wrestling"
+        self.assertEqual(build_kit(c.fighter_for_fight()).stats.wrestling, 11)
+        c.camp = "film"
+        self.assertEqual(c.camp_start()["opening"], "read")
+        self.assertIs(c.fighter_for_fight(), c.player)
 
     def test_no_camp_for_normal_fights(self):
         c = career()
