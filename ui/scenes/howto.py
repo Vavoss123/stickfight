@@ -51,6 +51,7 @@ PAGES = [
         "Cards swap in better versions of moves. Perks change how you fight.",
         "Between rounds the coach suggests up to 2 card swaps.",
         "Career: win fights, earn cards, train, and chase the belt.",
+        "Lose and the hospital sends a bill. Injuries lower stats for a fight or two.",
         "Judges score damage and strikes first, then takedowns and control.",
     ]),
     ("Controls", [

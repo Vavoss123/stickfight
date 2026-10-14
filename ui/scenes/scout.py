@@ -19,7 +19,7 @@ class ScoutScene(Scene):
         self.c = owner
         self.back_to = back
         self.message = ""
-        self.fig = Figure(250, 380, -1, opp.color, glove=BLUE, scale=1.0)
+        self.fig = Figure(250, 380, -1, opp.color, glove=BLUE, scale=1.0).dress(opp)
         self.fig.set_pose("stance", idle="stance")
         self.deck = Button((CX + 40, H - 80, 220, 48), "Edit deck", size=19, color=(60, 50, 110))
         self.done = Button((CX + 280, H - 80, 220, 48), "Done", size=19, color=(40, 110, 60))

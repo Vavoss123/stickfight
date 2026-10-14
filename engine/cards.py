@@ -11,7 +11,7 @@ duplicate. A deck has a point budget, so you cannot equip everything you own.
 from dataclasses import dataclass, replace
 
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, NEUTRAL, TOP, BOTTOM,
-                        STRIKE, GRAPPLE, SUB, DEFEND, HEAD, BODY, LEGS, STAT_NAMES, STAT_LIMIT)
+                        STRIKE, GRAPPLE, SUB, DEFEND, HEAD, BODY, LEGS, STAT_NAMES, STAT_LIMIT, STAT_MIN)
 from .moves import Move, MOVES, MOVESETS
 
 COMMON, RARE, LEGENDARY = "common", "rare", "legendary"
@@ -338,6 +338,8 @@ def build_kit(profile):
     boost = getattr(profile, "camp_boost", None)   # training camp, see Career.fighter_for_fight
     if boost:
         setattr(stats, boost, min(STAT_LIMIT, stats.get(boost) + 1))
+    for st, v in (getattr(profile, "injury", None) or {}).items():   # hurt from a loss
+        setattr(stats, st, max(STAT_MIN, stats.get(st) - v))
     from .weights import get
     return Kit(moves, movesets, perks, stats, get(getattr(profile, "weight", None)))
 

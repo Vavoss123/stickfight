@@ -4,6 +4,9 @@ import pygame
 
 from engine.career import Career, new_player, train_cost, delete_save
 from engine.constants import STAT_NAMES, STAT_MAX
+from engine.fighter import Profile
+from engine.looks import random_look
+from engine import personality
 from engine.roster import ARCHETYPES, ARCHETYPE_BLURB, COLORS
 from engine.weights import NAMES as WEIGHTS, get as get_weight
 
@@ -63,15 +66,18 @@ class CreateScene(Scene):
         ]
         self.fields[0].focus = True
         self.arch = "Striker"
-        self.color = 0
+        self.draft = Profile(name="", color=COLORS[0], look=random_look())   # the look being picked
+        self.look_btn = Button((90, 548, 360, 40), "Change look: hair, skin, shorts  >", size=17,
+                               color=(60, 50, 110))
         self.arch_buttons = []
         for k, a in enumerate(ARCHETYPES):
             b = Button((90 + (k % 2) * 184, 390 + (k // 2) * 56, 176, 48), a, size=20)
             b.pick = a
             self.arch_buttons.append(b)
-        self.swatches = [pygame.Rect(90 + k * 45, 552, 36, 36) for k in range(len(COLORS))]
         self.weight = 1   # Welterweight
         self.weight_btn = Button((90, 600, 360, 38), "", size=17, color=(52, 58, 78))
+        self.pers = None   # None follows the style, until you pick one
+        self.pers_btn = Button((900, 506, 244, 36), "", size=15, color=(110, 60, 40))
         self.start = Button((CX + 140, H - 80, 280, 54), "Start career", color=(170, 40, 40), size=24)
         self.back = Button((20, H - 70, 120, 40), "Back", size=18)
         self.hall = Button((150, H - 70, 160, 40), "Hall of fame", size=17, color=(150, 110, 30))
@@ -94,10 +100,16 @@ class CreateScene(Scene):
         if self.weight_btn.handle(e):
             self.weight = (self.weight + 1) % len(WEIGHTS)
             self.app.sounds.play("click")
-        if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
-            for k, r in enumerate(self.swatches):
-                if r.collidepoint(e.pos):
-                    self.color = k
+        if self.pers_btn.handle(e):
+            names = personality.NAMES
+            self.pers = names[(names.index(self._pers()) + 1) % len(names)]
+            self.app.sounds.play("click")
+        if self.look_btn.handle(e):
+            from .look import LookScene
+            self.draft.name = self.fields[0].value.strip().title()
+            self.app.sounds.play("click")
+            self.app.goto(LookScene(self.app, self.draft, lambda: self.app.goto(self)))
+            return
         if self.start.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN):
             self._create()
         if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
@@ -107,6 +119,9 @@ class CreateScene(Scene):
             from .legacy import HallScene
             self.app.goto(HallScene(self.app, lambda: CreateScene(self.app)))
 
+    def _pers(self):
+        return self.pers or personality.BY_STYLE.get(self.arch, "balanced")
+
     def _create(self):
         name = self.fields[0].value.strip()
         if len(name.split()) < 1 or len(name) < 2:
@@ -114,13 +129,15 @@ class CreateScene(Scene):
             return
         nick = self.fields[1].value.strip()
         town = self.fields[2].value.strip()
-        p = new_player(name.title(), nick, self.arch, COLORS[self.color], town, WEIGHTS[self.weight])
+        p = new_player(name.title(), nick, self.arch, self.draft.color, town, WEIGHTS[self.weight])
+        p.look = dict(self.draft.look)
+        p.personality = self._pers()
         c = Career(p)
         c.save()
         self.app.goto(HubScene(self.app, c, "Welcome to the show. Win two prospect fights to get ranked."))
 
     def update(self, dt):
-        self.fig.shorts = COLORS[self.color]
+        self.fig.dress(self.draft)
         self.fig.scale = 1.5 * get_weight(WEIGHTS[self.weight])["size"]
         w = WEIGHTS[self.weight]
         self.weight_btn.label = f"Weight class: {w} ({get_weight(w)['lbs']} lbs)  >"
@@ -136,10 +153,7 @@ class CreateScene(Scene):
             b.selected = b.pick == self.arch
             b.draw(surf)
         text(surf, ARCHETYPE_BLURB[self.arch], (90, 500), 16, WHITE, max_width=360)
-        text(surf, "Shorts", (90, 530), 15, GREY)
-        for k, r in enumerate(self.swatches):
-            pygame.draw.rect(surf, COLORS[k], r, border_radius=6)
-            pygame.draw.rect(surf, GOLD if k == self.color else (0, 0, 0), r, 3, border_radius=6)
+        self.look_btn.draw(surf)
         self.weight_btn.draw(surf)
         rect = panel(surf, (640, 110, 520, 500), (22, 24, 34))
         name = self.fields[0].value.strip() or "Your Name"
@@ -157,6 +171,11 @@ class CreateScene(Scene):
             yy += 32
         text(surf, "You start 0-0, a little below the", (rect.x + 260, yy + 20), 15, GREY)
         text(surf, "ranked fighters. Train to catch up.", (rect.x + 260, yy + 40), 15, GREY)
+        pers = personality.PERSONALITIES[self._pers()]
+        text(surf, "Personality", (rect.x + 260, 484), 15, GREY)
+        self.pers_btn.label = f"{pers['label']}  >"
+        self.pers_btn.draw(surf)
+        text_block(surf, personality.CAREER_PERK[self._pers()], (rect.x + 260, 550), 13, 244, GOLD, "topleft")
         if self.error:
             text(surf, self.error, (CX + 280, H - 104), 16, (255, 120, 100), "midbottom")
         self.start.draw(surf)
@@ -169,7 +188,8 @@ class HubScene(Scene):
         super().__init__(app)
         self.c = career
         self.message = message
-        self.fig = Figure(200, 330, 1, career.player.color, glove=RED, scale=1.2)
+        self.fig = Figure(200, 330, 1, career.player.color, glove=career.player.gloves or RED,
+                          scale=1.2).dress(career.player)
         self.fig.set_pose("victory" if career.is_champ() else "stance",
                           idle="victory" if career.is_champ() else "stance")
         self.opp_fig = None
@@ -196,9 +216,11 @@ class HubScene(Scene):
         self.gym_btn = Button((CX + 2, 624, 72, 38), "Gym", size=16, color=(40, 110, 60))
         self.shop_btn = Button((CX + 78, 624, 72, 38), "Shop", size=16, color=(150, 110, 30))
         self.trophy_btn = Button((488, H - 56, 110, 40), "Trophies", size=16, color=(110, 90, 30))
+        self.look_btn = Button((606, H - 56, 90, 40), "Look", size=16, color=(60, 50, 110))
+        self.rehab_btn = Button((250, 262, 170, 32), "", size=14, color=(40, 90, 130))
         opp, *_ = self.c.next_fight()
         self.grudge_text = self.c.grudge_line() if self.c.next_fight()[4] == "Grudge match" else ""
-        self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0)
+        self.opp_fig = Figure(CX, 470, -1, opp.color, glove=BLUE, scale=1.0).dress(opp)
         self.opp_fig.set_pose("stance", idle="stance")
 
     def handle(self, e):
@@ -215,6 +237,14 @@ class HubScene(Scene):
                 c = self.c
                 self.app.goto(PackScene(self.app, c, "normal", lambda: HubScene(self.app, c)))
             return
+        if self.c.injury and self.rehab_btn.handle(e):
+            if self.c.rehab():
+                self.app.sounds.play("cash")
+                self.c.save()
+                self.message = "Physio worked. You are fit to fight."
+            else:
+                self.message = "Not enough money for physio."
+            return
         for b in self.plus:
             if b.handle(e):
                 if self.c.train(b.pick):
@@ -228,6 +258,16 @@ class HubScene(Scene):
         if self.gym_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_g):
             from .gym import GymScene
             self.app.goto(GymScene(self.app, self.c, lambda: HubScene(self.app, self.c, self.message)))
+            return
+        if self.look_btn.handle(e):
+            from .look import LookScene
+            self.app.sounds.play("click")
+            back = lambda: self.app.goto(HubScene(self.app, self.c, self.message))
+
+            def saved():
+                self.c.save()
+                back()
+            self.app.goto(LookScene(self.app, self.c.player, saved, back))
             return
         if self.trophy_btn.handle(e):
             from .challenges import TrophiesScene
@@ -303,6 +343,12 @@ class HubScene(Scene):
             else:
                 msg = "Tough night. Train up and go again."
             msg += f" You made ${reward['purse'] + reward['bonus']:,}."
+            if reward.get("bill"):
+                msg += f" The hospital bill came to ${reward['bill']:,}."
+            if reward.get("injury"):
+                msg += f" {reward['injury']}."
+            if reward.get("permanent"):
+                msg += " That knockout cost you a point of chin for good."
             if reward["story"]:
                 msg += " " + " ".join(reward["story"])
             if reward["pack"]:
@@ -343,7 +389,8 @@ class HubScene(Scene):
         text(surf, p.name.upper(), (rect.x + 20, rect.y + 14), 32, WHITE, display=True, max_width=240)
         if p.nickname:
             text(surf, f'"{p.nickname}"', (rect.x + 22, rect.y + 54), 17, GOLD)
-        text(surf, f"{p.weight} {p.archetype}, {p.record()}", (rect.x + 22, rect.y + 78), 17, GREY)
+        text(surf, f"{p.weight} {p.archetype}, {p.record()}, {personality.label(p)}", (rect.x + 22, rect.y + 78),
+             17, GREY, max_width=rect.w - 40)
         text(surf, f"${c.money:,}", (rect.x + 22, rect.y + 102), 18, GOLD, bold=True)
         text(surf, f"Deck {deck_points(p)} of {c.budget()} points", (rect.right - 20, rect.y + 104), 15,
              GREY, "topright")
@@ -354,12 +401,14 @@ class HubScene(Scene):
             self._belt(surf, rect.right - 90, rect.y + 70)
         self.fig.x, self.fig.y = rect.x + 120, rect.y + 340
         self.fig.draw(surf)
+        if c.injury:
+            self._draw_injury(surf, pygame.Rect(rect.x + 230, rect.y + 136, 176, 166))
         text(surf, "TRAINING", (rect.x + 20, rect.y + 352), 16, GOLD, bold=True)
         pts = c.points
         text(surf, f"{pts} point{'s' if pts != 1 else ''} to spend", (rect.right - 20, rect.y + 352), 16,
              GREEN if pts else GREY, "topright")
         from engine.cards import build_kit
-        eff = build_kit(p).stats
+        eff = build_kit(c.fighter_for_fight()).stats   # camp boost and injuries included
         mouse = pygame.mouse.get_pos()
         hover = None
         for k, s in enumerate(STAT_NAMES):
@@ -375,6 +424,8 @@ class HubScene(Scene):
             extra = eff.get(s) - v
             if extra > 0:
                 text(surf, f"+{extra}", (rect.x + 344, yy + 6), 12, GOLD, bold=True)
+            elif extra < 0:
+                text(surf, f"{extra}", (rect.x + 344, yy + 6), 12, (255, 110, 100), bold=True)
             b = self.plus[k]
             b.enabled = v < STAT_MAX and pts >= train_cost(v)
             b.draw(surf)
@@ -400,10 +451,9 @@ class HubScene(Scene):
              max_width=r2.w - 30)
         if opp.nickname:
             text(surf, f'"{opp.nickname}"', (r2.centerx, r2.y + 116), 16, GOLD, "midtop")
-        from engine import personality
         text(surf, f"{opp.archetype}, {opp.record()}, {personality.label(opp).lower()}",
              (r2.centerx, r2.y + 138), 16, GREY, "midtop", max_width=r2.w - 30)
-        self.opp_fig.shorts = opp.color
+        self.opp_fig.dress(opp)
         self.opp_fig.x, self.opp_fig.y = r2.centerx, r2.y + 318
         self.opp_fig.draw(surf)
         yy = r2.y + 334
@@ -440,6 +490,7 @@ class HubScene(Scene):
         self.gym_btn.draw(surf)
         self.shop_btn.draw(surf)
         self.trophy_btn.draw(surf)
+        self.look_btn.draw(surf)
 
         # Rankings
         r3 = panel(surf, (860, 20, 400, 600), (22, 24, 34))
@@ -486,6 +537,24 @@ class HubScene(Scene):
         else:
             note = f"Next point costs {train_cost(v)} training point{'s' if train_cost(v) > 1 else ''}."
         text(surf, note, (r.x + 14, min(y2 + 2, r.bottom - 20)), 12, GREY, max_width=r.w - 28)
+
+    def _draw_injury(self, surf, r):
+        inj = self.c.injury
+        panel(surf, r, (50, 20, 22), alpha=240, border=(220, 70, 60))
+        text(surf, "INJURED", (r.x + 10, r.y + 8), 15, (255, 110, 100), bold=True)
+        text(surf, inj["name"], (r.x + 10, r.y + 28), 15, WHITE, bold=True, max_width=r.w - 20)
+        y = r.y + 50
+        for st, v in inj["stats"].items():
+            text(surf, f"{st.capitalize()} -{v}", (r.x + 10, y), 14, (255, 170, 160))
+            y += 18
+        n = inj["fights"]
+        text(surf, "Heals after the next fight" if n == 1 else f"Heals after {n} fights", (r.x + 10, r.y + 102),
+             12, GREY)
+        price = self.c.rehab_price()
+        self.rehab_btn.rect = pygame.Rect(r.x + 8, r.bottom - 40, r.w - 16, 32)
+        self.rehab_btn.label = f"Physio now: ${price:,}"
+        self.rehab_btn.enabled = self.c.money >= price
+        self.rehab_btn.draw(surf)
 
     def _belt(self, surf, x, y):
         pygame.draw.rect(surf, (30, 26, 18), (x - 60, y + 10, 120, 22), border_radius=8)

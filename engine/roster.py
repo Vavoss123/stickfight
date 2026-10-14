@@ -133,8 +133,8 @@ _TOWNS = ["Phoenix, Arizona", "Manchester, England", "Sydney, Australia", "Toron
 
 
 # Weight classes for the division in quick fight. In career they all fight at your weight.
-DIVISION_PERSONALITIES = ["grinder", "counter", "balanced", "pressure", "pressure", "showboat",
-                          "grinder", "pressure", "balanced", "showboat", "showboat"]
+DIVISION_PERSONALITIES = ["grinder", "counter", "balanced", "pressure", "headhunter", "showboat",
+                          "subartist", "pressure", "trashtalk", "showboat", "headhunter"]
 DIVISION_WEIGHTS = ["Welterweight", "Lightweight", "Middleweight", "Heavyweight", "Middleweight",
                     "Welterweight", "Lightweight", "Heavyweight", "Welterweight", "Middleweight",
                     "Lightweight"]
@@ -157,4 +157,5 @@ def prospect(rng, strength=0, weight="Welterweight"):
     rec = (rng.randint(3, 9), rng.randint(0, 4))
     return make(f"{rng.choice(_FIRST)} {rng.choice(_LAST)}", rng.choice(_NICK), arch,
                 rng.choice(_TOWNS), rec, tweak, color=rng.choice(COLORS), weight=weight,
-                personality=rng.choice(["balanced", "pressure", "counter", "grinder", "showboat"]))
+                personality=rng.choice(["balanced", "pressure", "counter", "grinder", "showboat",
+                                         "headhunter", "subartist", "trashtalk"]))

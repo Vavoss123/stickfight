@@ -14,9 +14,10 @@ import random
 
 from .cards import (CARDS, STARTERS, PRICE, MAX_LEVEL, COMMON, RARE, LEGENDARY,
                     apply_deck, equip, toggle_perk)
-from .constants import STAT_NAMES, STAT_MAX
+from .constants import STAT_NAMES, STAT_MAX, STAT_MIN
 from .fighter import Profile, Stats
 from .roster import ARCHETYPES, division, prospect
+from . import personality
 
 SHOP_SIZE = 4
 
@@ -36,6 +37,20 @@ GLOVE_PRICE = 150000
 PURSES = {"prospect": (4000, 4000), "ranked": (10000, 10000), "contender": (20000, 20000),
           "title": (50000, 50000), "defence": (60000, 60000)}
 FINISH_BONUS = 0.5
+
+# Losing hurts. The hospital takes a share of the purse, and an injury lowers stats
+# for the next few fights. A bad knockout can take a point of chin for good.
+SEVERITY = {"KO": 3, "TKO": 2, "Submission": 1}     # anything else (a decision) is 1
+BILL_SHARE = {1: 0.25, 2: 0.5, 3: 0.8}              # of the purse
+MIN_BILL = 1500
+PERMANENT_KO_CHANCE = 0.35
+REHAB_PRICE = 1500           # per stat point per fight left, to heal an injury now
+INJURIES = {
+    3: ("Concussion", {"chin": 2}, 2),
+    2: ("Broken nose", {"chin": 1, "cardio": 1}, 2),
+    1: ("Bumps and bruises", {}, 1),       # one random stat, below
+}
+SUB_INJURY = ("Sprained elbow", {"grappling": 1}, 1)
 
 LADDER_SIZE = 11
 GRUDGE_EVERY = 3          # fights between grudge matches
@@ -105,6 +120,7 @@ class Career:
         self.gym_used = False         # one gym session between fights
         self.story_seen = set()       # story beats already shown
         self.story_queue = ["intro"]  # beats waiting for the hub
+        self.injury = None            # {"name", "stats": {stat: points}, "fights"}
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
             apply_deck(player, deck, perks, 1)
@@ -182,17 +198,33 @@ class Career:
         if grudge and opp in self.ladder and self.ladder.index(opp) == 0:
             kind = "title"
         purse, win_bonus = PURSES[kind]
+        pers = personality.of(p)
+        if pers == "showboat":
+            purse = int(purse * 1.15)
         finish = method in ("KO", "TKO", "Submission")
-        reward = {"purse": purse, "bonus": 0, "pack": None, "story": []}
+        reward = {"purse": purse, "bonus": 0, "pack": None, "story": [], "bill": 0, "injury": None,
+                  "permanent": None}
         if won:
-            reward["bonus"] = win_bonus + (int(purse * FINISH_BONUS) if finish else 0)
+            finish_bonus = int(purse * FINISH_BONUS) if finish else 0
+            if (pers == "headhunter" and method in ("KO", "TKO")) or (pers == "subartist" and method == "Submission"):
+                finish_bonus = int(finish_bonus * 1.5)
+            reward["bonus"] = win_bonus + finish_bonus
+            if pers == "grinder" and not finish:
+                reward["bonus"] += int(win_bonus * 0.25)
             if grudge:
-                reward["bonus"] += int(purse * GRUDGE_BONUS)
+                reward["bonus"] += int(purse * GRUDGE_BONUS * (2 if pers == "trashtalk" else 1))
             reward["pack"] = "title" if kind in ("title", "defence") else \
                 "finish" if finish or grudge else "normal"
         was_champ = self.is_champ()
         self.camp = None
         self.money += reward["purse"] + reward["bonus"]
+        # Old injuries heal a fight at a time, then a loss can bring a new one
+        if self.injury:
+            self.injury["fights"] -= 1
+            if self.injury["fights"] <= 0:
+                self.injury = None
+        if not won and not draw:
+            self._hurt(method, purse, reward)
         if draw:
             p.draws += 1
             opp.draws += 1
@@ -287,15 +319,62 @@ class Career:
     def fighter_for_fight(self):
         """The player's profile for the next fight, with the camp's boost on a copy.
         A camp can take a stat one past the usual max, so it still helps a maxed fighter."""
-        if not self.camp or self.camp == "film":
+        boost = self.camp if self.camp and self.camp != "film" else None
+        if not boost and not self.injury:
             return self.player
         p = copy.deepcopy(self.player)
-        p.camp_boost = self.camp
+        p.camp_boost = boost
+        p.injury = dict(self.injury["stats"]) if self.injury else None
         return p
 
     def camp_start(self):
         """How the player starts the next fight, for a film study camp."""
         return dict(FILM_START) if self.camp == "film" else None
+
+    def _hurt(self, method, purse, reward):
+        """The hospital bill and the injury from a loss."""
+        p = self.player
+        pers = personality.of(p)
+        sev = SEVERITY.get(method, 1)
+        bill = max(MIN_BILL, int(purse * BILL_SHARE[sev]))
+        if pers == "balanced":
+            bill = int(bill * 0.7)
+        bill = min(bill, self.money)
+        self.money -= bill
+        reward["bill"] = bill
+        if pers == "counter":
+            sev -= 1
+        if sev <= 0:
+            return
+        name, stats, fights = SUB_INJURY if method == "Submission" else INJURIES[sev]
+        stats = dict(stats)
+        if not stats:
+            stats[self.rng.choice(["striking", "wrestling", "cardio"])] = 1
+        if pers == "pressure":
+            fights = max(1, fights - 1)
+        if self.injury:
+            for k, v in self.injury["stats"].items():
+                stats[k] = max(stats.get(k, 0), v)
+            fights = max(fights, self.injury["fights"])
+        self.injury = {"name": name, "stats": stats, "fights": fights}
+        reward["injury"] = injury_text(self.injury)
+        if method == "KO" and self.rng.random() < PERMANENT_KO_CHANCE and p.stats.chin > STAT_MIN:
+            p.stats.chin -= 1
+            reward["permanent"] = "chin"
+
+    def rehab_price(self):
+        if not self.injury:
+            return 0
+        return REHAB_PRICE * sum(self.injury["stats"].values()) * self.injury["fights"]
+
+    def rehab(self):
+        """Pay for physio and heal the injury now. False if you cannot afford it."""
+        price = self.rehab_price()
+        if not price or self.money < price:
+            return False
+        self.money -= price
+        self.injury = None
+        return True
 
     def _win_vs(self, opp):
         r = self.rank()
@@ -587,6 +666,7 @@ class Career:
             "gym_used": self.gym_used,
             "story_seen": sorted(self.story_seen),
             "story_queue": self.story_queue,
+            "injury": self.injury,
         }
 
     @classmethod
@@ -616,6 +696,11 @@ class Career:
         c.story_seen = set(d.get("story_seen", []))
         # Old saves skip the intro, they have met the coach already
         c.story_queue = list(d.get("story_queue", []))
+        inj = d.get("injury")
+        if inj and inj.get("stats") and inj.get("fights", 0) > 0:
+            c.injury = {"name": inj.get("name", "Injury"),
+                        "stats": {k: int(v) for k, v in inj["stats"].items() if k in STAT_NAMES},
+                        "fights": int(inj["fights"])}
         return c
 
     def save(self, path=SAVE_PATH):
@@ -644,3 +729,10 @@ def delete_save(path=SAVE_PATH):
 
 
 __all__ = ["Career", "new_player", "train_cost", "delete_save", "STAT_NAMES"]
+
+
+def injury_text(inj):
+    """'Concussion: chin -2 for 2 fights'"""
+    hurt = ", ".join(f"{k} -{v}" for k, v in inj["stats"].items())
+    n = inj["fights"]
+    return f"{inj['name']}: {hurt} for {'the next fight' if n == 1 else f'{n} fights'}"

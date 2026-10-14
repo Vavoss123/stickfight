@@ -4,6 +4,8 @@ import math
 
 import pygame
 
+from engine.looks import look_of, colors
+
 from .poses import POSES, BONES, LEN
 
 
@@ -103,6 +105,23 @@ class Figure:
         self.shake = 0.0
         self.visible = True
         self.cut = 0.0
+        self.hair = "bald"
+        self.hair_color = (34, 28, 26)
+        self.beard = False
+        self.trim = None
+        self.tattoo = "none"
+
+    def dress(self, profile=None, look=None):
+        """Wear a fighter's shorts colour and look. A look dict can be passed straight in."""
+        if profile is not None:
+            self.shorts = tuple(profile.color)
+            look = look or look_of(profile)
+        if look:
+            self.body, self.hair_color, self.trim = colors(look)
+            self.hair = look["hair"]
+            self.beard = look["beard"]
+            self.tattoo = look.get("tattoo", "none")
+        return self
 
     # Control
 
@@ -192,6 +211,76 @@ class Figure:
         if sev > 0.5:
             pygame.draw.circle(surf, red, (ex - self.facing * 4, ey + drip * 0.6), 3)
 
+    def _ink(self, surf, body, a, b, w, bands=(0.3, 0.55, 0.8)):
+        """Tattoo bands across a limb from a to b."""
+        ink = tuple(int(c * 0.35 + d * 0.65) for c, d in zip(body, (24, 30, 52)))
+        (ax, ay), (bx, by) = a, b
+        d = math.hypot(bx - ax, by - ay) or 1
+        nx, ny = -(by - ay) / d * w * 0.6, (bx - ax) / d * w * 0.6
+        for t in bands:
+            px, py = ax + (bx - ax) * t, ay + (by - ay) * t
+            pygame.draw.line(surf, ink, (px - nx, py - ny), (px + nx, py + ny), max(1, w // 3))
+
+    def _inked(self, part):
+        t = self.tattoo
+        return (t == "full" or (part == "farm" and t in ("sleeve", "sleeves")) or
+                (part == "barm" and t == "sleeves") or (part == t))
+
+    def _head_frame(self, j):
+        """Centre, radius, 'up' out of the top of the head and 'forward' out of the face."""
+        (nx, ny), (hx, hy) = j["neck"], j["head"]
+        d = math.hypot(hx - nx, hy - ny) or 1
+        up = ((hx - nx) / d, (hy - ny) / d)
+        fwd = (-up[1] * self.facing, up[0] * self.facing)
+        return (hx, hy), LEN["head_r"] * self.scale, up, fwd
+
+    @staticmethod
+    def _at(c, r, up, fwd, deg, k):
+        """A point k head radii out from the centre, deg degrees from straight up towards the face."""
+        a = math.radians(deg)
+        return (c[0] + r * k * (up[0] * math.cos(a) + fwd[0] * math.sin(a)),
+                c[1] + r * k * (up[1] * math.cos(a) + fwd[1] * math.sin(a)))
+
+    def _arc(self, surf, col, frame, a0, a1, outer, inner):
+        """A thick crescent round the head, used for hair caps and beards."""
+        c, r, up, fwd = frame
+        steps = 8
+        out = [self._at(c, r, up, fwd, a0 + (a1 - a0) * t / steps, outer) for t in range(steps + 1)]
+        ins = [self._at(c, r, up, fwd, a1 - (a1 - a0) * t / steps, inner) for t in range(steps + 1)]
+        pygame.draw.polygon(surf, col, out + ins)
+
+    def _hair_back(self, surf, frame):
+        """Hair that sits behind the head."""
+        c, r, up, fwd = frame
+        col = _shade(self.hair_color, 0.85)
+        if self.hair == "afro":
+            pygame.draw.circle(surf, self.hair_color, self._at(c, r, up, fwd, -30, 0.35), int(r * 1.5))
+        elif self.hair == "long":
+            _line(surf, col, self._at(c, r, up, fwd, -90, 0.5), self._at(c, r, up, fwd, -150, 1.8),
+                  max(3, int(r * 1.1)))
+        elif self.hair == "ponytail":
+            _line(surf, col, self._at(c, r, up, fwd, -100, 0.9), self._at(c, r, up, fwd, -125, 2.1),
+                  max(2, int(r * 0.5)))
+
+    def _hair_front(self, surf, frame):
+        """Hair over the top of the head, and the beard."""
+        c, r, up, fwd = frame
+        h = self.hair
+        if h == "buzz":
+            self._arc(surf, self.hair_color, frame, -105, 45, 1.06, 0.78)
+        elif h in ("short", "topknot", "ponytail", "long"):
+            self._arc(surf, self.hair_color, frame, -115, 45, 1.14, 0.66)
+        elif h == "afro":
+            self._arc(surf, self.hair_color, frame, -100, 45, 1.1, 0.55)
+        elif h == "mohawk":
+            for deg in range(-60, 31, 15):
+                _line(surf, self.hair_color, self._at(c, r, up, fwd, deg, 0.8),
+                      self._at(c, r, up, fwd, deg, 1.7), max(2, int(r * 0.4)))
+        if h == "topknot":
+            pygame.draw.circle(surf, self.hair_color, self._at(c, r, up, fwd, -35, 1.35), max(2, int(r * 0.48)))
+        if self.beard:
+            self._arc(surf, self.hair_color, frame, 100, 200, 1.08, 0.66)
+
     def draw(self, surf):
         if not self.visible:
             return
@@ -209,23 +298,42 @@ class Figure:
         _line(surf, back, j["bknee"], j["bfoot"], w)
         _line(surf, back, j["shoulder"], j["belbow"], w)
         _line(surf, back, j["belbow"], j["bhand"], w)
+        if self._inked("barm"):
+            self._ink(surf, back, j["shoulder"], j["belbow"], w)
+            self._ink(surf, back, j["belbow"], j["bhand"], w, (0.4,))
+        if self._inked("legs"):
+            self._ink(surf, back, j["bknee"], j["bfoot"], w)
         pygame.draw.circle(surf, _shade(self.glove, 0.75), j["bhand"], int(7 * self.scale))
         # Shorts over the top of the back thigh
         mid_b = ((j["hip"][0] * 0.45 + j["bknee"][0] * 0.55), (j["hip"][1] * 0.45 + j["bknee"][1] * 0.55))
         _line(surf, _shade(self.shorts, 0.75), j["hip"], mid_b, w + 5)
+        if self.trim:
+            _line(surf, _shade(self.trim, 0.75), j["hip"], mid_b, max(1, w // 3))
         # Torso and head
         _line(surf, body, j["hip"], j["neck"], w + 1)
+        if self._inked("chest"):
+            self._ink(surf, body, j["hip"], j["neck"], w + 1, (0.6, 0.72, 0.84))
         _line(surf, body, j["neck"], j["head"], w - 1)
+        frame = self._head_frame(j)
+        self._hair_back(surf, frame)
         pygame.draw.circle(surf, body, j["head"], int(LEN["head_r"] * self.scale))
+        self._hair_front(surf, frame)
         if self.cut > 0:
             self._blood(surf, j)
         # Front limbs
         _line(surf, body, j["hip"], j["fknee"], w)
         _line(surf, body, j["fknee"], j["ffoot"], w)
+        if self._inked("legs"):
+            self._ink(surf, body, j["fknee"], j["ffoot"], w)
         mid_f = ((j["hip"][0] * 0.45 + j["fknee"][0] * 0.55), (j["hip"][1] * 0.45 + j["fknee"][1] * 0.55))
         _line(surf, self.shorts, j["hip"], mid_f, w + 5)
         pygame.draw.circle(surf, self.shorts, j["hip"], (w + 5) // 2 + 1)
+        if self.trim:
+            _line(surf, self.trim, j["hip"], mid_f, max(1, w // 3))
         _line(surf, body, j["shoulder"], j["felbow"], w)
         _line(surf, body, j["felbow"], j["fhand"], w)
+        if self._inked("farm"):
+            self._ink(surf, body, j["shoulder"], j["felbow"], w)
+            self._ink(surf, body, j["felbow"], j["fhand"], w, (0.4,))
         pygame.draw.circle(surf, self.glove, j["fhand"], int(7 * self.scale))
         return j

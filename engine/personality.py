@@ -4,7 +4,7 @@ A personality is a small nudge on top of the AI's lookahead, so a pressure fight
 still blocks when blocking is clearly right, it just would rather not.
 """
 
-from .constants import STANDING, CLINCH, STRIKE, GRAPPLE, DEFEND, TOP
+from .constants import STANDING, CLINCH, STRIKE, GRAPPLE, DEFEND, SUB, HEAD, TOP
 from .moves import base_class
 
 PERSONALITIES = {
@@ -28,6 +28,18 @@ PERSONALITIES = {
         label="Showboat", blurb="Loves the big moment. Spinning stuff, head kicks, highlight reels.",
         quotes=["Tonight I make the highlight reel. You are just in it.", "Bring your camera phones, people."],
         taunts=["Did you see that?!", "That is going on the poster!"]),
+    "headhunter": dict(
+        label="Headhunter", blurb="Only one target: your chin. Big shots, early and often.",
+        quotes=["I am not here for a decision.", "Somebody is going to sleep tonight."],
+        taunts=["Lights out!", "Your chin is mine!"]),
+    "subartist": dict(
+        label="Submission artist", blurb="Hunts for the tap from every position. Do not give up a limb.",
+        quotes=["Every limb you have is a submission waiting to happen.", "Tap or nap. Your choice."],
+        taunts=["Feel that squeeze?", "I'm hunting now."]),
+    "trashtalk": dict(
+        label="Trash talker", blurb="Never stops talking. Fights angry and wants you angry too.",
+        quotes=["My grandma hits harder than you.", "After tonight nobody will remember your name."],
+        taunts=["Is that it?! Pathetic!", "Too easy!"]),
 }
 NAMES = list(PERSONALITIES)
 
@@ -57,6 +69,34 @@ LINES = {
     "last_round": {"pressure": ["Five more minutes of hell for you."], "counter": ["One mistake. That's all I need."],
                    "grinder": ["Last round. I'm taking you down."], "showboat": ["Time for the finish!"],
                    "any": ["This is my round."]},
+}
+
+
+for _event, _lines in {
+        "hurt": {"headhunter": ["You'll pay for that."], "subartist": ["Stand-up is not my game anyway."],
+                 "trashtalk": ["That tickled!", "My little sister hits harder."]},
+        "tired": {"trashtalk": ["I'm not tired, I'm bored."]},
+        "you_tired": {"headhunter": ["Hands dropping... perfect."], "trashtalk": ["Already?! Weak!"]},
+        "takedown": {"subartist": ["Now the fun starts."], "trashtalk": ["Lie down where you belong!"]},
+        "taken_down": {"subartist": ["Thank you. This is my office."], "trashtalk": ["Lucky!"]},
+        "sub": {"subartist": ["Got it.", "Tap. Now."], "trashtalk": ["Say goodnight!"]},
+        "momentum": {"headhunter": ["One shot. That's all I need."], "trashtalk": ["Listen to them! They love me!"]},
+        "booed": {"trashtalk": ["Boo louder, I can't hear you!"]},
+        "last_round": {"headhunter": ["Somebody's going to sleep."], "subartist": ["I only need one limb."],
+                       "trashtalk": ["Last round of your career."]},
+}.items():
+    LINES[_event].update(_lines)
+
+# What each personality does for you in a career. A small perk, see career.py
+CAREER_PERK = {
+    "balanced": "Looks after themselves: hospital bills are 30% cheaper.",
+    "pressure": "Tough as old boots: injuries heal a fight sooner.",
+    "counter": "Hard to hurt: injuries are one step milder.",
+    "grinder": "Judges like the work: decision wins pay 25% more.",
+    "showboat": "Crowd favourite: every purse is 15% bigger.",
+    "headhunter": "Knockout artist: KO and TKO bonuses are 50% bigger.",
+    "subartist": "Tap or nap: submission bonuses are 50% bigger.",
+    "trashtalk": "Sells the fight: grudge match bonuses are doubled.",
 }
 
 
@@ -105,4 +145,15 @@ def bias(name, move, st, me):
     if name == "showboat":
         flashy = move.power or move.key != move.base or move.base in ("kick",)
         return NUDGE * (flashy * 0.8 - 0.4 * (c == DEFEND))
+    if name == "headhunter":
+        head = c == STRIKE and move.target == HEAD
+        return NUDGE * (0.7 * head + 0.4 * move.power - 0.3 * (c == DEFEND) - 0.3 * (c == GRAPPLE and feet))
+    if name == "subartist":
+        if move.cls == SUB:
+            return NUDGE * 1.2
+        if feet:
+            return NUDGE * 0.6 * (c == GRAPPLE and move.to not in ("standing", None))
+        return 0.0
+    if name == "trashtalk":
+        return NUDGE * (0.5 * (c == STRIKE) - 0.3 * (c == DEFEND))
     return 0.0

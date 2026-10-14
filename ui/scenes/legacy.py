@@ -5,6 +5,8 @@ import pygame
 from engine.career import CAMPS
 from engine.constants import STAT_MAX
 from engine import legacy
+from engine.fighter import Profile
+from engine.looks import look_of
 
 from ..common import W, H, CX, RED, GOLD, WHITE, GREY, GREEN, text, text_block, panel, Button
 from ..stickman import Figure
@@ -81,6 +83,7 @@ class RetireScene(Scene):
         super().__init__(app)
         self.e = entry
         self.fig = Figure(250, 470, 1, tuple(entry["color"]), glove=RED, scale=1.4)
+        self.fig.dress(look=look_of(Profile(name=entry["name"], look=entry.get("look", {}))))
         self.fig.set_pose("victory" if entry["inducted"] else "stance",
                           idle="victory" if entry["inducted"] else "stance")
         self.next = Button((CX - 140, H - 86, 280, 54), "Hall of fame", color=(150, 110, 30), size=22)

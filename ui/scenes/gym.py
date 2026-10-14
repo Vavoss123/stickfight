@@ -33,7 +33,8 @@ class GymScene(Scene):
         self.t = 0.0
         self.shout = ""
         self.result = ""
-        self.me = Figure(CX - 120, 400, 1, career.player.color, glove=career.player.gloves or RED, scale=1.3)
+        self.me = Figure(CX - 120, 400, 1, career.player.color, glove=career.player.gloves or RED,
+                         scale=1.3).dress(career.player)
         self.me.set_pose("stance", idle="stance")
         self.coach = Figure(CX + 120, 400, -1, (60, 60, 70), glove=(230, 200, 60), scale=1.3)
         self.coach.set_pose("block", idle="block")   # holding the pads up

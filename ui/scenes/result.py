@@ -22,7 +22,7 @@ class ResultScene(Scene):
         for i, p in enumerate(profiles):
             from .fight import size_of, gloves_of
             f = Figure(CX - 440 if i == 0 else CX + 440, FLOOR_Y, 1 if i == 0 else -1, p.color,
-                       glove=gloves_of(p, CORNER[i]), scale=SCALE * size_of(p))
+                       glove=gloves_of(p, CORNER[i]), scale=SCALE * size_of(p)).dress(p)
             if self.r.winner == i:
                 f.set_pose("victory", idle="victory")
             elif self.r.winner is None:

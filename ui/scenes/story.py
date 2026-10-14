@@ -22,7 +22,7 @@ class StoryScene(Scene):
         self.coach = Figure(300, 560, 1, (60, 60, 70), glove=(120, 120, 130), scale=1.5)
         self.coach.set_pose("ref", idle="ref")
         self.me = Figure(W - 300, 560, -1, career.player.color, glove=career.player.gloves or (214, 48, 49),
-                         scale=1.5)
+                         scale=1.5).dress(career.player)
         self.me.set_pose("stance", idle="stance")
 
     def _advance(self):

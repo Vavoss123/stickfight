@@ -44,6 +44,7 @@ class Profile:
     deck: dict = field(default_factory=dict)    # basic move key -> card id in that slot
     perks: list = field(default_factory=list)   # equipped perk card ids
     cards: dict = field(default_factory=dict)   # owned card id -> level
+    look: dict = field(default_factory=dict)    # skin, hair, beard, shorts stripe, see looks.py
 
     def record(self):
         if self.draws:

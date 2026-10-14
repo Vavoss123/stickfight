@@ -78,7 +78,7 @@ class SelectScene(Scene):
             b.selected = (kind == "level" and v == self.level) or (kind == "rounds" and v == self.rounds)
         for i in (0, 1):
             p = self.roster[self.sel[i]]
-            self.figs[i].shorts = p.color
+            self.figs[i].dress(p)
             self.figs[i].scale = 0.64 * get_weight(p.weight)["size"]
 
     def _start(self):

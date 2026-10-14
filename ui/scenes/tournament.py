@@ -89,7 +89,7 @@ class TournamentSetupScene(Scene):
             b.selected = b.pick == self.sel
         for b in self.levels:
             b.selected = b.pick == self.level
-        self.fig.shorts = self.roster[self.sel].color
+        self.fig.dress(self.roster[self.sel])
         from engine.weights import get
         self.fig.scale = 0.8 * get(self.roster[self.sel].weight)["size"]
         self.fig.update(dt)

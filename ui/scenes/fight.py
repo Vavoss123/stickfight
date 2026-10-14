@@ -114,9 +114,9 @@ class FightScene(Scene):
         self.arena = Arena()
         self.figs = [
             Figure(CX - 330, FIGHT_Y, 1, cfg.p0.color, glove=gloves_of(cfg.p0, RED),
-                   scale=SCALE * size_of(cfg.p0)),
+                   scale=SCALE * size_of(cfg.p0)).dress(cfg.p0),
             Figure(CX + 330, FIGHT_Y, -1, cfg.p1.color, glove=gloves_of(cfg.p1, BLUE),
-                   scale=SCALE * size_of(cfg.p1)),
+                   scale=SCALE * size_of(cfg.p1)).dress(cfg.p1),
         ]
         self.ref = Figure(CX, FIGHT_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)
@@ -521,46 +521,54 @@ class FightScene(Scene):
         return settle_at + 0.45
 
     def _taunt(self, ex):
-        """The computer talks: when it lands something big, gets hurt, tires, takes you
-        down, and so on. In its own voice, and not every exchange."""
+        """The fighters talk: when they land something big, get hurt, tire, take the other
+        down, and so on. Each in their own voice, and not every exchange. Against the
+        computer your fighter talks too, a little less often."""
         import random
         if not self.ai or ex.finish:
             return
         self.taunt_wait = max(0, getattr(self, "taunt_wait", 0) - 1)
         if self.taunt_wait:
             return
-        me, you = self.fight.state.f[1], self.fight.state.f[0]
-        event = None
-        if ex.sub_start == 1:
-            event = "sub"
-        elif ex.in_sub and ex.sub_result == "escaped" and ex.sub_att == 0:
-            event = "escaped"
-        elif ex.surge_ready[1]:
-            event = "momentum"
-        elif ex.knockdown == 0 or ex.rocked[0] or ex.dmg[1] >= 10:
-            event = "big"
-        elif ex.rocked[1] or ex.dmg[0] >= 10:
-            event = "hurt"
-        elif ex.takedown_by == 1:
-            event = "takedown"
-        elif ex.takedown_by == 0:
-            event = "taken_down"
-        elif ex.booed[1]:
-            event = "booed"
-        elif you.stamina < 25 and random.random() < 0.5:
-            event = "you_tired"
-        elif me.stamina < 20 and random.random() < 0.5:
-            event = "tired"
-        if event is None or random.random() > 0.55:
-            return
-        name = self.ai.personality
-        if event == "big":
-            said = random.choice(personality.PERSONALITIES[name]["taunts"])
-        else:
-            said = personality.line(name, event, random)
-        if said:
-            self.speak(1, said)
-            self.taunt_wait = 2
+        for i, chance in ((1, 0.55), (0, 0.0 if self.cfg.practice else 0.3)):
+            event = self._talk_event(ex, i, random)
+            if event is None or random.random() > chance:
+                continue
+            name = self.ai.personality if i == 1 else personality.of(self.cfg.p0)
+            if event == "big":
+                said = random.choice(personality.PERSONALITIES[name]["taunts"])
+            else:
+                said = personality.line(name, event, random)
+            if said:
+                self.speak(i, said)
+                self.taunt_wait = 2
+                return
+
+    def _talk_event(self, ex, i, random):
+        """What just happened, from fighter i's side."""
+        o = 1 - i
+        me, you = self.fight.state.f[i], self.fight.state.f[o]
+        if ex.sub_start == i:
+            return "sub"
+        if ex.in_sub and ex.sub_result == "escaped" and ex.sub_att == o:
+            return "escaped"
+        if ex.surge_ready[i]:
+            return "momentum"
+        if ex.knockdown == o or ex.rocked[o] or ex.dmg[i] >= 10:
+            return "big"
+        if ex.rocked[i] or ex.dmg[o] >= 10:
+            return "hurt"
+        if ex.takedown_by == i:
+            return "takedown"
+        if ex.takedown_by == o:
+            return "taken_down"
+        if ex.booed[i]:
+            return "booed"
+        if you.stamina < 25 and random.random() < 0.5:
+            return "you_tired"
+        if me.stamina < 20 and random.random() < 0.5:
+            return "tired"
+        return None
 
     def _referee_moments(self, ex):
         """Fouls, breaks, and a moment of slow motion when something big lands."""

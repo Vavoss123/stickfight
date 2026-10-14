@@ -32,7 +32,8 @@ def entry_for(c):
                    if h["result"] == "Win" and h["method"] in ("KO", "TKO", "Submission"))
     return {
         "name": p.name, "nickname": p.nickname, "archetype": p.archetype,
-        "color": list(p.color), "record": p.record(), "wins": p.wins, "losses": p.losses,
+        "color": list(p.color), "look": dict(p.look), "record": p.record(), "wins": p.wins,
+        "losses": p.losses,
         "finishes": finishes, "titles": c.titles_won, "defenses": c.most_defenses,
         "best_rank": c.best_rank, "score": score, "inducted": c.titles_won > 0 or score >= INDUCT_SCORE,
         "retired": date.today().isoformat(),
