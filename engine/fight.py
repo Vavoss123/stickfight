@@ -18,6 +18,7 @@ class Result:
         self.round = round_no
         self.time = time          # "3:45"
         self.cards = cards or []
+        self.by_round = []        # each judge's score for every round, for decisions
 
 
 def fmt_time(seconds):
@@ -120,9 +121,10 @@ class Fight:
             f.cut = max(0.0, f.cut - 15 - f.perk("cutman"))  # the cutman goes to work
 
     def _decision(self):
-        winner, detail, cards = score_fight(self.stats, self.rng)
+        winner, detail, cards, by_round = score_fight(self.stats, self.rng)
         method = "Decision" if winner is not None else "Draw"
         self.result = Result(winner, method, detail, self.round, "5:00", cards)
+        self.result.by_round = by_round
 
     def _record(self, ex):
         s = self.stats[-1]

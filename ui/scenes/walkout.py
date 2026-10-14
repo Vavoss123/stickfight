@@ -67,7 +67,7 @@ class WalkoutScene(Scene):
         elif w0 and w1:
             title = "This is a catchweight bout"
         s = [
-            (0.2, lambda: self._say(["Ladies and gentlemen", title], None)),
+            (0.2, lambda: self._say(["Ladies and gentlemen, welcome to the USC", title], None)),
             (2.6, lambda: (self._say(intro_lines(self.cfg.p1, "blue"), 1),
                            self.figs[1].play(walk, idle="stance"),
                            self.figs[1].move_to(CX + 230, dur=2.2))),

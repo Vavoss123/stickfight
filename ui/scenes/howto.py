@@ -7,86 +7,47 @@ from .base import Scene
 
 PAGES = [
     ("The basics", [
-        "Each turn both fighters pick a move in secret. Then both moves happen at once.",
-        "Fights are 3 rounds of 8 exchanges. Title fights are 5 rounds.",
-        "Win by knockout, TKO, submission, or on the judges' scorecards.",
+        "You both pick a move in secret. Then both happen at once.",
         "",
-        "Every move is a Strike, a Grapple, a Submission or a Defend:",
-        "    Strike beats Grapple, you catch them coming in.",
-        "    Grapple beats Defend, they are standing still.",
-        "    Defend beats Strike, you block and counter.",
-        "Submissions count as grapples.",
+        "Strike beats Grapple.",
+        "Grapple beats Defend.",
+        "Defend beats Strike.",
+        "",
+        "Win by knockout, TKO, submission or on the judges' cards.",
     ]),
-    ("Standing tricks", [
-        "The triangle has a few twists on the feet:",
-        "    A Jab is fast, so it beats a Power punch to the punch.",
-        "    A Takedown ducks under a Jab, a Body shot or a kick. A Power punch or Knee stops it.",
-        "    Clinching smothers a Power punch. A Feint freezes someone who blocks.",
-        "    A Leg kick goes under a block. A Head kick does not.",
-        "Big moments fill the purple momentum bar. Full, your next attack goes ALL IN.",
-        "Stamina is tight. Every move costs it and the break between rounds",
-        "only gives some back. Tired fighters hit softer, miss more and get",
-        "taken down and submitted. Defending moves recover stamina.",
-        "    A move you cannot pay for comes out slow and weak: it marks as GASSED.",
+    ("Reading them", [
+        "A jab beats a power punch to the punch.",
+        "A takedown ducks under jabs. A power punch or a knee stops it.",
+        "A check kick stops leg kicks and hurts the kicker.",
+        "A feint freezes anyone who is waiting to defend.",
+        "A weave dodges everything, or eats it for 1.5 times.",
     ]),
-    ("Head, body, legs and arms", [
-        "Head shots do the damage and set up knockouts.",
-        "Body shots and knees drain stamina. At 100% body damage the ribs crack: TKO.",
-        "Leg kicks take away power and takedowns. Past 60% they limp, at 100% the leg breaks.",
-        "Blocking heavy shots hurts your arms. Hurt arms let shots leak through the",
-        "guard, punch softer, and give way to an armbar sooner.",
-        "Full health is not safe: a broken leg or cracked ribs end the fight anyway.",
-        "Elbows, and sometimes big punches, open cuts. Blood in the eyes hurts",
-        "accuracy, and if the cut gets bad enough the doctor stops the fight.",
-        "Body, leg, arm and cut damage show under each health bar.",
-        "Some of it heals between rounds, but not all.",
-    ]),
-    ("Defence and counters", [
-        "Block and counter: a high guard. Stops punches and head kicks, fires back.",
-        "    A leg kick goes under it, and heavy shots hurt the arms holding it up.",
-        "Check kick: lift the shin. Stops a leg kick and hurts the kicker's leg",
-        "    more than their kick would have hurt you. Punches and head kicks get through.",
-        "Weave: costs stamina. Slip the strike for nothing, or walk into it for 1.5x.",
-        "Knee: the counter to a takedown. A knee to someone shooting hits twice as hard.",
-        "A Jab never stops a takedown, they duck right under it.",
-        "Moves are grouped by what they go after: HEAD, BODY, LEGS, ARMS, NECK.",
-        "Hover a move to see the spot light up on your opponent.",
-        "Feint: freezes someone who blocks, checks or weaves. Loses to everything else.",
+    ("The bars", [
+        "Red is health. Yellow is stamina. Purple is momentum.",
+        "Full momentum: your next attack goes ALL IN.",
+        "Body, leg and arm damage build up under the bars.",
+        "100% body or leg damage ends the fight, whatever your health.",
+        "",
+        "In a fight, hover any bar or tag to see what it means.",
     ]),
     ("The ground", [
-        "Takedowns, trips and knockdowns take the fight to the mat.",
-        "On top you can strike, pass to mount, posture up or stand up.",
-        "On the bottom you can strike, sweep, go for a submission, cover up or get up.",
-        "Covering up beats their strikes, but you are not stuck there:",
-        "    In guard, a sweep or get up can scramble out through their punches.",
-        "    Under mount, shrimp beats punches and bridge beats elbows.",
-        "    With them on your back, turn in while they punch.",
-        "Trying to get up while they pass gives up your back.",
-        "Submissions start a contest. The attacker picks a side in secret.",
-        "If the defender picks the same side, the hold loosens. Fill the meter to win.",
+        "On top: punch, pass, hold position or stand up.",
+        "Underneath: cover up, sweep, get up, or go for a submission.",
+        "Submissions are a guessing game. Pick a side.",
+        "    If they pick the same side, the hold slips. Fill the meter and they tap.",
     ]),
-    ("Fight cards", [
-        "Every fighter has a deck. Signature cards take the slot of a basic move,",
-        "like the Superman Punch in place of the Power punch. Some swap in a",
-        "different kind of move, like Guard Pull in place of the Body shot.",
-        "Perk cards change how you fight. Edit any deck from the fighter select.",
-        "Career fights pay purse money. Wins give a pack: pick one of three cards.",
-        "The shop has new cards after every fight. A duplicate levels a card up.",
-        "Cards cost 1 to 3 deck points, by how strong they are. Your budget",
-        "grows as you climb, so choose what fits your style.",
-        "Tired fighters take more damage, so watch both stamina bars.",
+    ("Cards and career", [
+        "Cards swap in better versions of moves. Perks change how you fight.",
+        "Between rounds the coach suggests up to 2 card swaps.",
+        "Career: win fights, earn cards, train, and chase the belt.",
+        "Judges score damage and strikes first, then takedowns and control.",
     ]),
     ("Controls", [
-        "Quick fight: 1 to 9, 0, - and =, the letters on each button, or click.",
-        "2 player: red uses Q W E R A S D F Z X C V, blue uses U I O P J K L ; M , . /",
-        "Controllers: the button shown on each move (A B X Y, d-pad, shoulders, triggers).",
-        "Between rounds the coach suggests card swaps. C opens your deck (N for blue).",
-        "SPACE continues between rounds and skips the KO replay.",
-        "ESC pauses. M mutes sound. F11 fullscreen. F1 writes a feedback note.",
-        "Volume, fight speed and skipping walkouts are in Settings.",
+        "Click a move, or press the key shown in its corner.",
+        "2 player: red uses the left of the keyboard, blue the right.",
+        "Controllers work too. The button for each move is in its corner.",
         "",
-        "Judges score each round on damage, takedowns, control time,",
-        "submission attempts and knockdowns.",
+        "ESC pause   M mute   F11 fullscreen   F1 feedback note",
     ]),
 ]
 
@@ -126,11 +87,12 @@ class HowToScene(Scene):
         text(surf, "HOW TO PLAY", (CX, 30), 22, GOLD, "midtop", bold=True)
         text(surf, title.upper(), (CX, 64), 52, WHITE, "midtop", display=True)
         panel(surf, (CX - 470, 150, 940, 440), (22, 24, 34))
-        y = 180
+        y = 196
         for ln in lines:
-            text(surf, ln, (CX - 430, y), 21, WHITE if not ln.startswith("    ") else (200, 210, 230),
-                 max_width=880)
-            y += 40
+            if ln:
+                text(surf, ln.strip(), (CX - 420 + (40 if ln.startswith("    ") else 0), y), 25,
+                     WHITE if not ln.startswith("    ") else (200, 210, 230), max_width=840)
+            y += 52 if ln else 26
         text(surf, f"{self.page + 1} / {len(PAGES)}", (CX, H - 58), 18, GREY, "midtop")
         self.prev.enabled = self.page > 0
         self.next.enabled = self.page < len(PAGES) - 1

@@ -30,6 +30,18 @@
 - [x] Max card level 5, seven new perks
 - [x] Money sinks: training points, deck points, restock, glove colours
 
+## Third round (Oct 2026)
+
+- [x] Renamed to USC, the Ultimate Stickfight Championship, with a logo
+- [x] Fighters stand higher so the ground game is not hidden by the move bar
+- [x] Ground counters, blocks and hits use ground poses; flying triangles look like a guard
+- [x] Hover the bars and tags in a fight to see what they mean
+- [x] Judging: damage and strikes first, control counts less (a takedown 4, control 1.1 an exchange, was 5 and 1.5)
+- [x] Round summary says who the judges saw it for and why, result shows each judge's rounds
+- [x] Speech bubbles for what fighters say
+- [x] The tutorial gives no achievements
+- [x] Shorter How to play
+
 ## Second round of ideas (Oct 2026)
 
 - [x] Gym mini game: pad work, price grows with your deck, a deck point for a good session
@@ -77,6 +89,9 @@
 - [ ] Online multiplayer (needs a server)
 
 ## Balance notes
+
+- Judging at takedown 4, control 1.1: BJJ 50%, Striker 51%, Brawler 50%, Wrestler 46%.
+  Control at 0.6 dropped wrestlers to 42%. Harder ground strikes did not help them
 
 - After knee, check, weave, arms and limb TKOs (1800 fights on hard): BJJ 51%, Striker 50%,
   Wrestler 48%, Brawler 48%. Subs 25%, KOs 11%, broken legs and cracked ribs under 1%.

@@ -1,8 +1,8 @@
-# Stickfight: itch.io page
+# USC: Ultimate Stickfight Championship, itch.io page
 
 Paste these into the itch.io project page.
 
-**Title:** Stickfight
+**Title:** USC: Ultimate Stickfight Championship
 
 **Short description (tagline):** Turn based MMA with stick figures. Read your opponent, then knock them out.
 
@@ -22,7 +22,8 @@ butler once the `BUTLER_API_KEY` secret is set. Mark each upload with its platfo
 
 **Both fighters pick a move in secret. Then both happen at once.**
 
-Stickfight is a turn based MMA game about reading your opponent. Strikes beat
+USC, the Ultimate Stickfight Championship, is a turn based MMA game about reading your
+opponent. Strikes beat
 takedowns, takedowns beat blocks, blocks beat strikes, but every rule has a twist:
 a jab is too quick to block a power punch, a takedown walks through a leg kick, and a
 feint freezes someone who is waiting to counter.

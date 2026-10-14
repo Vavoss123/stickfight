@@ -20,7 +20,7 @@ def _gradient(surf, top, bottom, rect):
 
 
 class Arena:
-    def __init__(self, title="STICKFIGHT", seed=3):
+    def __init__(self, title="USC", seed=3):
         self.title = title
         self.rng = random.Random(seed)
         self.bg = pygame.Surface((W, H))

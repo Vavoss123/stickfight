@@ -20,7 +20,7 @@ from .. import gamepad
 from ..arena import Arena
 from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel,
-                      bar, Button, font, text_block)
+                      bar, Button, font, text_block, wrap)
 from ..stickman import Figure
 from .base import Scene
 
@@ -42,6 +42,23 @@ LABEL_P1 = "QWERASDFZXCV"
 LABEL_P2 = "UIOPJKL;M,./"
 LABEL_SOLO = "1234567890-="
 ZONES = ["head", "body", "legs", "arms", "neck", "position", "defence", "trick"]
+# What the bars and tags under each name mean, for hovering
+HUD_HELP = {
+    "health": ("HEALTH", "At zero it is a knockout. A little comes back between rounds."),
+    "stamina": ("STAMINA (yellow)", "Every move costs some, defending gives some back. Tired fighters "
+                "miss more, hit softer and get taken down."),
+    "momentum": ("MOMENTUM (purple)", "Landing shots, takedowns and big moments fill it. When it is full "
+                 "your next attack goes ALL IN: more accurate and harder hitting. Stalling gets you booed "
+                 "and drains it."),
+    "rocked": ("ROCKED", "Hurt and wobbly: easier to hit, hits softer and can be finished. "
+               "Clears after an exchange."),
+    "body": ("BODY DAMAGE", "Drains stamina and slows recovery. At 100% the ribs crack: TKO."),
+    "legs": ("LEG DAMAGE", "Weaker power shots and takedowns, limping past 60%. At 100% the leg breaks: TKO."),
+    "arms": ("ARM DAMAGE", "From blocking heavy shots. The guard leaks, punches soften and armbars sink "
+             "in easier."),
+    "cut": ("CUT", "Blood in the eyes hurts accuracy. A bad enough cut and the doctor stops the fight."),
+    "momentum ": ("ALL IN READY", "Momentum is full. The next attack goes all in."),
+}
 ZONE_LABEL = {"head": "HEAD", "body": "BODY", "legs": "LEGS", "arms": "ARMS", "neck": "NECK",
               "position": "POSITION", "defence": "DEFENCE", "trick": "TRICK"}
 ATTACK_ZONES = {"head", "body", "legs", "arms", "neck"}
@@ -49,6 +66,7 @@ ATTACK_ZONES = {"head", "body", "legs", "arms", "neck"}
 POS_NAME = {STANDING: "Standing", CLINCH: "Clinch", GUARD: "Guard", MOUNT: "Mount",
             BACK: "Back control"}
 REPLAY_SPEED = 0.3
+FIGHT_Y = FLOOR_Y - 62    # where the fighters stand: high enough that the ground game clears the move bar
 KICKS = {"kick", "legkick", "upkick", "knees", "imanari"}
 REPLAY_ZOOM = 1.7
 
@@ -65,7 +83,7 @@ def gloves_of(profile, corner):
 
 class FightConfig:
     def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
-                 on_done=None, event="", start=None, deck_budget=None):
+                 on_done=None, event="", start=None, deck_budget=None, practice=False):
         self.p0, self.p1 = p0, p1
         self.mode = mode
         self.level = level
@@ -75,6 +93,7 @@ class FightConfig:
         self.event = event
         self.start = start       # carried damage, see Fight
         self.deck_budget = deck_budget   # deck points for swaps between rounds
+        self.practice = practice         # the tutorial: no achievements
 
 
 class FightScene(Scene):
@@ -94,12 +113,12 @@ class FightScene(Scene):
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
         self.figs = [
-            Figure(CX - 330, FLOOR_Y, 1, cfg.p0.color, glove=gloves_of(cfg.p0, RED),
+            Figure(CX - 330, FIGHT_Y, 1, cfg.p0.color, glove=gloves_of(cfg.p0, RED),
                    scale=SCALE * size_of(cfg.p0)),
-            Figure(CX + 330, FLOOR_Y, -1, cfg.p1.color, glove=gloves_of(cfg.p1, BLUE),
+            Figure(CX + 330, FIGHT_Y, -1, cfg.p1.color, glove=gloves_of(cfg.p1, BLUE),
                    scale=SCALE * size_of(cfg.p1)),
         ]
-        self.ref = Figure(CX, FLOOR_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
+        self.ref = Figure(CX, FIGHT_Y - 14, 1, (25, 25, 30), glove=(120, 125, 140),
                           body=(120, 125, 140), scale=0.9 * SCALE)
         self.ref.set_pose("ref_fight", idle="ref")
         self.lines = []
@@ -124,6 +143,8 @@ class FightScene(Scene):
         self.snap = None
         self.saved_banner = None
         self.history = []   # move names of recent exchanges, for feedback notes
+        self.bubble = None  # [fighter, words, seconds left]
+        self.hud_tips = []  # (rect, title, words) for hovering the health bars and tags
         self.world = pygame.Surface((W, H))
         self._intro()
 
@@ -151,6 +172,10 @@ class FightScene(Scene):
         for ln in lines:
             self.lines.append([ln, 0.0])
         self.lines = self.lines[-3:]
+
+    def speak(self, i, line, secs=3.0):
+        """A speech bubble over fighter i's head."""
+        self.bubble = [i, line, secs]
 
     def popup(self, i, s, color=WHITE, size=26, dy=0):
         f = self.figs[i]
@@ -181,7 +206,7 @@ class FightScene(Scene):
         self.set_banner(f"ROUND {self.fight.round}", title, GOLD, 1.5)
         if self.ai and self.fight.round == self.fight.rounds and self.fight.rounds > 1:
             import random
-            self.say(f'{self.names[1]}: "{personality.line(self.ai.personality, "last_round", random)}"')
+            self.speak(1, personality.line(self.ai.personality, "last_round", random))
         self.at(1.5, self._fight_call)
 
     def _fight_call(self):
@@ -448,8 +473,10 @@ class FightScene(Scene):
             elif ex.missed[i] and m.power:
                 self.at(impact, lambda i=i: self.popup(i, "MISS", GREY, 20))
             if ex.blocked[o] and m.cls == STRIKE:
-                self.at(impact, lambda o=o: (self.snd("block"), self.popup(o, "BLOCKED", (150, 220, 255), 22),
-                                             self.figs[o].play([("block", 0.08), ("block", 0.2)])))
+                cover = self._ground_pose(o, before, "cover") or "block"
+                self.at(impact, lambda o=o, cover=cover: (
+                    self.snd("block"), self.popup(o, "BLOCKED", (150, 220, 255), 22),
+                    self.figs[o].play([(cover, 0.08), (cover, 0.2)])))
             if ex.caught[o] and ex.landed[i]:
                 self.at(impact + 0.05, lambda i=i: self.popup(i, "CAUGHT!", GOLD, 26, dy=-30))
             if ex.stuffed[i] and m.base in ("takedown", "trip", "sweep", "bridge", "pass"):
@@ -532,7 +559,7 @@ class FightScene(Scene):
         else:
             said = personality.line(name, event, random)
         if said:
-            self.say(f'{self.names[1]}: "{said}"')
+            self.speak(1, said)
             self.taunt_wait = 2
 
     def _referee_moments(self, ex):
@@ -626,12 +653,27 @@ class FightScene(Scene):
         elif dmg >= 5:
             self.arena.cheer(0.3)
 
+    def _ground_pose(self, i, before, kind):
+        """A strike or cover pose for fighter i in a ground position, or None on the feet."""
+        if before.pos in (STANDING, CLINCH):
+            return None
+        top = before.top == i
+        poses = {
+            GUARD: {"strike": ("gnp", "guard_bot_strike"), "cover": ("posture", "guard_bot_cover")},
+            MOUNT: {"strike": ("mount_strike", "mount_bot"), "cover": ("mount_top", "mount_bot")},
+            BACK: {"strike": ("back_punch", "rnc_def"), "cover": ("back_top", "rnc_def")},
+        }
+        pair = poses.get(before.pos, {}).get(kind)
+        return pair and (pair[0] if top else pair[1])
+
     def _counter_anim(self, i, before):
         o = 1 - i
         ex = self.last_ex
-        self.figs[i].play([("counter", 0.08), ("counter", 0.12)])
+        ground = self._ground_pose(i, before, "strike")
+        self.figs[i].play([(ground or "counter", 0.08), (ground or "counter", 0.12)])
         self.figs[o].hit(1.0)
-        self.figs[o].play([("hit", 0.07), ("hit", 0.12)])
+        hit = hit_pose(before.pos, before.top == i, "head") if ground else "hit"
+        self.figs[o].play([(hit, 0.07), (hit, 0.12)])
         self.popup(i, "COUNTER!", GOLD, 28, dy=-30)
         self.popup(o, f"-{ex.dmg[i]:.0f}", (255, 120, 100), 28)
         self.snd("punch")
@@ -927,6 +969,10 @@ class FightScene(Scene):
         self.popups = [p for p in self.popups if p[4] > 0]
         for ln in self.lines:
             ln[1] += dt
+        if self.bubble:
+            self.bubble[2] -= real_dt
+            if self.bubble[2] <= 0:
+                self.bubble = None
         hp = [f.hp for f in self.fight.state.f]
         for i in (0, 1):
             if self.ghost[i] > hp[i]:
@@ -977,6 +1023,10 @@ class FightScene(Scene):
                 self._draw_coach(surf)
         if self.phase == "finished" and self.can_continue:
             text(surf, "Press SPACE to continue", (CX, 410), 20, WHITE, "center", bold=True)
+        if self.bubble and not replay:
+            self._draw_bubble(surf)
+        if not self.paused:
+            self._draw_hud_tip(surf)
         if self.paused:
             panel(surf, (0, 0, W, H), (0, 0, 0), alpha=160, radius=0)
             text(surf, "PAUSED", (CX, 250), 54, WHITE, "center", display=True)
@@ -987,7 +1037,7 @@ class FightScene(Scene):
     def _draw_replay(self, surf):
         xs = [f.x for f in self.figs]
         cx = sum(xs) / 2
-        cy = FLOOR_Y - 150
+        cy = FIGHT_Y - 150
         w, h = int(W / REPLAY_ZOOM), int(H / REPLAY_ZOOM)
         rect = pygame.Rect(0, 0, w, h)
         rect.center = (int(cx), int(cy))
@@ -1004,6 +1054,7 @@ class FightScene(Scene):
     def _draw_hud(self, surf):
         f = self.fight
         st = f.state
+        self.hud_tips = []
         for i in (0, 1):
             p = self.cfg.p0 if i == 0 else self.cfg.p1
             fs = st.f[i]
@@ -1021,16 +1072,20 @@ class FightScene(Scene):
             bar(surf, (x + 16, 50, 468, 18), fs.hp / 100, CORNER[i], flip=not left,
                 ghost=self.ghost[i] / 100)
             bar(surf, (x + 16, 72, 468, 8), fs.stamina / 100, (236, 200, 70), flip=not left)
+            self.hud_tips.append((pygame.Rect(x + 16, 48, 468, 22), *HUD_HELP["health"]))
+            self.hud_tips.append((pygame.Rect(x + 16, 70, 468, 11), *HUD_HELP["stamina"]))
+            self.hud_tips.append((pygame.Rect(x + 16, 81, 468, 9), *HUD_HELP["momentum"]))
             # Momentum: purple while it builds, flashing gold when it is full
             hype_col = HYPE_COLOR
             if fs.surge:
                 hype_col = GOLD if (pygame.time.get_ticks() // 250) % 2 else (255, 240, 170)
             bar(surf, (x + 16, 82, 468, 5), fs.hype / 100, hype_col, back=(30, 26, 40), flip=not left)
             if fs.rocked:
-                text(surf, "ROCKED", (x + 250, 52), 14, GOLD, "midtop", bold=True)
+                rr = text(surf, "ROCKED", (x + 250, 52), 14, GOLD, "midtop", bold=True)
+                self.hud_tips.append((rr.inflate(8, 6), *HUD_HELP["rocked"]))
             tags = []
             if fs.surge:
-                tags.append(("MOMENTUM", None))
+                tags.append(("MOMENTUM ", None))
             if fs.body >= 10:
                 tags.append(("BODY", fs.body))
             if fs.legs >= 10:
@@ -1048,6 +1103,8 @@ class FightScene(Scene):
                     s = f"{label} {v:.0f}%"
                 r2 = text(surf, s, (tx, 94), 14, c, "topleft" if left else "topright", bold=True)
                 tx = r2.right + 14 if left else r2.left - 14
+                if label.lower() in HUD_HELP:
+                    self.hud_tips.append((r2.inflate(8, 6), *HUD_HELP[label.lower()]))
         # Clock
         panel(surf, (CX - 84, 12, 168, 78), (10, 10, 14), alpha=230)
         rounds = f"ROUND {f.round} OF {f.rounds}"
@@ -1072,6 +1129,43 @@ class FightScene(Scene):
             else:
                 pos = POS_NAME[st.pos]
             text(surf, pos.upper(), (CX, 96), 15, GOLD, "midtop", bold=True)
+
+    def _draw_bubble(self, surf):
+        """What the fighter says, in a bubble over their head."""
+        from ..stickman import joints
+        i, line, left = self.bubble
+        f = self.figs[i]
+        head = joints(f.cur, f.x, f.y, f.facing, f.scale)["head"]
+        lines = wrap(line, 17, 260, bold=True)
+        w = max(font(17, True).size(l)[0] for l in lines) + 28
+        h = 22 * len(lines) + 16
+        x = min(max(20, head[0] - w // 2), W - 20 - w)
+        y = max(122, head[1] - 40 - h)
+        a = int(255 * min(1.0, left * 3))
+        bub = pygame.Surface((w, h + 14), pygame.SRCALPHA)
+        pygame.draw.rect(bub, (250, 250, 245, a), (0, 0, w, h), border_radius=14)
+        tip = max(16, min(w - 16, int(head[0] - x)))
+        pygame.draw.polygon(bub, (250, 250, 245, a), [(tip - 10, h - 2), (tip + 10, h - 2), (tip, h + 12)])
+        surf.blit(bub, (x, y))
+        yy = y + 8
+        for ln in lines:
+            text(surf, ln, (x + w // 2, yy), 17, (20, 20, 26), "midtop", bold=True, shadow=False, alpha=a)
+            yy += 22
+
+    def _draw_hud_tip(self, surf):
+        mouse = pygame.mouse.get_pos()
+        for rect, title, words in self.hud_tips:
+            if rect.collidepoint(mouse):
+                lines = wrap(words, 14, 300)
+                h = 30 + 18 * len(lines)
+                x = min(mouse[0] + 14, W - 340)
+                r = panel(surf, (x, mouse[1] + 18, 330, h), (16, 18, 28), alpha=245, border=GOLD)
+                text(surf, title, (r.x + 12, r.y + 7), 15, GOLD, bold=True)
+                yy = r.y + 28
+                for ln in lines:
+                    text(surf, ln, (r.x + 12, yy), 14, WHITE)
+                    yy += 18
+                return
 
     def _draw_rules(self, surf):
         """What beats what, in the corner. The class of the move under the mouse lights up."""
@@ -1248,6 +1342,16 @@ class FightScene(Scene):
             text(surf, label, (CXs, y), 17, GREY, "midtop")
             text(surf, b, (rect.right - 110, y), 20, WHITE, "midtop")
             y += 30
+        lead = 0 if s0.points((1, 1, 1)) >= s1.points((1, 1, 1)) else 1
+        a, b = (s0, s1) if lead == 0 else (s1, s0)
+        reason = next((r for r in a.why(b) if r[1] > r[2]), None)
+        if reason and abs(s0.points((1, 1, 1)) - s1.points((1, 1, 1))) > 2:
+            label, mine, theirs = reason
+            fmt = (lambda v: _ctrl(v)) if label == "control" else (lambda v: f"{v:.0f}")
+            view = f"Judges' view: {self.names[lead].upper()}'s round, on {label} ({fmt(mine)} to {fmt(theirs)})"
+        else:
+            view = "Judges' view: too close to call"
+        text(surf, view, (CXs, y + 4), 15, GOLD, "midtop", bold=True, max_width=rect.w - 40)
         if self.can_continue:
             text(surf, f"Press SPACE for round {f.round + 1}", (CXs, rect.bottom - 40), 18, WHITE,
                  "midtop", bold=True)

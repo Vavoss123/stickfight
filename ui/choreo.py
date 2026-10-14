@@ -64,7 +64,7 @@ SUB_POSES = {
     "triangle": ("triangle", "pass"),
     "armtri": ("arm_tri", "mount_bot"),
     "rnc": ("rnc", "rnc_def"),
-    "imanari": ("sweep", "leg_hit"),
+    "imanari": ("sweep", "guard_top"),   # rolled under them, they come down with it
 }
 
 
@@ -77,16 +77,19 @@ def layout(st):
     xs = [0, 0]
     idle = ["stance", "stance"]
     faces = [facing(0), facing(1)]
-    if st.pos == STANDING:
+    pos, top_i = st.pos, st.top
+    if st.sub and st.pos in (STANDING, CLINCH):
+        pos, top_i = GUARD, 1 - st.sub.att   # a flying sub ends up as a guard on the mat
+    if pos == STANDING:
         xs = [CX - STAND_GAP, CX + STAND_GAP]
-    elif st.pos == CLINCH:
+    elif pos == CLINCH:
         xs = [CX - CLINCH_GAP, CX + CLINCH_GAP]
         idle = ["clinch", "clinch"]
     else:
-        top = st.top
+        top = top_i
         bot = 1 - top
         fb = facing(bot)
-        if st.pos == BACK:
+        if pos == BACK:
             # Both face the same way, the top fighter sits behind
             ft = facing(top)
             faces[bot] = ft
@@ -94,7 +97,7 @@ def layout(st):
             xs[top] = CX - ft * gap[0] * SCALE
             xs[bot] = CX + ft * gap[1] * SCALE
             idle[top], idle[bot] = "back_top", "back_bot"
-        elif st.pos == GUARD:
+        elif pos == GUARD:
             bx = CX - fb * 30 * SCALE
             xs[bot] = bx
             xs[top] = bx + fb * 62 * SCALE

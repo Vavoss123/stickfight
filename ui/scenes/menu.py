@@ -143,8 +143,9 @@ class MenuScene(Scene):
         surf.blit(_menu_shade(), (0, 0))
         for f in self.figs:
             f.draw(surf)
-        text(surf, "STICKFIGHT", (56, 70), 96, WHITE, display=True)
-        text(surf, "TURN BASED MMA", (62, 172), 24, GOLD, bold=True)
+        from ..logo import draw_logo
+        draw_logo(surf, (40, 26), 84)
+        text(surf, "TURN BASED MMA", (238, 156), 20, GREY, bold=True)
         for b in self.buttons:
             b.draw(surf)
         text(surf, "M mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")

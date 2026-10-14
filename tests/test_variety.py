@@ -86,5 +86,27 @@ class Referee(unittest.TestCase):
         self.assertEqual(st.idle, 0)
 
 
+class Judging(unittest.TestCase):
+    def test_damage_beats_lying_on_top(self):
+        # The round from the playtest screenshot: one fighter lands, the other holds
+        striker, wrestler = RoundStats(), RoundStats()
+        striker.dmg, striker.landed = 30, 3
+        wrestler.dmg, wrestler.landed, wrestler.takedowns, wrestler.control = 18, 1, 1, 6
+        wins = sum(Judge(random.Random(seed)).score_round(striker, wrestler)[0] == 10 for seed in range(50))
+        self.assertGreater(wins, 35)   # most judges, not all: they each lean a little
+
+    def test_control_still_counts_in_a_close_round(self):
+        a, b = RoundStats(), RoundStats()
+        a.dmg, a.landed = 12, 2
+        b.dmg, b.landed, b.takedowns, b.control = 10, 2, 2, 6
+        wins = sum(Judge(random.Random(seed)).score_round(a, b)[1] == 10 for seed in range(50))
+        self.assertGreater(wins, 35)
+
+    def test_why(self):
+        a, b = RoundStats(), RoundStats()
+        a.dmg, b.takedowns = 30, 1
+        self.assertEqual(a.why(b)[0][0], "damage")
+
+
 if __name__ == "__main__":
     unittest.main()

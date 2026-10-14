@@ -65,10 +65,10 @@ LESSONS = [
 ]
 
 TIPS = [
-    "Every move costs stamina. Defend moves give some back.",
-    "A move you cannot pay for comes out slow and weak.",
+    "Yellow bar: stamina. Every move costs some, defending gives some back.",
+    "Purple bar: momentum. Fill it and your next attack goes ALL IN.",
+    "Hover any bar or tag in a fight to see what it means.",
     "The computer learns your habits, so mix it up.",
-    "Body shots drain stamina, leg kicks take their power.",
 ]
 
 
@@ -87,7 +87,7 @@ class TutorialScene(FightScene):
             app.goto(MenuScene(app))
 
         cfg = FightConfig(me, partner, mode="ai", level="easy", rounds=1, on_done=done,
-                          event="Tutorial")
+                          event="Tutorial", practice=True)
         super().__init__(app, cfg)
         self.ai = None
         self.lesson = 0

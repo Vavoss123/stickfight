@@ -1,4 +1,4 @@
-# Stickfight
+# USC: Ultimate Stickfight Championship
 
 A turn based MMA game with stick figures. Both fighters pick a move in secret, then
 both moves play out at the same time. Read your opponent, manage your stamina, and win

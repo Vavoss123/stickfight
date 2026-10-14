@@ -45,7 +45,7 @@ class ResultScene(Scene):
             self.buttons.append(b)
         if self.r.winner is not None:
             app.sounds.play("crowd", 0.8)
-        if cfg.mode == "ai" and hasattr(app, "award"):
+        if cfg.mode == "ai" and not cfg.practice and hasattr(app, "award"):
             from engine import achievements
             app.award(achievements.for_fight(fight, 0, cfg.level, app.record))
 
@@ -102,14 +102,21 @@ class ResultScene(Scene):
 
         y = 236
         if r.cards:
-            rect = panel(surf, (CX - 230, y, 460, 120), (12, 13, 20), alpha=230)
-            text(surf, "SCORECARDS", (CX, y + 10), 16, GOLD, "midtop", bold=True)
+            rect = panel(surf, (CX - 300, y, 600, 142), (12, 13, 20), alpha=230)
+            text(surf, "SCORECARDS", (CX, y + 8), 16, GOLD, "midtop", bold=True)
+            rounds = getattr(r, "by_round", []) or []
             for k, (a, b) in enumerate(r.cards):
-                yy = y + 40 + k * 26
-                text(surf, f"Judge {k + 1}", (CX - 200, yy), 18, GREY)
+                yy = y + 34 + k * 26
+                text(surf, f"Judge {k + 1}", (CX - 280, yy), 17, GREY)
+                if k < len(rounds):
+                    for n, (ra, rb) in enumerate(rounds[k]):
+                        rc = CORNER[0] if ra > rb else CORNER[1] if rb > ra else WHITE
+                        text(surf, f"{ra}-{rb}", (CX - 170 + n * 62, yy + 2), 15, rc, bold=True)
                 col = CORNER[0] if a > b else CORNER[1] if b > a else WHITE
-                text(surf, f"{a} - {b}", (CX + 60, yy), 20, col, "midtop", bold=True)
-            y += 132
+                text(surf, f"{a} - {b}", (CX + 240, yy), 19, col, "midtop", bold=True)
+            text(surf, "Each round goes on damage and strikes first, then takedowns and control.",
+                 (CX, y + 116), 13, GREY, "midtop")
+            y += 154
 
         f = self.fight
         t0, t1 = f.totals(0), f.totals(1)

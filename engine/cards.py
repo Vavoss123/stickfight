@@ -101,7 +101,7 @@ _MOVE_CARDS = [
                 desc="A cheaper shot that is a bit easier to stop. Takes the Leg kick slot."),
      "A cheaper shot that is a bit easier to stop. Takes the Leg kick slot."),
     (RARE, _m("flytri", "Flying Triangle", "clinch", SUB, "grappling", 14, slot="kick",
-              bonus=0.04, sub_fail="bottom", anim="imanari",
+              bonus=0.04, sub_fail="bottom", anim="triangle",
               desc="Jump straight into a triangle. If it fails you are on your back. "
                    "Takes the Head kick slot."),
      "Jump straight into a triangle. Takes the Head kick slot."),

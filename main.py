@@ -1,4 +1,4 @@
-"""Stickfight: turn based MMA with stick figures.
+"""USC, the Ultimate Stickfight Championship: turn based MMA with stick figures.
 
     python main.py
 """
@@ -28,7 +28,9 @@ class App:
         updater.check_async()
         pygame.mixer.pre_init(RATE, -16, 1, 512)
         pygame.init()
-        pygame.display.set_caption(f"Stickfight {VERSION}")
+        pygame.display.set_caption(f"USC: Ultimate Stickfight Championship {VERSION}")
+        from ui.logo import icon
+        pygame.display.set_icon(icon())
         self.screen = pygame.display.set_mode((W, H), pygame.SCALED | pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
