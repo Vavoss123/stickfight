@@ -30,6 +30,14 @@
 - [x] Max card level 5, seven new perks
 - [x] Money sinks: training points, deck points, restock, glove colours
 
+## Fourth round (Oct 2026)
+
+- [x] How to play has a picture on every page, and a page for feints
+- [x] Look screen: skin, hair, beard, tattoos, shorts and stripe. Computer fighters get their own look
+- [x] You pick a personality too, with a small career perk. Headhunter, Submission artist, Trash talker added
+- [x] Losing sends a hospital bill and an injury for a fight or two; a bad KO can cost chin for good
+- [x] Menu sparring: fast endless exchanges, clinch, takedowns, ground and pound, subs and escapes
+
 ## Third round (Oct 2026)
 
 - [x] Renamed to USC, the Ultimate Stickfight Championship, with a logo

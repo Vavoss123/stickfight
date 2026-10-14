@@ -1,7 +1,5 @@
 """Main menu with a little sparring session going on behind it."""
 
-import random
-
 import pygame
 
 import updater
@@ -9,21 +7,11 @@ from engine.career import Career
 from version import VERSION
 
 from ..arena import Arena
-from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, panel,
+from ..common import (W, H, CX, FLOOR_Y, RED, GOLD, WHITE, GREY, GREEN, text, panel,
                       bar, Button)
 from ..choreo import SCALE
-from ..stickman import Figure
+from ..spar import Spar
 from .base import Scene
-
-SPAR = ["jab", "cross", "block", "kick", "counter"]
-SEQ = {
-    "jab": [("jab", 0.1), ("jab", 0.1), ("stance", 0.2)],
-    "cross": [("cross_wind", 0.14), ("cross", 0.1), ("stance", 0.25)],
-    "block": [("block", 0.12), ("block", 0.3), ("stance", 0.2)],
-    "kick": [("kick_wind", 0.14), ("kick", 0.14), ("stance", 0.3)],
-    "counter": [("block", 0.1), ("counter", 0.1), ("stance", 0.2)],
-}
-
 
 _shade = None
 
@@ -43,10 +31,7 @@ class MenuScene(Scene):
     def __init__(self, app):
         super().__init__(app)
         self.arena = Arena()
-        self.figs = [Figure(CX + 110 - 72, FLOOR_Y, 1, (200, 40, 40), glove=RED, scale=SCALE),
-                     Figure(CX + 110 + 72, FLOOR_Y, -1, (40, 90, 220), glove=BLUE, scale=SCALE)]
-        self.rng = random.Random()
-        self.next_move = 1.0
+        self.spar = Spar(CX + 110, FLOOR_Y, SCALE)
         self.t = 0.0
         has_save = Career.load() is not None
         items = [
@@ -125,24 +110,13 @@ class MenuScene(Scene):
 
     def update(self, dt):
         self.t += dt
-        self.next_move -= dt
-        if self.next_move <= 0:
-            self.next_move = self.rng.uniform(0.7, 1.6)
-            i = self.rng.randint(0, 1)
-            mv = self.rng.choice(SPAR)
-            self.figs[i].play(list(SEQ[mv]), idle="stance")
-            if mv in ("cross", "kick") and self.rng.random() < 0.5:
-                o = self.figs[1 - i]
-                o.play([("stance", 0.15), ("block", 0.1), ("block", 0.2), ("stance", 0.2)])
-        for f in self.figs:
-            f.update(dt)
+        self.spar.update(dt)
         self.arena.update(dt)
 
     def draw(self, surf):
         self.arena.draw(surf)
         surf.blit(_menu_shade(), (0, 0))
-        for f in self.figs:
-            f.draw(surf)
+        self.spar.draw(surf)
         from ..logo import draw_logo
         draw_logo(surf, (40, 26), 84)
         text(surf, "TURN BASED MMA", (238, 156), 20, GREY, bold=True)
