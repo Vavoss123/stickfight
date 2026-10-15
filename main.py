@@ -58,6 +58,18 @@ class App:
                 if need == aid:
                     self.toasts.push("NEW FIGHTER UNLOCKED", f"{build().name} joins the roster")
 
+    def _mute_key(self, e):
+        """F10 always mutes. M does too, unless it is a letter being typed or a 2 player move key."""
+        if e.key == pygame.K_F10:
+            return True
+        return (e.key == pygame.K_m and not self.feedback.open
+                and not getattr(self.scene, "text_entry", False)
+                and not getattr(self.scene, "m_is_move", False))
+
+    def toggle_mute(self):
+        off = self.sounds.toggle_mute()
+        self.toasts.push("SOUND OFF" if off else "SOUND ON", "M or F10 to switch it back" if off else "")
+
     def _pad(self, e):
         """Pads pick moves in a fight and stand in for the keyboard everywhere else."""
         got = self.pads.handle(e)
@@ -96,6 +108,8 @@ class App:
                     self.focused = e.type == pygame.WINDOWFOCUSGAINED
                 elif e.type in (pygame.WINDOWMINIMIZED, pygame.WINDOWRESTORED, pygame.WINDOWSHOWN):
                     self.minimized = e.type == pygame.WINDOWMINIMIZED
+                elif e.type == pygame.KEYDOWN and self._mute_key(e):
+                    self.toggle_mute()
                 elif e.type == pygame.KEYDOWN and e.key == pygame.K_F11:
                     self.settings["fullscreen"] = not self.settings["fullscreen"]
                     self.apply_settings()

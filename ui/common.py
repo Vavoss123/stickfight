@@ -153,8 +153,9 @@ def lighten(c, f=1.3):
 
 class Button:
     def __init__(self, rect, label, key=None, sub="", color=(52, 58, 78), enabled=True,
-                 size=22, sub_size=15):
+                 size=22, sub_size=15, wrap=False):
         self.rect = pygame.Rect(rect)
+        self.wrap = wrap     # long labels go on two lines instead of shrinking
         self.sub_size = sub_size
         self.label = label
         self.key = key
@@ -175,6 +176,14 @@ class Button:
             return self.rect.collidepoint(event.pos)
         return False
 
+    def _lines(self, fit):
+        """The label on one line, or on two if it is too wide and has a space to break at."""
+        if font(self.size, True).size(self.label)[0] <= fit or " " not in self.label:
+            return [self.label]
+        words = self.label.split()
+        best = min(range(1, len(words)), key=lambda n: abs(len(" ".join(words[:n])) - len(" ".join(words[n:]))))
+        return [" ".join(words[:best]), " ".join(words[best:])]
+
     def draw(self, surf):
         c = self.color if self.enabled else (40, 42, 50)
         if self.hover and self.enabled:
@@ -185,8 +194,14 @@ class Button:
         col = WHITE if self.enabled else (110, 110, 120)
         fit = self.rect.w - 14
         if self.key and not self.sub:
-            fit -= 24  # leave room for the key letter in the corner
-        if self.sub:
+            fit -= 4 if self.wrap else 24  # leave room for the key letter in the corner
+        lines = self._lines(fit) if self.wrap and not self.sub else None
+        if lines and len(lines) == 2:
+            cx = self.rect.centerx + (5 if self.key else 0)
+            for k, ln in enumerate(lines):
+                text(surf, ln, (cx, self.rect.centery + (k - 0.5) * (self.size - 1)), self.size - 2, col,
+                     "center", bold=True, max_width=fit)
+        elif self.sub:
             gap = 10 if self.sub_size >= 15 else 7
             text(surf, self.label, (self.rect.centerx, self.rect.centery - gap), self.size,
                  col, "center", bold=True, max_width=fit)
@@ -196,7 +211,10 @@ class Button:
             c = (self.rect.centerx + (8 if self.key else 0), self.rect.centery)
             text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)
         if self.key:
-            text(surf, self.key, (self.rect.x + 8, self.rect.y + 5), 14, GOLD)
+            # Punctuation keys (, . ; /) are tiny at letter size
+            big = not self.key.isalnum()
+            text(surf, self.key, (self.rect.x + 8, self.rect.y + (1 if big else 5)), 20 if big else 15, GOLD,
+                 bold=True)
         if self.badge:
             r = self.rect
             pygame.draw.polygon(surf, self.badge, [(r.right - 16, r.y + 2), (r.right - 3, r.y + 2),

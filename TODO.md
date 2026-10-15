@@ -2,6 +2,11 @@
 
 ## Now
 
+- [ ] Music in the game: a menu theme, fight music that builds with the rounds, a walkout track
+- [ ] Check every animation is clear (strikes, defence, takedowns, ground, subs, KO and taps) and fix the muddy ones
+- [ ] New animations: more variety for existing moves, finishers, celebrations, walkouts
+- [ ] Accounts: sign in, keep career data on the account, and move a character between machines
+
 - [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder).
       Press F1 in game to write a note, they land in ~/.stickfight/feedback.txt
 - [x] Check the Showtime Kick, it was losing mirror matches

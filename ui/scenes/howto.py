@@ -246,7 +246,7 @@ def pic_controls(surf, r):
         pygame.draw.circle(surf, GOLD, (b.rect.x + 13, b.rect.y + 13), 13, 2)
     arrow(surf, (r.x + 120, r.y + 190), (r.x + 56, r.y + 80), GOLD, gap_b=12)
     text(surf, "the key to press", (r.x + 120, r.y + 196), 16, GOLD, "midtop", bold=True)
-    keys = [("ESC", "pause"), ("M", "mute"), ("F11", "fullscreen"), ("F1", "write a note")]
+    keys = [("ESC", "pause"), ("M", "mute (F10 in 2 player)"), ("F11", "fullscreen"), ("F1", "write a note")]
     for k, (key, what) in enumerate(keys):
         y = r.y + 250 + k * 36
         kr = pygame.Rect(r.x + 60, y, 60, 28)

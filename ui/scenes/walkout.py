@@ -66,25 +66,26 @@ class WalkoutScene(Scene):
             title += f", at {w0.lower()}"
         elif w0 and w1:
             title = "This is a catchweight bout"
+        # Every line of text stays up long enough to read: typed out, then a few seconds to take in
         s = [
             (0.2, lambda: self._say(["Ladies and gentlemen, welcome to the USC", title], None)),
-            (2.6, lambda: (self._say(intro_lines(self.cfg.p1, "blue"), 1),
+            (4.2, lambda: (self._say(intro_lines(self.cfg.p1, "blue"), 1),
                            self.figs[1].play(walk, idle="stance"),
                            self.figs[1].move_to(CX + 230, dur=2.2))),
-            (5.6, lambda: (self.figs[1].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
+            (7.2, lambda: (self.figs[1].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
                            self.app.sounds.play("crowd", 0.6), self.arena.cheer(1.2))),
-            (6.2, lambda: self._say(self._quote(self.cfg.p1), 1, big_name=False)),
-            (8.4, lambda: (self._say(intro_lines(self.cfg.p0, "red"), 0),
-                           self.figs[0].play(walk, idle="stance"),
-                           self.figs[0].move_to(CX - 230, dur=2.2))),
-            (11.4, lambda: (self.figs[0].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
+            (9.4, lambda: self._say(self._quote(self.cfg.p1), 1, big_name=False)),
+            (13.4, lambda: (self._say(intro_lines(self.cfg.p0, "red"), 0),
+                            self.figs[0].play(walk, idle="stance"),
+                            self.figs[0].move_to(CX - 230, dur=2.2))),
+            (16.4, lambda: (self.figs[0].play([("victory", 0.3), ("victory", 0.6), ("stance", 0.3)]),
                             self.app.sounds.play("crowd", 0.8), self.arena.cheer(1.5))),
-            (12.6, lambda: (self._say(["Touch gloves", "and let's get it on"], None),
+            (19.0, lambda: (self._say(["Touch gloves", "and let's get it on"], None),
                             self.figs[0].move_to(CX - 85, dur=0.8), self.figs[1].move_to(CX + 85, dur=0.8),
                             self.ref.play([("ref_fight", 0.3)], idle="ref_fight"))),
-            (13.8, lambda: (self.figs[0].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]),
+            (21.4, lambda: (self.figs[0].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]),
                             self.figs[1].play([("jab", 0.15), ("jab", 0.3), ("stance", 0.2)]))),
-            (15.0, self._done),
+            (22.6, self._done),
         ]
         for t, fn in s:
             self.events.append([t, fn])
@@ -136,7 +137,7 @@ class WalkoutScene(Scene):
             f.draw(surf)
         # Announcer text, typed out
         if self.lines:
-            chars = int(self.shown * 45)
+            chars = int(self.shown * 70)
             y = 150
             for k, ln in enumerate(self.lines):
                 last = k == len(self.lines) - 1 and self.spot is not None and self.big_name

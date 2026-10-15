@@ -14,6 +14,7 @@ from engine.cards import deck_points, signature_names
 
 from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, text_block, panel, Button,
                       bar, font)
+from ..keyrepeat import KeyRepeat
 from ..stickman import Figure
 from .base import Scene
 from .fight import FightConfig
@@ -36,17 +37,28 @@ class TextField:
         self.value = value
         self.limit = limit
         self.focus = False
+        self.rep = KeyRepeat()
+
+    def _apply(self, act):
+        if act[0] == "back":
+            self.value = self.value[:-1]
+        else:
+            self.value = (self.value + act[1])[:self.limit]
 
     def handle(self, e):
         if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             self.focus = self.rect.collidepoint(e.pos)
         if not self.focus:
+            self.rep.clear()
             return
-        if e.type == pygame.TEXTINPUT:
-            if len(self.value) < self.limit:
-                self.value += e.text
-        elif e.type == pygame.KEYDOWN and e.key == pygame.K_BACKSPACE:
-            self.value = self.value[:-1]
+        act = self.rep.feed(e)
+        if act:
+            self._apply(act)
+
+    def update(self, dt):
+        if self.focus:
+            for act in self.rep.tick(dt):
+                self._apply(act)
 
     def draw(self, surf):
         text(surf, self.label, (self.rect.x, self.rect.y - 22), 15, GREY)
@@ -85,6 +97,7 @@ class CreateScene(Scene):
         self.fig.set_pose("stance", idle="stance")
         self.error = ""
         pygame.key.start_text_input()
+        self.text_entry = True    # so typing an m does not mute the sound
 
     def handle(self, e):
         for f in self.fields:
@@ -138,6 +151,8 @@ class CreateScene(Scene):
 
     def update(self, dt):
         self.fig.dress(self.draft)
+        for f in self.fields:
+            f.update(dt)
         self.fig.scale = 1.5 * get_weight(WEIGHTS[self.weight])["size"]
         w = WEIGHTS[self.weight]
         self.weight_btn.label = f"Weight class: {w} ({get_weight(w)['lbs']} lbs)  >"

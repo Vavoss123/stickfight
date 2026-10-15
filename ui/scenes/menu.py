@@ -122,7 +122,7 @@ class MenuScene(Scene):
         text(surf, "TURN BASED MMA", (238, 156), 20, GREY, bold=True)
         for b in self.buttons:
             b.draw(surf)
-        text(surf, "M mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")
+        text(surf, "M or F10 mutes sound, ESC pauses in a fight, F1 writes a feedback note", (W - 20, H - 16), 14, GREY, "bottomright")
         text(surf, f"v{VERSION}", (20, H - 16), 14, GREY, "bottomleft")
         if not self.app.settings["tutorial_done"]:
             r = panel(surf, (430, 236, 330, 62), (40, 34, 14), alpha=230, border=GOLD)

@@ -12,6 +12,7 @@ import pygame
 
 from version import VERSION
 
+from .keyrepeat import KeyRepeat
 from .common import W, H, CX, GOLD, WHITE, GREY, GREEN, text, panel, wrap
 
 PATH = os.path.join(os.path.expanduser("~"), ".stickfight", "feedback.txt")
@@ -26,9 +27,14 @@ class Feedback:
         self.context = []
         self.toast = 0.0
         self.toast_msg = ""
+        self.rep = KeyRepeat()
+
+    def _apply(self, act):
+        self.note = self.note[:-1] if act[0] == "back" else (self.note + act[1])[:MAX_CHARS]
 
     def _start(self):
         self.open = True
+        self.rep.clear()
         self.note = ""
         scene = self.app.scene
         ctx = getattr(scene, "feedback_context", None)
@@ -41,6 +47,7 @@ class Feedback:
 
     def _close(self):
         self.open = False
+        self.rep.clear()
 
     def handle(self, e):
         """True when the event belongs to the note box and the scene should not see it."""
@@ -49,8 +56,9 @@ class Feedback:
                 self._start()
                 return True
             return False
-        if e.type == pygame.TEXTINPUT:
-            self.note = (self.note + e.text)[:MAX_CHARS]
+        act = self.rep.feed(e)
+        if act:
+            self._apply(act)
         elif e.type == pygame.KEYDOWN:
             if e.key == pygame.K_ESCAPE:
                 self._close()
@@ -58,8 +66,6 @@ class Feedback:
                 if self.note.strip():
                     self._save()
                 self._close()
-            elif e.key == pygame.K_BACKSPACE:
-                self.note = self.note[:-1]
         return True
 
     def _save(self):
@@ -77,6 +83,9 @@ class Feedback:
 
     def update(self, dt):
         self.toast = max(0.0, self.toast - dt)
+        if self.open:
+            for act in self.rep.tick(dt):
+                self._apply(act)
 
     def draw(self, surf):
         if self.toast > 0 and not self.open:

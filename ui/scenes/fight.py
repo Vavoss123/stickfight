@@ -251,6 +251,11 @@ class FightScene(Scene):
             return list(opts)
         return sorted(opts, key=lambda k: ZONES.index(zone(self.mv(i, k))))
 
+    @property
+    def m_is_move(self):
+        """In 2 player M picks a move for blue, so it cannot mute (F10 still does)."""
+        return self.cfg.mode != "ai"
+
     def _rows(self, i, order):
         """Attacks on the top row, position, defence and tricks underneath."""
         if self.fight.state.sub:
@@ -288,8 +293,8 @@ class FightScene(Scene):
                     two_p = self.cfg.mode != "ai"
                     b = Button((x, y, bw, h), label, key=keys[j] if j < len(keys) else None,
                                sub="" if two_p else sub, color=color,
-                               size=15 if two_p else (16 if len(rows) == 2 else 21),
-                               sub_size=11 if len(rows) == 2 else 15)
+                               size=16 if two_p else (16 if len(rows) == 2 else 21),
+                               sub_size=11 if len(rows) == 2 else 15, wrap=two_p)
                     b.pick = k
                     b.badge = self._badge(i, k)
                     self.buttons[i].append(b)
@@ -904,9 +909,6 @@ class FightScene(Scene):
                         self.app.sounds.ambience(False)
                         from .menu import MenuScene
                         self.app.goto(MenuScene(self.app))
-            return
-        if e.type == pygame.KEYDOWN and e.key == pygame.K_m:
-            self.app.sounds.toggle_mute()
             return
         cont = (e.type == pygame.KEYDOWN and e.key in (pygame.K_SPACE, pygame.K_RETURN)) or \
                (e.type == pygame.MOUSEBUTTONDOWN and e.button == 1)

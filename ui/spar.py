@@ -13,7 +13,8 @@ from .choreo import ACTION
 from .common import RED, BLUE
 from .stickman import Figure
 
-SPEED = 0.75          # faster than in a real fight
+TEMPO = 1.6           # stretches every wait, so the whole thing runs this much slower
+SPEED = 0.75 * TEMPO  # how long each pose lasts, a little quicker than a real fight, then slowed down
 GAP = 50              # half the standing gap, in authored units
 CLINCH = 34
 
@@ -27,7 +28,7 @@ class _Beat:
 
     def do(self, fn, wait=0.0):
         self.events.append((self.t, fn))
-        self.t += wait
+        self.t += wait * TEMPO
 
 
 class Spar:
@@ -253,9 +254,9 @@ class Spar:
         beat(b, a, 1 - a)
         self.queue = sorted(((self.clock + t, k, fn) for k, (t, fn) in enumerate(b.events)),
                             key=lambda e: (e[0], e[1]))
-        self.next_at = self.clock + b.t + self.rng.uniform(0.1, 0.3)
+        self.next_at = self.clock + b.t + self.rng.uniform(0.4, 0.8)
         # A little footwork before the next one
-        self.queue.append((self.next_at - 0.1, len(b.events), self._footwork))
+        self.queue.append((self.next_at - 0.3, len(b.events), self._footwork))
 
     def _footwork(self):
         shift = self.rng.uniform(-24, 24) * self.s
