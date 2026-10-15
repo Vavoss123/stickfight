@@ -18,7 +18,7 @@ from engine.weights import get as weight_class
 
 from .. import gamepad
 from ..arena import Arena
-from ..choreo import ACTION, IMPACT, SCALE, THROWS, layout, hit_pose, lunge
+from ..choreo import ACTION, IMPACT, SCALE, THROWS, throws_over, layout, hit_pose, lunge
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel,
                       bar, Button, font, text_block, wrap)
 from ..stickman import Figure
@@ -144,6 +144,7 @@ class FightScene(Scene):
         self.saved_banner = None
         self.history = []   # move names of recent exchanges, for feedback notes
         self.bubble = None  # [fighter, words, seconds left]
+        self.flip = False   # red on the right: someone was thrown over the top. Back to normal each round
         self.hud_tips = []  # (rect, title, words) for hovering the health bars and tags
         self.world = pygame.Surface((W, H))
         self._intro()
@@ -193,9 +194,18 @@ class FightScene(Scene):
 
     # Phases
 
+    def _layout(self, st):
+        """Where everyone goes, mirrored when the fighters have swapped sides."""
+        xs, idle, faces = layout(st)
+        if self.flip:
+            xs = [2 * CX - x for x in xs]
+            faces = [-f for f in faces]
+        return xs, idle, faces
+
     def _intro(self):
         self.phase = "intro"
-        xs, idle, _ = layout(self.fight.state)
+        self.flip = False
+        xs, idle, _ = self._layout(self.fight.state)
         walk = [("walk1", 0.16), ("walk2", 0.16)] * 4
         for i, f in enumerate(self.figs):
             f.play(walk + [("stance", 0.2)], idle="stance")
@@ -410,6 +420,9 @@ class FightScene(Scene):
             self.history.append(tuple(self.mv(i, self.picks[i]).name for i in (0, 1)))
         ex = self.fight.play(tuple(self.picks))
         self.last_ex = ex
+        t = ex.takedown_by
+        if t is not None and before.pos in (STANDING, CLINCH) and throws_over(ex.moves[t]):
+            self.flip = not self.flip      # over the shoulder: they land on the far side
         self.ghost = hp_before
         self.phase = "anim"
         dur = self._animate(ex, before)
@@ -426,7 +439,7 @@ class FightScene(Scene):
 
     def _animate(self, ex, before):
         st = self.fight.state
-        xs, idle, faces = layout(st)
+        xs, idle, faces = self._layout(st)
         self._faces = faces
         figs = self.figs
         self._momentum_popups(ex)
@@ -540,15 +553,17 @@ class FightScene(Scene):
 
     def _throw(self, i, anim, xs):
         """The one being thrown leaves the ground, flies and lands. Returns when to settle."""
-        pose, height, along = THROWS[anim]
-        t = self.figs[1 - i]
+        pose, height, over = THROWS[anim]
+        a, t = self.figs[i], self.figs[1 - i]
         x1 = xs[1 - i]
         up = 0.2 if height > 30 else 0.16
 
         def take_off():
-            # From wherever they are by now: a knockback may have moved them
+            # From wherever they are by now: a knockback may have moved them. Over the top
+            # goes up above the thrower, the rest go up on the way to where they land
             t.play([(pose, up), (pose, 0.14)])
-            t.move_to(t.x + (x1 - t.x) * along, FIGHT_Y - height * t.scale, up)
+            apex = a.x if over else (t.x + x1) / 2
+            t.move_to(apex, FIGHT_Y - height * t.scale, up)
         self.at(0.2, take_off)
         land = 0.2 + up + 0.14
         self.at(land, lambda: t.move_to(x1, FIGHT_Y, 0.1))
@@ -686,13 +701,18 @@ class FightScene(Scene):
         power = move.power
         bottom = before.top == i and before.pos in (GUARD, MOUNT, BACK)
         target = move.target
-        self.figs[o].hit(1.5 if power else 0.8)
-        if before.pos in (STANDING, CLINCH):
-            # Knocked back a step by the blow, and settled back into place afterwards
-            t = self.figs[o]
-            t.move_to(t.x - t.facing * (7 + 5 * bool(power)) * t.scale, dur=0.1)
+        t = self.figs[o]
+        t.hit(1.5 if power else 0.8)
         pose = hit_pose(before.pos, bottom, target)
-        self.figs[o].play([(pose, 0.07), (pose, 0.14)])
+        # A trade: they are still throwing their own shot, so it finishes before the hit shows
+        trading = ex.moves[o] is not None and ex.moves[o].cls == STRIKE and bool(t.queue)
+        if trading:
+            t.play([(pose, 0.07), (pose, 0.14)], clear=False)
+        else:
+            if before.pos in (STANDING, CLINCH):
+                # Knocked back a step by the blow, and settled back into place afterwards
+                t.move_to(t.x - t.facing * (7 + 5 * bool(power)) * t.scale, dur=0.1)
+            t.play([(pose, 0.07), (pose, 0.14)])
         self.popup(o, f"-{dmg:.0f}", (255, 90, 80) if dmg >= 9 else (255, 180, 160),
                    34 if dmg >= 9 else 26)
         if target != "head":
@@ -756,7 +776,7 @@ class FightScene(Scene):
             fl.play([("hit", 0.08), ("ko", 0.45)], idle="ko")
             self.shake = 14
             self.snd("boom")
-        self.ref.move_to(fl.x + (90 if l == 0 else -90), dur=0.35)
+        self.ref.move_to(fl.x + fl.facing * 90, dur=0.35)
         self.ref.play([("walk1", 0.12), ("ref_stop", 0.15)], idle="ref_stop")
         self.arena.cheer(2.0)
         self.snd("roar")

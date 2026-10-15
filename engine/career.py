@@ -23,7 +23,8 @@ SHOP_SIZE = 4
 
 # Spending money and spare training points
 TRAINING_PRICE = 15000       # one extra training point, up 35% each time
-DECK_POINT_PRICE = 75000     # one extra deck point, doubling each time
+DECK_POINT_PRICE = 60000     # one extra deck point from the shop, up half again for each one bought.
+DECK_POINT_GROWTH = 1.5      # Only shop buys count: points won in the free gym do not raise it
 MAX_BONUS_DECK = 10          # extra deck points from the shop, training points and the gym
 GYM_REPS = 8
 GYM_EASY_BUDGET = 6          # the gym is free; drills get harder from this budget ...
@@ -117,6 +118,7 @@ class Career:
         # Spending
         self.bonus_deck = 0           # deck points bought or traded for
         self.bought_training = 0      # training points bought, for the price
+        self.bought_deck = 0          # deck points bought in the shop, for the price
         self.gloves_owned = []
         self.gym_used = False         # one gym session between fights
         self.story_seen = set()       # story beats already shown
@@ -528,7 +530,7 @@ class Career:
         """None once you have every extra deck point."""
         if self.bonus_deck >= MAX_BONUS_DECK:
             return None
-        return DECK_POINT_PRICE * 2 ** self.bonus_deck
+        return int(round(DECK_POINT_PRICE * DECK_POINT_GROWTH ** self.bought_deck, -3))
 
     def buy_deck_point(self):
         price = self.deck_point_price()
@@ -536,6 +538,7 @@ class Career:
             return False
         self.money -= price
         self.bonus_deck += 1
+        self.bought_deck += 1
         return True
 
     def restock(self):
@@ -665,6 +668,7 @@ class Career:
             "most_defenses": self.most_defenses,
             "bonus_deck": self.bonus_deck,
             "bought_training": self.bought_training,
+            "bought_deck": self.bought_deck,
             "gloves_owned": self.gloves_owned,
             "gym_used": self.gym_used,
             "story_seen": sorted(self.story_seen),
@@ -694,6 +698,7 @@ class Career:
         c.most_defenses = d.get("most_defenses", c.defenses)
         c.bonus_deck = d.get("bonus_deck", 0)
         c.bought_training = d.get("bought_training", 0)
+        c.bought_deck = d.get("bought_deck", 0)
         c.gloves_owned = [g for g in d.get("gloves_owned", []) if g in GLOVES]
         c.gym_used = d.get("gym_used", False)
         c.story_seen = set(d.get("story_seen", []))

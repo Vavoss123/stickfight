@@ -142,16 +142,21 @@ def lunge(anim, target, dist, att_scale, def_scale):
 
 
 # Throws: how the one being thrown flies. (pose in the air, how high in authored units,
-# how far they travel towards where they land at the top of the arc, 0 to 1)
+# over the top: True when they go over the thrower and land on the far side)
 THROWS = {
-    "osoto": ("thrown_back", 10, 0.5),
-    "seoi": ("thrown_up", 34, 0.6),
-    "hiptoss": ("thrown_up", 26, 0.6),
-    "uchimata": ("thrown_up", 42, 0.6),
-    "tomoe": ("thrown_up", 46, 0.7),
-    "doubleleg": ("lifted", 14, 0.5),
-    "trip": ("thrown_back", 4, 0.5),
+    "osoto": ("thrown_back", 10, False),
+    "seoi": ("thrown_up", 34, True),
+    "hiptoss": ("thrown_up", 26, True),
+    "uchimata": ("thrown_up", 42, True),
+    "tomoe": ("thrown_up", 46, True),
+    "doubleleg": ("lifted", 14, False),
+    "trip": ("thrown_back", 4, False),
 }
+
+
+def throws_over(move):
+    """True when this move threw them over the top, so the two fighters swap sides."""
+    return move is not None and THROWS.get(move.anim, (None, 0, False))[2]
 
 
 def facing(i):
@@ -217,5 +222,5 @@ def hit_pose(st_before_pos, role_bottom, target):
     return "mount_bot_hit" if role_bottom else "posture"
 
 
-__all__ = ["ACTION", "IMPACT", "THROWS", "layout", "facing", "hit_pose", "lunge", "reach", "FLOOR_Y",
+__all__ = ["ACTION", "IMPACT", "THROWS", "throws_over", "layout", "facing", "hit_pose", "lunge", "reach", "FLOOR_Y",
            "SCALE"]

@@ -127,6 +127,16 @@ class Spending(unittest.TestCase):
         self.assertIsNone(c.deck_point_price())
         self.assertEqual(c.budget(), base + MAX_BONUS_DECK)
 
+    def test_gym_deck_points_do_not_raise_the_shop_price(self):
+        c = career()
+        first = c.deck_point_price()
+        c.gym_reward(8)                         # a perfect gym session: a free deck point
+        self.assertEqual(c.deck_point_price(), first)
+        c.money = 10 ** 7
+        self.assertTrue(c.buy_deck_point())
+        self.assertGreater(c.deck_point_price(), first)
+        self.assertLess(c.deck_point_price(), first * 2)
+
     def test_restock_and_gloves(self):
         c = career()
         c.money = RESTOCK_PRICE + GLOVE_PRICE
@@ -153,8 +163,8 @@ class Spending(unittest.TestCase):
         c.buy_training()
         c.buy_gloves("Black")
         back = Career.from_dict(c.to_dict())
-        self.assertEqual((back.bonus_deck, back.bought_training, back.gloves_owned),
-                         (1, 1, ["Black"]))
+        self.assertEqual((back.bonus_deck, back.bought_deck, back.bought_training, back.gloves_owned),
+                         (1, 1, 1, ["Black"]))
         self.assertEqual(back.player.gloves, GLOVES["Black"])
 
 

@@ -49,6 +49,7 @@ class Spar:
         self.clock = 0.0
         self.queue = []
         self.timers = []       # (time, fn) things to do a moment from now, like stepping back
+        self.flip = False      # red on the right, after someone was thrown over the top
         self.next_at = 0.6
         self.last = None
         self.beats = [self.boxing, self.kicks, self.feint, self.weave, self.clinch, self.guillotine,
@@ -98,7 +99,9 @@ class Spar:
         self.hold(1, "clinch")
 
     def _home(self, i):
-        return 1 if i == 0 else -1
+        """Which way fighter i faces: red faces right unless they have swapped sides."""
+        side = 1 if i == 0 else -1
+        return -side if self.flip else side
 
     def place(self, xs, dur=0.3):
         for f, x in zip(self.figs, xs):
@@ -279,11 +282,14 @@ class Spar:
         b.do(lambda: self.ouch(a, "body_hit", 0.5), 0.35)
 
     def _fly(self, i, anim):
-        """Fighter i gets thrown: up into the air, then down onto the mat."""
-        pose, height, _ = THROWS[anim]
+        """Fighter i gets thrown: up into the air, then down onto the mat. Over the top they
+        go up above the thrower and the two swap sides."""
+        pose, height, over = THROWS[anim]
         f = self.figs[i]
         f.play([(pose, 0.2), (pose, 0.16)], idle=pose)
-        f.move_to(f.x, self.floor - height * self.s, 0.2)
+        f.move_to(self.figs[1 - i].x if over else f.x, self.floor - height * self.s, 0.2)
+        if over:
+            self.flip = not self.flip
         self.timers.append((self.clock + 0.36 * TEMPO, lambda: f.move_to(f.x, self.floor, 0.12)))
 
     def judo(self, b, a, d):

@@ -37,6 +37,12 @@
 
 ## Fourth round (Oct 2026)
 
+- [x] Over the top throws (Seoi Nage, Hip Toss, Uchi Mata, Tomoe Nage) land on the far side: the fighters swap
+  sides until the round ends. Osoto, trips and the double leg still drop them in front
+- [x] In a trade of strikes both shots finish before the hit shows, so flashy moves are not cut short
+- [x] Shop deck points: $60,000, up half again per point bought there (was $75,000 doubling for every bonus
+  point, so free gym points priced the shop out)
+
 - [x] Judo throws for wrestlers: Osoto Gari, Seoi Nage, Tomoe Nage, Uchi Mata (plus the Hip Toss) and a Judo Black Belt perk.
   Career wrestlers start with Osoto Gari. Kept out of the AI wrestler's default deck: with a better throw it
   shoots more throws into Brawler knees and drops from 45% to 40%
