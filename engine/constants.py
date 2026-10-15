@@ -54,9 +54,19 @@ STAT_INFO = {
 }
 STAT_MIN = 1
 
-# Submission contest options. The defender escapes by matching the attacker.
-SUB_OPTIONS = ("left", "squeeze", "right")
-SUB_ATTACK_LABELS = {"left": "Crank left", "squeeze": "Squeeze", "right": "Crank right"}
-SUB_DEFEND_LABELS = {"left": "Turn left", "squeeze": "Hand fight", "right": "Turn right"}
+# The submission contest. Both fighters pick one of three each exchange and there are no
+# dice: the same picks always give the same result, so it is a read of your opponent, a
+# check on the gas tank and a build up of angle, see resolve._resolve_sub.
+SUB_POWER, SUB_ANGLE, SUB_CALM = "power", "angle", "calm"
+SUB_OPTIONS = (SUB_POWER, SUB_ANGLE, SUB_CALM)
+SUB_ATTACK_LABELS = {SUB_POWER: "Squeeze", SUB_ANGLE: "Adjust angle", SUB_CALM: "Ease off"}
+SUB_DEFEND_LABELS = {SUB_POWER: "Explode", SUB_ANGLE: "Hand fight", SUB_CALM: "Breathe"}
+SUB_ATTACK_HINTS = {SUB_POWER: "Crank it. Hand fighting stops it",
+                    SUB_ANGLE: "Set up the angle. Explode beats it",
+                    SUB_CALM: "Recover. Safe, but no progress"}
+SUB_DEFEND_HINTS = {SUB_POWER: "Burst out. Costs gas. Squeeze beats it",
+                    SUB_ANGLE: "Stop the squeeze. Adjust beats it",
+                    SUB_CALM: "Recover, but squeeze gets through"}
 SUB_TAP = 3
 SUB_START = 1
+SUB_MAX_ANGLE = 2

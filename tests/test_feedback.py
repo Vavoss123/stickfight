@@ -16,7 +16,6 @@ from engine.moves import MOVES
 from engine.resolve import resolve
 from engine.roster import quick_fighters
 from engine.state import FightState
-from engine.state import SubState
 
 
 def career():
@@ -69,15 +68,13 @@ class NewPerks(unittest.TestCase):
         self.assertGreater(stuffed(["sprawl"]), stuffed([]))
 
     def test_iron_will_in_the_contest(self):
-        def tighter(perks):
-            n = 0
-            for seed in range(300):
-                st = self._pair(perks1=perks)
-                st.pos = CLINCH
-                st.sub = SubState(0, "guillotine", 1)
-                n += resolve(st, ("left", "right"), random.Random(seed)).sub_result == "tighter"
-            return n
-        self.assertLess(tighter(["ironwill"]), tighter([]))
+        from engine.resolve import sub_edge
+
+        def edge(perks):
+            st = self._pair(perks1=perks)
+            st.pos = CLINCH
+            return sub_edge(st.f[0], st.f[1], st.f[0].move("guillotine"))
+        self.assertLess(edge(["ironwill"]), edge([]))
 
     def test_feint_master_drains(self):
         st = self._pair(perks0=["feintmaster"])

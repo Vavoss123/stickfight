@@ -44,8 +44,13 @@ PAGES = [
     ("The ground", [
         "On top: punch, pass, hold position or stand up.",
         "Underneath: cover up, sweep, get up, or go for a submission.",
-        "Submissions are a guessing game. Pick a side.",
-        "    If they pick the same side, the hold slips. Fill the meter and they tap.",
+        "A submission starts a contest. Fill the meter and they tap. The next page has the rules.",
+    ]),
+    ("Submissions", [
+        "Every turn you both pick one of three. No dice.",
+        "Squeeze beats Explode and Breathe, but a Hand fight stops it.",
+        "Adjust sets an angle. With an angle, a squeeze gets through a hand fight.",
+        "Explode beats an Adjust. Squeeze and Explode cost gas, so keep some in the tank.",
     ]),
     ("Cards and career", [
         "Cards swap in better versions of moves. Perks change how you fight.",
@@ -217,8 +222,41 @@ def pic_ground(surf, r):
         x = m.centerx - 90 + k * 60
         c = (60, 110, 70) if k == 0 else (150, 80, 205) if k <= 1 else (50, 46, 60)
         pygame.draw.circle(surf, c, (x, m.y + 50), 12)
-    text_block(surf, "Guess right and it moves towards TAP. Guess the same side as them and it slips back.",
+    text_block(surf, "Squeeze to move towards TAP. Explode or an adjust going wrong slips back towards ESCAPE.",
                (r.centerx, r.y + 344), 14, r.w - 40, GREY)
+
+
+SUB_COLOR = (150, 80, 205)
+
+
+def pic_subs(surf, r):
+    """The whole contest: what each pick does against each pick."""
+    atk = [("Squeeze", SUB_COLOR), ("Adjust", SUB_COLOR), ("Ease off", SUB_COLOR)]
+    dfn = ["Explode", "Hand fight", "Breathe"]
+    # (what happens, who it favours: 1 attacker, -1 defender, 0 neither)
+    grid = [[("Tighter", 1), ("Stopped", -1), ("Tighter", 1)],
+            [("Slips out", -1), ("Angle", 1), ("Angle", 1)],
+            [("Holds", 0), ("Nothing", 0), ("Both rest", 0)]]
+    col = {1: (150, 80, 205), -1: (56, 160, 100), 0: (60, 62, 76)}
+    x0, y0, cw, ch = r.x + 90, r.y + 70, 112, 64
+    text(surf, "THEY PICK", (x0 + cw * 1.5, r.y + 8), 14, GREY, "midtop", bold=True)
+    text(surf, "YOU PICK", (x0 - 8, r.y + 34), 14, GREY, "topright", bold=True)
+    for c, name in enumerate(dfn):
+        text(surf, name, (x0 + c * cw + cw // 2, r.y + 34), 15, (140, 220, 160), "midtop", bold=True)
+    for rr, (name, _) in enumerate(atk):
+        text(surf, name, (x0 - 8, y0 + rr * ch + ch // 2), 16, (210, 170, 255), "midright", bold=True)
+        for c in range(3):
+            label, who = grid[rr][c]
+            cell = pygame.Rect(x0 + c * cw + 3, y0 + rr * ch + 3, cw - 6, ch - 6)
+            pygame.draw.rect(surf, col[who], cell, border_radius=8)
+            text(surf, label, cell.center, 16, WHITE, "center", bold=True)
+    ky = y0 + 3 * ch + 14
+    for k, (c, what) in enumerate([((150, 80, 205), "good for the one holding"),
+                                   ((56, 160, 100), "good for the one defending")]):
+        pygame.draw.rect(surf, c, (x0 + k * 190, ky, 16, 16), border_radius=4)
+        text(surf, what, (x0 + k * 190 + 24, ky + 8), 13, GREY, "midleft")
+    text_block(surf, "With an angle set, a squeeze gets through a hand fight too.", (r.centerx, ky + 34), 14,
+               r.w - 40, GOLD)
 
 
 def pic_cards(surf, r):
@@ -256,4 +294,4 @@ def pic_controls(surf, r):
         text(surf, what, (kr.right + 16, kr.centery), 17, WHITE, "midleft")
 
 
-PICTURES = [pic_basics, pic_reading, pic_feints, pic_bars, pic_ground, pic_cards, pic_controls]
+PICTURES = [pic_basics, pic_reading, pic_feints, pic_bars, pic_ground, pic_subs, pic_cards, pic_controls]

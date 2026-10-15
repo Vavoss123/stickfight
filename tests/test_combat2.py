@@ -123,15 +123,14 @@ class Limbs(unittest.TestCase):
         self.assertGreater(100 - heavy.f[0].hp, 100 - light.f[0].hp)
 
     def test_hurt_arms_help_the_armbar(self):
-        def tighter(arms):
-            n = 0
-            for seed in range(300):
-                st = fresh(GUARD, 1)
-                st.f[1].arms = arms
-                st.sub = SubState(0, "armbar", 1)
-                n += resolve(st, ("left", "right"), random.Random(seed)).sub_result == "tighter"
-            return n
-        self.assertGreater(tighter(80), tighter(0))
+        def result(arms):
+            st = fresh(GUARD, 1)
+            st.f[0].stats.grappling = st.f[1].stats.grappling      # nothing but the arm differs
+            st.f[1].arms = arms
+            st.sub = SubState(0, "armbar", 1)
+            return resolve(st, ("power", "angle"), random.Random(0)).sub_result
+        self.assertEqual(result(0), "defended")      # a squeeze into a hand fight is stopped
+        self.assertEqual(result(80), "angle")        # but a wrecked arm cannot stop it
 
 
 class Zones(unittest.TestCase):

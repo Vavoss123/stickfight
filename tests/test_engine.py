@@ -74,26 +74,22 @@ class Resolve(unittest.TestCase):
     def test_submission_can_tap(self):
         st = fresh(GUARD, 1)
         st.sub = SubState(0, "triangle", SUB_TAP - 1)
-        ex = None
-        for seed in range(100):
-            s2 = st.clone()
-            ex = resolve(s2, ("left", "right"), random.Random(seed))
-            if ex.finish:
-                break
+        ex = resolve(st, ("power", "calm"), random.Random(0))
+        self.assertEqual(ex.sub_result, "tap")
         self.assertEqual(ex.finish[0], 0)
         self.assertEqual(ex.finish[1], "Submission")
 
-    def test_matching_side_loosens_hold(self):
+    def test_exploding_while_they_adjust_escapes(self):
         st = fresh(GUARD, 1)
         st.sub = SubState(0, "triangle", 1)
-        ex = resolve(st, ("left", "left"), random.Random(0))
+        ex = resolve(st, ("angle", "power"), random.Random(0))
         self.assertEqual(ex.sub_result, "escaped")
         self.assertIsNone(st.sub)
 
     def test_failed_guillotine_puts_attacker_on_bottom(self):
         st = fresh(CLINCH)
         st.sub = SubState(0, "guillotine", 1)
-        resolve(st, ("squeeze", "squeeze"), random.Random(0))
+        resolve(st, ("angle", "power"), random.Random(0))
         self.assertEqual((st.pos, st.top), (GUARD, 1))
 
     def test_clone_is_independent(self):
@@ -349,7 +345,7 @@ class BackControl(unittest.TestCase):
     def test_escaping_the_choke_keeps_you_on_the_back(self):
         st = fresh(BACK, 0)
         st.sub = SubState(0, "rnc", 1)
-        resolve(st, ("left", "left"), random.Random(0))
+        resolve(st, ("angle", "power"), random.Random(0))
         self.assertIsNone(st.sub)
         self.assertEqual((st.pos, st.top), (BACK, 0))
 

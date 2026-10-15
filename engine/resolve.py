@@ -7,7 +7,8 @@ kit, so signature cards and perks apply.
 
 from .cards import ESCAPES
 from .constants import (STANDING, CLINCH, GUARD, MOUNT, BACK, STRIKE, GRAPPLE, SUB, DEFEND, FEINT,
-                        SUB_TAP, SUB_START, HEAD, BODY, LEGS, TIRED_DAMAGE)
+                        SUB_TAP, SUB_START, SUB_MAX_ANGLE, SUB_POWER, SUB_ANGLE, SUB_CALM, HEAD, BODY, LEGS,
+                        TIRED_DAMAGE)
 from .moves import matchup, base_class
 from .weights import SIZE_DAMAGE, SIZE_GRAPPLE, SIZE_TOUGH
 from .state import SubState
@@ -114,7 +115,8 @@ class Exchange:
         self.takedown_by = None
         self.reversal_by = None
         self.sub_start = None           # attacker index
-        self.sub_result = None          # tighter / held / defended / escaped / tap
+        self.sub_result = None          # tighter / angle / held / defended / loosened / escaped / tap
+        self.sub_angle = 0              # the attacker's angle after the exchange
         self.lock = None
         self.stall = False
         self.finish = None              # (winner, method, detail)
@@ -412,6 +414,8 @@ def _grapple_edge(st, i, move):
     """Card and perk bonuses for fighter i's grapple."""
     a, d = st.f[i], st.f[1 - i]
     edge = move.bonus
+    if move.base == "trip":
+        edge += a.perk("judoka")
     if move.base in ESCAPES:
         edge += a.perk("getup")
         if st.top == 1 - i:
@@ -672,33 +676,104 @@ def _feint(st, ex, moves, rng):
         _grapple_uncontested(st, ex, o, mo, rng, bonus=-FEINT_PUNISH)
 
 
+SQUEEZE_COST, EXPLODE_COST, ADJUST_COST, DEFEND_COST = 7, 10, 3, 4
+SQUEEZE_GAS, EXPLODE_GAS = 8, 12      # less than this in the tank and you cannot do it
+EDGE_PRESSURE, EDGE_CRUSH, EDGE_SCRAMBLE = 2.0, 6.0, -3.0
+
+
+def sub_edge(A, D, hold):
+    """How far ahead the attacker is on skill, in points. Grappling, the hold, perks, a
+    hurt arm for arm locks, and who has more left in the tank."""
+    edge = A.stats.grappling - D.stats.grappling
+    edge += (hold.bonus + A.perk("subhunter") - D.perk("ironwill")) * 10
+    if hold.base in ("kimura", "armbar", "marmbar"):
+        edge += D.arms / 40
+    edge += (A.stamina - D.stamina) / 25
+    if D.rocked:
+        edge += 1.5
+    return edge
+
+
 def _resolve_sub(st, picks, rng):
+    """Squeeze, Adjust angle or Ease off against Explode, Hand fight or Breathe. No dice.
+
+    Squeeze beats Explode and Breathe, but Hand fighting stops it, unless you have set
+    up an angle, which a squeeze spends to get through. Adjust sets the angle, beats Hand
+    fighting, and loses to Explode. Explode needs gas. Skill decides the close ones."""
     ex = Exchange(picks, st)
     rocked_before = [st.f[0].rocked > 0, st.f[1].rocked > 0]
     s = st.sub
     a, d = s.att, 1 - s.att
     A, D = st.f[a], st.f[d]
     hold = ex.sub_card
-    A.spend(4)
-    D.spend(3)
-    if picks[a] == picks[d]:
-        s.lock -= 1
-        ex.sub_result = "defended"
-        ex.success[d] = True
-    else:
-        p = 0.52 + (A.stats.grappling - D.stats.grappling) * 0.05
-        p += hold.bonus + A.perk("subhunter") - D.perk("ironwill")
-        if hold.base in ("kimura", "armbar", "marmbar"):
-            p += D.arms * 0.003
-        p += 0.3 * (1 - D.stamina / 100) - 0.3 * (1 - A.stamina / 100)
-        if D.rocked:
-            p += 0.15
-        if rng.random() < _clamp(p, 0.15, 0.92):
-            s.lock += 1
-            ex.sub_result = "tighter"
-            ex.success[a] = True
+    pa, pd = picks[a], picks[d]
+    edge = sub_edge(A, D, hold)
+    gas_a = A.stamina
+    # No gas, no effort
+    if pa == SUB_POWER and A.stamina < SQUEEZE_GAS:
+        pa = SUB_ANGLE
+        ex.gassed[a] = True
+    if pd == SUB_POWER and D.stamina < EXPLODE_GAS:
+        pd = SUB_CALM
+        ex.gassed[d] = True
+    move = 0                  # change to the lock: +1 tighter, -1 looser
+    result = "held"
+    if pa == SUB_POWER:
+        A.spend(SQUEEZE_COST)
+        if pd == SUB_ANGLE:                      # hand fight stops a squeeze...
+            D.spend(DEFEND_COST)
+            if s.angle >= 1 or edge >= EDGE_CRUSH:   # ...unless there is an angle, or you are far better
+                s.angle = max(0, s.angle - 1)
+                move, result = 1, "tighter"
+            elif edge >= EDGE_PRESSURE:          # a better grappler still gains some angle
+                s.angle = min(SUB_MAX_ANGLE, s.angle + 1)
+                result = "angle"
+            else:
+                result = "defended"
+        elif pd == SUB_POWER:                    # bursting into a squeeze is crushed
+            D.spend(EXPLODE_COST)
+            if edge > EDGE_SCRAMBLE:
+                move, result = 1, "tighter"
+        else:                                    # breathing through a squeeze is too slow
+            D.spend(-DEFEND_COST)
+            move, result = 1, "tighter"
+    elif pa == SUB_ANGLE:
+        A.spend(ADJUST_COST)
+        if pd == SUB_POWER:                      # exploding while they shift gets out...
+            D.spend(EXPLODE_COST)
+            if s.angle >= SUB_MAX_ANGLE:         # ...unless the angle is already locked in
+                result = "defended"
+            else:
+                move, result = -1, "loosened"
+        elif pd == SUB_ANGLE:
+            D.spend(ADJUST_COST)
+            if edge > -EDGE_PRESSURE:
+                s.angle = min(SUB_MAX_ANGLE, s.angle + 1)
+                result = "angle"
         else:
-            ex.sub_result = "held"
+            D.spend(-2 * DEFEND_COST)
+            s.angle = min(SUB_MAX_ANGLE, s.angle + 1)
+            result = "angle"
+    else:
+        A.spend(-2 * DEFEND_COST)
+        if pd == SUB_POWER:                      # exploding into a calm hold fails
+            D.spend(EXPLODE_COST)
+            if gas_a < SQUEEZE_GAS + 2:          # unless you were too tired to hold on
+                move, result = -1, "loosened"
+            else:
+                result = "defended"
+        elif pd == SUB_ANGLE:
+            D.spend(-(DEFEND_COST // 2))
+        else:
+            D.spend(-2 * DEFEND_COST)
+            ex.stall = True
+    s.lock += move
+    if result in ("tighter", "angle"):
+        ex.success[a] = True
+    elif result in ("defended", "loosened"):
+        ex.success[d] = True
+    ex.sub_result = result
+    ex.sub_angle = s.angle
     ex.lock = s.lock
     if s.lock >= SUB_TAP:
         ex.sub_result = "tap"

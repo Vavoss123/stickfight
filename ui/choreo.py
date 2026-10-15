@@ -2,6 +2,7 @@
 
 from engine.constants import STANDING, CLINCH, GUARD, MOUNT, BACK
 from .common import CX, FLOOR_Y
+from .stickman import joints, concrete
 
 # Fighters are drawn this much bigger than the authored poses
 SCALE = 1.45
@@ -52,9 +53,33 @@ ACTION = {
     "feint": [("cross_wind", 0.1), ("stance", 0.12), ("jab", 0.06), ("stance", 0.1)],
     "check": [("legkick_wind", 0.12), ("legkick_wind", 0.18), ("stance", 0.1)],
     "weave": [("sprawl", 0.1), ("sprawl", 0.14), ("stance", 0.12)],
+    # Signature moves, each with its own animation
+    "superman": [("superman_wind", 0.12), ("superman", 0.12), ("superman", 0.08)],
+    "spinfist": [("spin_wind", 0.14), ("spinfist", 0.1), ("spinfist", 0.1)],
+    "spinelbow": [("spin_wind", 0.12), ("spinelbow", 0.1), ("spinelbow", 0.1)],
+    "showtime": [("showtime_wind", 0.16), ("showtime", 0.14), ("showtime", 0.1)],
+    "flyknee": [("flyknee_wind", 0.14), ("flyknee", 0.12), ("flyknee", 0.1)],
+    "calfkick": [("legkick_wind", 0.1), ("calfkick", 0.1), ("calfkick", 0.1)],
+    "liver": [("liver_wind", 0.1), ("liver", 0.1), ("liver", 0.1)],
+    "checkhook": [("block", 0.1), ("checkhook", 0.12), ("checkhook", 0.2)],
+    "doubleleg": [("shoot", 0.18), ("doubleleg", 0.14), ("doubleleg", 0.1)],
+    "singleleg": [("shoot", 0.16), ("singleleg", 0.16)],
+    "guardpull": [("clinch_in", 0.15), ("guardpull", 0.2)],
+    "plum": [("plum", 0.14), ("plum_knee", 0.1), ("plum_knee", 0.1)],
+    "hammer": [("hammer_wind", 0.12), ("hammer", 0.08), ("hammer", 0.1)],
+    "kimura": [("kimura", 0.25), ("kimura", 0.1)],
+    "gogo": [("gogo", 0.25), ("gogo", 0.1)],
+    # Judo throws
+    "osoto": [("osoto_step", 0.14), ("osoto", 0.16), ("osoto", 0.14)],
+    "seoi": [("seoi_turn", 0.2), ("seoi", 0.18), ("seoi", 0.14)],
+    "hiptoss": [("hiptoss_load", 0.18), ("hiptoss", 0.18), ("hiptoss", 0.14)],
+    "uchimata": [("uchimata_load", 0.18), ("uchimata", 0.18), ("uchimata", 0.16)],
+    "tomoe": [("tomoe_sit", 0.2), ("tomoe", 0.16), ("tomoe", 0.14)],
 }
 
-IMPACT = {"jab": 0.10, "cross": 0.24, "kick": 0.28, "knees": 0.14, "dirty": 0.1,
+IMPACT = {"superman": 0.24, "spinfist": 0.24, "spinelbow": 0.22, "showtime": 0.3, "flyknee": 0.26,
+          "calfkick": 0.2, "liver": 0.2, "plum": 0.24, "hammer": 0.2,
+          "jab": 0.10, "cross": 0.24, "kick": 0.28, "knees": 0.14, "dirty": 0.1,
           "body": 0.13, "legkick": 0.2, "bpunch": 0.2,
           "gnp": 0.2, "elbows": 0.22, "upkick": 0.15, "mgnp": 0.18, "melbows": 0.22}
 
@@ -65,6 +90,67 @@ SUB_POSES = {
     "armtri": ("arm_tri", "mount_bot"),
     "rnc": ("rnc", "rnc_def"),
     "imanari": ("sweep", "guard_top"),   # rolled under them, they come down with it
+    "kimura": ("kimura", "kimura_def"),
+    "gogo": ("gogo", "guard_top"),
+}
+
+
+# Standing strikes: which poses hold the blow at its furthest, and which limb is doing the hitting
+STRIKE_LIMBS = {
+    "jab": (("jab",), ("fhand",)),
+    "cross": (("cross",), ("bhand",)),
+    "body": (("bodyshot",), ("bhand",)),
+    "kick": (("kick",), ("bfoot",)),
+    "legkick": (("legkick",), ("bfoot",)),
+    "knees": (("knee",), ("bknee", "bfoot")),
+    "dirty": (("dirty",), ("fhand", "bhand")),
+    "counter": (("counter",), ("fhand",)),
+    "superman": (("superman",), ("bhand",)),
+    "spinfist": (("spinfist",), ("fhand",)),
+    "spinelbow": (("spinelbow",), ("felbow",)),
+    "showtime": (("showtime",), ("bfoot",)),
+    "flyknee": (("flyknee",), ("bknee",)),
+    "calfkick": (("calfkick",), ("bfoot",)),
+    "liver": (("liver",), ("fhand",)),
+}
+
+# How far from a fighter's hip, towards whoever is hitting them, the part being hit starts
+FRONT = {"head": 25, "neck": 22, "body": 13, "legs": 14, "arms": 36}
+MAX_LUNGE = 46
+_reach = {}
+
+
+def reach(anim):
+    """How far forward of the hip the hitting limb gets at the end of the blow (authored units)."""
+    if anim not in _reach:
+        poses, limbs = STRIKE_LIMBS[anim]
+        best = 0.0
+        for pose in poses:
+            j = joints(concrete(pose), 0, 0, 1, 1.0)
+            best = max(best, *(j[limb][0] - j["hip"][0] for limb in limbs))
+        _reach[anim] = best
+    return _reach[anim]
+
+
+def lunge(anim, target, dist, att_scale, def_scale):
+    """How far, in pixels, the attacker steps in so the blow reaches its target instead of
+    swinging at air. dist is the gap between the two fighters' hips in pixels."""
+    if anim not in STRIKE_LIMBS:
+        return 0.0
+    need = dist - FRONT.get(target, 20) * def_scale - reach(anim) * att_scale + 4 * att_scale
+    return max(0.0, min(need, MAX_LUNGE * att_scale))
+
+
+# Throws: how the one being thrown flies. (pose in the air, how high in authored units,
+# how far they travel towards where they land at the top of the arc, 0 to 1)
+THROWS = {
+    "osoto": ("thrown_back", 10, 0.5),
+    "seoi": ("thrown_up", 34, 0.6),
+    "hiptoss": ("thrown_up", 26, 0.6),
+    "uchimata": ("thrown_up", 42, 0.6),
+    "tomoe": ("thrown_up", 46, 0.7),
+    "doubleleg": ("lifted", 14, 0.5),
+    "trip": ("thrown_back", 4, 0.5),
 }
 
 
@@ -131,4 +217,5 @@ def hit_pose(st_before_pos, role_bottom, target):
     return "mount_bot_hit" if role_bottom else "posture"
 
 
-__all__ = ["ACTION", "IMPACT", "layout", "facing", "hit_pose", "FLOOR_Y", "SCALE"]
+__all__ = ["ACTION", "IMPACT", "THROWS", "layout", "facing", "hit_pose", "lunge", "reach", "FLOOR_Y",
+           "SCALE"]

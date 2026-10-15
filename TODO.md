@@ -37,6 +37,15 @@
 
 ## Fourth round (Oct 2026)
 
+- [x] Judo throws for wrestlers: Osoto Gari, Seoi Nage, Tomoe Nage, Uchi Mata (plus the Hip Toss) and a Judo Black Belt perk.
+  Career wrestlers start with Osoto Gari. Kept out of the AI wrestler's default deck: with a better throw it
+  shoots more throws into Brawler knees and drops from 45% to 40%
+- [x] Own animations for the signature cards (Superman Punch, Spinning Back Fist, Showtime Kick, Flying Knee,
+  Calf Kick, Liver Hook, Check Hook, Double Leg, Single Leg, Guard Pull, Plum, Spinning Elbow, Hammer Fists,
+  Kimura, Gogoplata) and the throws, with the one thrown flying through the air
+
+- [x] Submissions are a tactical contest with no dice: squeeze, adjust angle, ease off against explode, hand fight, breathe
+  (gas, angle and grappling skill decide it; AI vs AI still about 25% subs)
 - [x] How to play has a picture on every page, and a page for feints
 - [x] Look screen: skin, hair, beard, tattoos, shorts and stripe. Computer fighters get their own look
 - [x] You pick a personality too, with a small career perk. Headhunter, Submission artist, Trash talker added
@@ -58,6 +67,7 @@
 ## Second round of ideas (Oct 2026)
 
 - [x] Gym mini game: pad work, price grows with your deck, a deck point for a good session
+- [x] Gym is free with five random drills (pad work, catch the balls, mitts, bell, combos) that get harder with your deck budget
 - [x] Story: Coach Ray at the big career moments
 - [x] Trophies button on the career hub
 - [x] Cracked ribs and broken legs at 100% body or leg damage

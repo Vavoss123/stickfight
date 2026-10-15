@@ -46,9 +46,12 @@ Needs Python 3.10 or newer. Works on Windows, Mac and Linux.
   - Before a title fight you pick a **training camp** that adds 1 to a stat for that fight.
   - **Coach Ray** talks you through the big moments: your first fight, first win and
     loss, getting ranked, your rival, your first title shot, the belt.
-  - The **gym** is pad work: hit the button while the marker is in the zone. A good
-    session earns a deck point. It costs money, more the bigger your deck already is,
-    and you get one session between fights.
+  - **Judo throws** for wrestlers: Osoto Gari, Seoi Nage, Tomoe Nage, Uchi Mata and the Hip Toss, plus a
+    Judo Black Belt perk. Career wrestlers start with Osoto Gari.
+  - The **gym** is free, one session between fights. Coach Ray picks a drill at random:
+    pad work, catching balls with the mouse, mitt work, a bell drill or combos. A good
+    session earns a deck point. The bigger your deck budget (rank plus bonus points),
+    the harder the drills.
   - **Trophies** on the hub shows your achievements and the secret fighters.
   - **Retire** to put your career in the **hall of fame**. A world title or a big enough
     legacy score gets you inducted.
@@ -96,8 +99,11 @@ The fight moves between standing, the clinch, guard, mount and back control. Eac
 position has its own moves. Covering up stops strikes from the top, but it is not the
 only way out: in guard a sweep or get up can scramble out through the punches, under
 the mount a shrimp beats punches and a bridge beats elbows, and from the bottom of back
-control you can turn in while they punch. A submission starts a contest: the attacker hides a side
-and the defender escapes by matching it. The rear naked choke from the back is the most
+control you can turn in while they punch. A submission starts a contest with no dice: each turn the holder
+picks Squeeze, Adjust angle or Ease off and the defender picks Explode, Hand fight or
+Breathe. A squeeze beats an explosion or a breather, a hand fight stops a squeeze, and
+an angle set by Adjust lets the next squeeze through. Gas and grappling skill decide the
+close ones. The rear naked choke from the back is the most
 dangerous of them, and escaping it still leaves you with them on your back.
 
 Stamina is scarce. Every move costs it, the break between rounds only gives some back,

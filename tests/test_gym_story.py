@@ -25,25 +25,29 @@ def lose(c):
 
 
 class Gym(unittest.TestCase):
-    def test_price_grows_with_the_deck(self):
+    def test_the_gym_is_free_but_gets_harder_with_your_budget(self):
         c = career()
-        cheap = c.gym_price()
+        easy = c.gym_level()
+        money = c.money
         c.bonus_deck = 4
-        self.assertGreater(c.gym_price(), cheap)
+        self.assertGreater(c.gym_level(), easy)
+        self.assertTrue(c.start_gym())
+        self.assertEqual(c.money, money)
+
+    def test_difficulty_is_capped(self):
+        c = career()
+        self.assertEqual(c.gym_level(), 0.0)
+        c.bonus_deck = MAX_BONUS_DECK
+        c.ladder.remove(c.player) if c.player in c.ladder else None
+        self.assertLessEqual(c.gym_level(), 1.0)
 
     def test_one_session_between_fights(self):
         c = career()
-        c.money = 10 ** 7
         self.assertTrue(c.start_gym())
         self.assertIsNotNone(c.gym_open())
         self.assertFalse(c.start_gym())
         win(c)
         self.assertIsNone(c.gym_open())
-
-    def test_cannot_afford(self):
-        c = career()
-        c.money = 0
-        self.assertIsNotNone(c.gym_open())
 
     def test_rewards(self):
         c = career()

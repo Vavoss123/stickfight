@@ -25,8 +25,9 @@ SHOP_SIZE = 4
 TRAINING_PRICE = 15000       # one extra training point, up 35% each time
 DECK_POINT_PRICE = 75000     # one extra deck point, doubling each time
 MAX_BONUS_DECK = 10          # extra deck points from the shop, training points and the gym
-GYM_PRICE = 1500             # times your deck budget squared: the bigger the deck, the dearer
 GYM_REPS = 8
+GYM_EASY_BUDGET = 6          # the gym is free; drills get harder from this budget ...
+GYM_HARD_BUDGET = 22         # ... up to the toughest, a champion with every bonus point
 RESTOCK_PRICE = 5000
 POINTS_PER_DECK_POINT = 5    # training points traded for a deck point
 POINTS_PER_PACK = 3          # training points traded for a card pack
@@ -556,22 +557,24 @@ class Career:
 
     # The gym
 
-    def gym_price(self):
-        """A session costs more the bigger your deck already is."""
-        return int(round(GYM_PRICE * self.budget() ** 2, -3))
+    def gym_level(self):
+        """How hard the drills are, 0 to 1. The gym is free, so it gets harder instead:
+        a bigger deck budget (your rank plus any bonus points) means a tougher session."""
+        return max(0.0, min(1.0, (self.budget() - GYM_EASY_BUDGET) / (GYM_HARD_BUDGET - GYM_EASY_BUDGET)))
+
+    def gym_tier(self):
+        lvl = self.gym_level()
+        return "Rookie" if lvl < 0.25 else "Regular" if lvl < 0.5 else "Contender" if lvl < 0.75 else "Elite"
 
     def gym_open(self):
         """None if you can go, otherwise why not."""
         if self.gym_used:
             return "One session a week. Fight first."
-        if self.money < self.gym_price():
-            return "Not enough money for a session."
         return None
 
     def start_gym(self):
         if self.gym_open():
             return False
-        self.money -= self.gym_price()
         self.gym_used = True
         return True
 

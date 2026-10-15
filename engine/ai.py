@@ -60,7 +60,7 @@ def evaluate(st, ex, me):
     v += OPENING_VALUE.get(m.opening, 0) - OPENING_VALUE.get(o.opening, 0)
     if st.sub:
         sign = 1 if st.sub.att == me else -1
-        v += sign * st.sub.lock * 18
+        v += sign * (st.sub.lock * 18 + st.sub.angle * 7)
     return v
 
 

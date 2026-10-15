@@ -9,7 +9,7 @@ import math
 
 import pygame
 
-from engine.constants import STANDING, GUARD, MOUNT, SUB_OPTIONS, STRIKE, GRAPPLE, DEFEND
+from engine.constants import STANDING, GUARD, MOUNT, SUB_OPTIONS, SUB_CALM, STRIKE, GRAPPLE, DEFEND
 from engine.moves import base_class
 from engine.roster import make
 
@@ -56,8 +56,8 @@ LESSONS = [
     ),
     dict(
         title="The submission contest",
-        say="Pick a side to crank. If they guess the same side the hold loosens, if not it "
-            "gets tighter. Fill the meter and they tap.",
+        say="Squeeze tightens the hold, but a fighter who hand fights stops it. Adjust sets an "
+            "angle first so the next squeeze gets through. Fill the meter and they tap.",
         want=list(SUB_OPTIONS), opp="dodge", pos=None,
         done=lambda s, ex: s.fight.over,
         ok="",
@@ -129,8 +129,8 @@ class TutorialScene(FightScene):
         st = self.fight.state
         opp = self._current()["opp"]
         if st.sub:
-            # Defending a hold: always guess wrong so the lesson can finish
-            return next(o for o in SUB_OPTIONS if o != mine)
+            # Defending a hold: catch their breath, so a squeeze always tightens and it can finish
+            return SUB_CALM
         options = self.fight.options(1)
         if opp in options:
             return opp
@@ -146,8 +146,9 @@ class TutorialScene(FightScene):
             self.lesson += 1
             self.snd("levelup", 0.6)
         elif ex.in_sub:
-            self.result = {"tighter": "Tighter! They guessed wrong. Again.",
-                           "held": "Still holding. Keep cranking."}.get(ex.sub_result, "")
+            self.result = {"tighter": "Tighter! They were not ready for that. Again.",
+                           "angle": "Angle set. Now a squeeze gets through a defence.",
+                           "held": "Nothing moved. Squeeze to tighten the hold."}.get(ex.sub_result, "")
         elif not self.fight.state.sub:
             self.result = self._why(ex, mine, lesson)
 

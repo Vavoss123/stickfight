@@ -155,3 +155,96 @@ POSES = {
     "tapping": P(hip=(0, -9), ground=False, torso=178, head=168, fua=-60, ffa=-40,
                  bua=-120, bfa=-90, fth=-35, fsh=20, bth=-25, bsh=25),
 }
+
+# Signature moves: each card gets a move of its own instead of borrowing the basic one
+POSES.update({
+    # Superman punch: hop off the back foot, fly in behind the cross
+    "superman_wind": P(hip=(-2, 0), torso=-88, head=-86, fua=55, ffa=-62, bua=140, bfa=-60,
+                       fth=82, fsh=96, bth=40, bsh=110),
+    "superman": P(hip=(18, -72), ground=False, torso=-48, head=-54, fua=70, ffa=-60, bua=-8, bfa=-5,
+                  fth=62, fsh=104, bth=152, bsh=172),
+    # Spinning back fist and spinning elbow: turn the back, then whip the arm round
+    "spin_wind": P(hip=(4, 0), torso=-96, head=-60, fua=150, ffa=120, bua=60, bfa=-60,
+                   fth=100, fsh=96, bth=74, bsh=100),
+    "spinfist": P(hip=(10, 0), torso=-100, head=-84, fua=-22, ffa=-26, bua=165, bfa=172,
+                  fth=96, fsh=98, bth=58, bsh=108),
+    "spinelbow": P(hip=(8, 0), torso=-92, head=-80, fua=-6, ffa=172, bua=160, bfa=168,
+                   fth=96, fsh=98, bth=58, bsh=108),
+    # Showtime kick: jump, then kick to the head in the air
+    "showtime_wind": P(hip=(4, -76), ground=False, torso=-86, head=-86, fua=-110, ffa=-85, bua=-60, bfa=-40,
+                       fth=20, fsh=100, bth=60, bsh=125),
+    "showtime": P(hip=(10, -84), ground=False, torso=-132, head=-112, fua=140, ffa=160, bua=-150, bfa=-170,
+                  fth=60, fsh=140, bth=-42, bsh=-36),
+    # Flying knee: jump and drive the knee up
+    "flyknee_wind": P(hip=(2, -66), ground=False, torso=-82, head=-82, fua=55, ffa=-62, bua=78, bfa=-78,
+                      fth=40, fsh=120, bth=100, bsh=140),
+    "flyknee": P(hip=(14, -80), ground=False, torso=-72, head=-74, fua=20, ffa=60, bua=10, bfa=50,
+                 fth=130, fsh=150, bth=-34, bsh=88),
+    # Calf kick: lower and shorter than the leg kick
+    "calfkick": P(hip=(6, 0), torso=-104, head=-94, fua=45, ffa=-65, bua=125, bfa=85,
+                  fth=90, fsh=96, bth=55, bsh=72),
+    # Liver hook: dip, then the lead hand to the body
+    "liver_wind": P(hip=(-2, 0), torso=-84, head=-84, fua=80, ffa=40, bua=70, bfa=-70,
+                    fth=55, fsh=116, bth=126, bsh=80),
+    "liver": P(hip=(8, 0), torso=-60, head=-66, fua=32, ffa=-4, bua=60, bfa=-72,
+               fth=50, fsh=112, bth=128, bsh=92),
+    # Check hook: pivot off and hook as they come in
+    "checkhook": P(hip=(-8, 0), torso=-88, head=-80, fua=-6, ffa=-50, bua=30, bfa=-100,
+                   fth=82, fsh=94, bth=132, bsh=110),
+    # Wrestling: the double leg lifts, the single leg holds a leg up
+    "doubleleg": P(hip=(30, 0), torso=-36, head=-18, fua=42, ffa=28, bua=52, bfa=18,
+                   fth=50, fsh=112, bth=142, bsh=110),
+    "singleleg": P(hip=(20, 0), torso=-62, head=-44, fua=22, ffa=-30, bua=34, bfa=-20,
+                   fth=62, fsh=100, bth=126, bsh=100),
+    # Guard pull: sit down and wrap them up
+    "guardpull": P(hip=(10, -22), ground=False, torso=-128, head=-104, fua=-20, ffa=-10, bua=-12, bfa=0,
+                   fth=-40, fsh=30, bth=-18, bsh=62),
+    # Thai plum: both hands on the head, knee up to the face
+    "plum": P(torso=-62, head=-40, fua=-10, ffa=70, bua=0, bfa=76,
+              fth=70, fsh=100, bth=118, bsh=96),
+    "plum_knee": P(torso=-55, head=-36, fua=0, ffa=82, bua=10, bfa=86,
+                   fth=82, fsh=95, bth=-52, bsh=62),
+    # Hammer fists from the top: fist high, then straight down
+    "hammer_wind": P(hip=(-2, -30), ground=False, torso=-84, head=-74, fua=45, ffa=60, bua=-100, bfa=-122,
+                     fth=82, fsh=178, bth=96, bsh=182),
+    "hammer": P(hip=(2, -30), ground=False, torso=-54, head=-44, fua=45, ffa=60, bua=42, bfa=94,
+                fth=82, fsh=178, bth=96, bsh=182),
+    # Kimura from guard: figure four on the arm, which gets cranked behind their back
+    "kimura": P(hip=(0, -12), ground=False, torso=178, head=165, fua=-62, ffa=-122, bua=-40, bfa=-92,
+                fth=-46, fsh=14, bth=-30, bsh=24),
+    "kimura_def": P(hip=(0, -30), ground=False, torso=-40, head=-22, fua=45, ffa=60, bua=160, bfa=225,
+                    fth=82, fsh=178, bth=96, bsh=182),
+    # Gogoplata: shin across the throat
+    "gogo": P(hip=(0, -12), ground=False, torso=178, head=160, fua=-70, ffa=-30, bua=-80, bfa=-40,
+              fth=-96, fsh=-172, bth=-62, bsh=-10),
+
+    # Judo throws from the clinch
+    "osoto_step": P(hip=(8, 0), torso=-70, head=-60, fua=-5, ffa=20, bua=10, bfa=30,
+                    fth=62, fsh=96, bth=30, bsh=62),
+    "osoto": P(hip=(14, 0), torso=-40, head=-30, fua=20, ffa=40, bua=20, bfa=52,
+               fth=76, fsh=100, bth=150, bsh=162),
+    "seoi_turn": P(hip=(14, 0), torso=-36, head=-12, fua=-62, ffa=-122, bua=-42, bfa=-100,
+                   fth=50, fsh=122, bth=122, bsh=70),
+    "seoi": P(hip=(10, 0), torso=22, head=62, fua=82, ffa=122, bua=70, bfa=112,
+              fth=76, fsh=96, bth=114, bsh=92),
+    "hiptoss_load": P(hip=(12, 0), torso=-55, head=-40, fua=-30, ffa=20, bua=30, bfa=60,
+                      fth=80, fsh=96, bth=110, bsh=90),
+    "hiptoss": P(hip=(12, 0), torso=-10, head=30, fua=60, ffa=120, bua=40, bfa=90,
+                 fth=72, fsh=100, bth=120, bsh=92),
+    "uchimata_load": P(hip=(12, 0), torso=-30, head=-6, fua=-20, ffa=40, bua=30, bfa=80,
+                       fth=86, fsh=96, bth=120, bsh=100),
+    "uchimata": P(hip=(10, 0), torso=14, head=42, fua=60, ffa=100, bua=52, bfa=92,
+                  fth=86, fsh=94, bth=200, bsh=222),
+    "tomoe_sit": P(hip=(4, -26), ground=False, torso=-150, head=-140, fua=-40, ffa=-30, bua=-50, bfa=-40,
+                   fth=-60, fsh=-30, bth=20, bsh=80),
+    "tomoe": P(hip=(0, -10), ground=False, torso=190, head=190, fua=-70, ffa=-92, bua=-80, bfa=-100,
+               fth=-100, fsh=-112, bth=-40, bsh=30),
+
+    # Being thrown: over the top, falling backwards, lifted for a slam
+    "thrown_up": P(hip=(0, -24), ground=False, torso=118, head=132, fua=160, ffa=182, bua=140, bfa=170,
+                   fth=-62, fsh=-82, bth=-82, bsh=-104),
+    "thrown_back": P(hip=(-6, -30), ground=False, torso=-150, head=-160, fua=-100, ffa=-122, bua=-122, bfa=-142,
+                     fth=30, fsh=-20, bth=10, bsh=-10),
+    "lifted": P(hip=(0, -34), ground=False, torso=-128, head=-142, fua=-120, ffa=-140, bua=-100, bfa=-122,
+                fth=-20, fsh=22, bth=0, bsh=40),
+})

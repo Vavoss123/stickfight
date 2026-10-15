@@ -29,7 +29,7 @@ a jab is too quick to block a power punch, a takedown walks through a leg kick, 
 feint freezes someone who is waiting to counter.
 
 - **Stand up, clinch and ground.** Guard, mount and back control each have their own
-  moves. Submissions are a guessing game: pick the side they will not defend.
+  moves. Submissions are a read-and-counter contest with no dice: squeeze, set an angle or ease off against explode, hand fight or breathe.
 - **Stamina, damage and momentum.** Body shots drain the tank, leg kicks take away
   power, cuts bring in the doctor. Big moments get the crowd behind you. Fill the meter
   and your next attack goes all in.

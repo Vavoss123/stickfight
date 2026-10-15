@@ -107,7 +107,7 @@ _ALL = [
     Move("dirty", "Dirty boxing", STRIKE, "striking", 4, dmg=5.5, acc=0.85, speed=3, cuts=0.05,
          desc="Short shots in close."),
     Move("trip", "Trip", GRAPPLE, "wrestling", 10, to="guard_top",
-         desc="Trip them to the mat."),
+         desc="A judo foot sweep from the clinch. Trip them to the mat."),
     Move("break", "Break away", GRAPPLE, "wrestling", 4, to="standing",
          desc="Push off and get back to range."),
     Move("frame", "Frame up", DEFEND, "wrestling", -6,
@@ -225,6 +225,7 @@ _BEATS = {STRIKE: GRAPPLE, GRAPPLE: DEFEND, DEFEND: STRIKE}
 ARM_SUBS = {"kimura", "armbar", "marmbar"}
 LEG_SUBS = {"suloev", "imanari"}
 LEG_GRAPPLES = {"takedown", "trip"}
+OVER_THE_TOP = {"hiptoss", "seoi", "uchimata", "tomoe"}   # throws that lift, not leg attacks
 
 
 def zone(move):
@@ -234,7 +235,7 @@ def zone(move):
     if move.cls == SUB:
         return "arms" if move.base in ARM_SUBS else "legs" if move.base in LEG_SUBS else "neck"
     if move.cls == GRAPPLE:
-        if move.base in LEG_GRAPPLES and move.key not in ("hiptoss",):
+        if move.base in LEG_GRAPPLES and move.key not in OVER_THE_TOP:
             return "legs"
         return "body" if move.base == "clinch" and move.to == "clinch" else "position"
     return "trick" if move.cls == FEINT else "defence"

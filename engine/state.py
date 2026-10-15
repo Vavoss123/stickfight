@@ -4,15 +4,16 @@ from .constants import STANDING, CLINCH, NEUTRAL, TOP, BOTTOM, SUB_OPTIONS
 
 
 class SubState:
-    __slots__ = ("att", "move", "lock")
+    __slots__ = ("att", "move", "lock", "angle")
 
-    def __init__(self, att, move, lock):
+    def __init__(self, att, move, lock, angle=0):
         self.att = att
         self.move = move
-        self.lock = lock
+        self.lock = lock      # 0 is escaped, SUB_TAP is a tap
+        self.angle = angle    # set up by Adjust, spent by a squeeze that gets through a defence
 
     def clone(self):
-        return SubState(self.att, self.move, self.lock)
+        return SubState(self.att, self.move, self.lock, self.angle)
 
 
 class FightState:

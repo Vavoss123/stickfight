@@ -168,10 +168,12 @@ class Button:
         self.badge = None   # colour of a corner mark, for signature cards
 
     def handle(self, event):
-        if not self.enabled:
-            return False
+        # Keep hover right even while disabled: a button that greys out under the mouse
+        # (the last training point spent) used to stay "hovered" for good
         if event.type == pygame.MOUSEMOTION:
             self.hover = self.rect.collidepoint(event.pos)
+        if not self.enabled:
+            return False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             return self.rect.collidepoint(event.pos)
         return False

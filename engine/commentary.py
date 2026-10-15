@@ -27,7 +27,11 @@ def describe(ex, names):
         elif r == "escaped":
             lines.append(_pick(f"{dfn} escapes the {sub}!", f"Great defence from {dfn}, they're out!"))
         elif r == "defended":
-            lines.append(_pick(f"{dfn} reads it and fights the hands.", f"{dfn} loosens the grip."))
+            lines.append(_pick(f"{dfn} reads it and fights the hands.", f"{dfn} stops the squeeze."))
+        elif r == "loosened":
+            lines.append(_pick(f"{dfn} bursts and the {sub} slips!", f"{att} shifts and {dfn} gets a gap!"))
+        elif r == "angle":
+            lines.append(_pick(f"{att} is sliding into a better angle.", f"{att} adjusts. The angle is there."))
         elif r == "tighter":
             lines.append(_pick(f"{att} cranks it tighter!", f"Oh, that {sub} is getting deep!",
                                f"{dfn} is in real trouble here!"))

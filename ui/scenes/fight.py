@@ -9,16 +9,16 @@ from engine import coach, personality
 from engine.ai import AI
 from engine.commentary import describe, finish_line
 from engine.corner import advice
-from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, FEINT, SUB_ATTACK_LABELS,
-                              SUB_DEFEND_LABELS, SUB_TAP, STANDING, CLINCH, GUARD, MOUNT, BACK,
-                              EXCHANGES_PER_ROUND, ROUND_SECONDS)
+from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, FEINT, SUB_ATTACK_LABELS, SUB_DEFEND_LABELS,
+                              SUB_ATTACK_HINTS, SUB_DEFEND_HINTS, SUB_MAX_ANGLE, SUB_TAP, STANDING,
+                              CLINCH, GUARD, MOUNT, BACK, EXCHANGES_PER_ROUND, ROUND_SECONDS)
 from engine.fight import Fight
 from engine.moves import zone
 from engine.weights import get as weight_class
 
 from .. import gamepad
 from ..arena import Arena
-from ..choreo import ACTION, IMPACT, SCALE, layout, hit_pose
+from ..choreo import ACTION, IMPACT, SCALE, THROWS, layout, hit_pose, lunge
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel,
                       bar, Button, font, text_block, wrap)
 from ..stickman import Figure
@@ -67,7 +67,7 @@ POS_NAME = {STANDING: "Standing", CLINCH: "Clinch", GUARD: "Guard", MOUNT: "Moun
             BACK: "Back control"}
 REPLAY_SPEED = 0.3
 FIGHT_Y = FLOOR_Y - 62    # where the fighters stand: high enough that the ground game clears the move bar
-KICKS = {"kick", "legkick", "upkick", "knees", "imanari"}
+KICKS = {"kick", "legkick", "upkick", "knees", "imanari", "showtime", "flyknee", "calfkick", "plum"}
 REPLAY_ZOOM = 1.7
 
 
@@ -230,8 +230,10 @@ class FightScene(Scene):
     def _option_label(self, i, k):
         st = self.fight.state
         if st.sub:
-            labels = SUB_ATTACK_LABELS if st.sub.att == i else SUB_DEFEND_LABELS
-            return labels[k], "Read your opponent", SUB_COLOR
+            att = st.sub.att == i
+            labels = SUB_ATTACK_LABELS if att else SUB_DEFEND_LABELS
+            hints = SUB_ATTACK_HINTS if att else SUB_DEFEND_HINTS
+            return labels[k], hints[k], SUB_COLOR
         m = self.mv(i, k)
         if st.f[i].effort(m) < 1:
             # Not enough gas for it: it will come out slow and weak
@@ -292,7 +294,7 @@ class FightScene(Scene):
                     x = x0 + n * (bw + gap)
                     two_p = self.cfg.mode != "ai"
                     b = Button((x, y, bw, h), label, key=keys[j] if j < len(keys) else None,
-                               sub="" if two_p else sub, color=color,
+                               sub="" if two_p and not self.fight.state.sub else sub, color=color,
                                size=16 if two_p else (16 if len(rows) == 2 else 21),
                                sub_size=11 if len(rows) == 2 else 15, wrap=two_p)
                     b.pick = k
@@ -440,6 +442,10 @@ class FightScene(Scene):
                 self.arena.cheer(0.5)
             elif r == "defended":
                 self.at(0.15, lambda: self.popup(d, "DEFENDED", (120, 220, 140)))
+            elif r == "loosened":
+                self.at(0.15, lambda: (self.popup(d, "LOOSENED!", (120, 220, 140), 26), self.snd("escape")))
+            elif r == "angle":
+                self.at(0.15, lambda: self.popup(a, "ANGLE!", (210, 170, 255), 24))
             elif r == "held":
                 self.at(0.15, lambda: self.popup(a, "HOLDING", GREY, 20))
             if r == "escaped":
@@ -459,6 +465,9 @@ class FightScene(Scene):
             if ex.moves[i].cls == STRIKE:
                 self.at(max(0.0, IMPACT.get(ex.moves[i].anim, 0.15) - 0.1),
                         lambda: self.snd("whoosh", 0.5))
+
+        if before.pos == STANDING:
+            self._lunges(ex)
 
         for i in (0, 1):
             o = 1 - i
@@ -510,6 +519,10 @@ class FightScene(Scene):
         changed = (before.pos, before.top) != (st.pos, st.top)
         ground_now = st.pos in (GUARD, MOUNT, BACK)
         settle_at = 0.55
+        thrower = ex.takedown_by
+        if thrower is not None and before.pos in (STANDING, CLINCH) and ex.moves[thrower] \
+                and ex.moves[thrower].anim in THROWS:
+            settle_at = self._throw(thrower, ex.moves[thrower].anim, xs)
         if ex.knockdown is not None:
             settle_at = 0.85
         if changed:
@@ -524,6 +537,34 @@ class FightScene(Scene):
             return 1.4
         self.at(settle_at, lambda: self._settle(xs, idle, 0.35 if changed else 0.25))
         return settle_at + 0.45
+
+    def _throw(self, i, anim, xs):
+        """The one being thrown leaves the ground, flies and lands. Returns when to settle."""
+        pose, height, along = THROWS[anim]
+        t = self.figs[1 - i]
+        x1 = xs[1 - i]
+        up = 0.2 if height > 30 else 0.16
+
+        def take_off():
+            # From wherever they are by now: a knockback may have moved them
+            t.play([(pose, up), (pose, 0.14)])
+            t.move_to(t.x + (x1 - t.x) * along, FIGHT_Y - height * t.scale, up)
+        self.at(0.2, take_off)
+        land = 0.2 + up + 0.14
+        self.at(land, lambda: t.move_to(x1, FIGHT_Y, 0.1))
+        return land + 0.08
+
+    def _lunges(self, ex):
+        """Strikers step in so the blow reaches, instead of swinging at air. If both throw,
+        they meet in the middle."""
+        strikers = [i for i in (0, 1) if ex.moves[i].cls == STRIKE]
+        share = 0.4 if len(strikers) == 2 else 1.0
+        for i in strikers:
+            m = ex.moves[i]
+            f, t = self.figs[i], self.figs[1 - i]
+            px = lunge(m.anim, m.target, abs(f.x - t.x), f.scale, t.scale) * share
+            if px > 1:
+                f.move_to(f.x + f.facing * px, dur=max(0.08, IMPACT.get(m.anim, 0.15) * 0.9))
 
     def _taunt(self, ex):
         """The fighters talk: when they land something big, get hurt, tire, take the other
@@ -635,7 +676,7 @@ class FightScene(Scene):
         faces = getattr(self, "_faces", (1, -1))
         for i, f in enumerate(self.figs):
             f.facing = faces[i]
-            f.move_to(xs[i], dur=dur)
+            f.move_to(xs[i], FIGHT_Y, dur=dur)
             f.play([(idle[i], dur)], idle=idle[i])
 
     def _hit_anim(self, i, k, ex, before):
@@ -646,6 +687,10 @@ class FightScene(Scene):
         bottom = before.top == i and before.pos in (GUARD, MOUNT, BACK)
         target = move.target
         self.figs[o].hit(1.5 if power else 0.8)
+        if before.pos in (STANDING, CLINCH):
+            # Knocked back a step by the blow, and settled back into place afterwards
+            t = self.figs[o]
+            t.move_to(t.x - t.facing * (7 + 5 * bool(power)) * t.scale, dur=0.1)
         pose = hit_pose(before.pos, bottom, target)
         self.figs[o].play([(pose, 0.07), (pose, 0.14)])
         self.popup(o, f"-{dmg:.0f}", (255, 90, 80) if dmg >= 9 else (255, 180, 160),
@@ -683,6 +728,11 @@ class FightScene(Scene):
         o = 1 - i
         ex = self.last_ex
         ground = self._ground_pose(i, before, "strike")
+        if before.pos == STANDING:
+            f, t = self.figs[i], self.figs[o]
+            px = lunge("counter", "head", abs(f.x - t.x), f.scale, t.scale)
+            if px > 1:
+                f.move_to(f.x + f.facing * px, dur=0.1)
         self.figs[i].play([(ground or "counter", 0.08), (ground or "counter", 0.12)])
         self.figs[o].hit(1.0)
         hit = hit_pose(before.pos, before.top == i, "head") if ground else "hit"
@@ -1210,8 +1260,9 @@ class FightScene(Scene):
             if self._pad_for(0) is not None:
                 hint = "Pick a move with the button in its corner"
             if st.sub:
-                hint = ("Attacking: pick a side they will not guess" if st.sub.att == 0
-                        else "Defending: match their side to escape")
+                hint = ("Attacking: squeeze beats a lazy defence, adjust sets up an angle, ease off recovers"
+                        if st.sub.att == 0 else
+                        "Defending: explode beats an adjust, hand fight stops a squeeze, breathe recovers")
             hb = next((b for b in self.buttons[0] if b.hover), None)
             if hb and not st.sub:
                 m = self.mv(0, hb.pick)
@@ -1227,7 +1278,7 @@ class FightScene(Scene):
                     b.draw(surf)
                 who = self.names[i].upper()
                 if st.sub:
-                    role = "attacking, hide a side" if st.sub.att == i else "defending, match their side"
+                    role = "attacking the hold" if st.sub.att == i else "defending the hold"
                     tip = f"{who}  {role}"
                 else:
                     tip = f"{who}  keys {' '.join(LABEL_P1 if i == 0 else LABEL_P2)}"
@@ -1283,6 +1334,12 @@ class FightScene(Scene):
         name = self.mv(s.att, s.move).name.upper()
         rect = panel(surf, (CX - 190, 176, 380, 70), (16, 10, 24), alpha=225, border=SUB_COLOR)
         text(surf, name, (CX, 182), 18, (210, 170, 255), "midtop", bold=True)
+        # Angle: the next squeeze that meets a hand fight gets through
+        for k in range(SUB_MAX_ANGLE):
+            pip = (rect.right - 52 + k * 18, 190)
+            pygame.draw.circle(surf, (210, 170, 255) if k < s.angle else (50, 46, 60), pip, 6)
+            pygame.draw.circle(surf, (0, 0, 0), pip, 6, 1)
+        text(surf, "ANGLE", (rect.right - 62, 190), 11, (170, 140, 210), "midright", bold=True)
         text(surf, "ESCAPE", (rect.x + 14, 216), 14, (120, 220, 140), "midleft", bold=True)
         text(surf, "TAP", (rect.right - 14, 216), 14, GOLD, "midright", bold=True)
         for k in range(SUB_TAP + 1):
