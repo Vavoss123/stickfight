@@ -232,6 +232,7 @@ class HubScene(Scene):
         self.shop_btn = Button((CX + 78, 624, 72, 38), "Shop", size=16, color=(150, 110, 30))
         self.trophy_btn = Button((488, H - 56, 110, 40), "Trophies", size=16, color=(110, 90, 30))
         self.look_btn = Button((606, H - 56, 90, 40), "Look", size=16, color=(60, 50, 110))
+        self.code_btn = Button((704, H - 56, 90, 40), "Code", size=16, color=(40, 90, 130))
         self.rehab_btn = Button((250, 262, 170, 32), "", size=14, color=(40, 90, 130))
         opp, *_ = self.c.next_fight()
         self.grudge_text = self.c.grudge_line() if self.c.next_fight()[4] == "Grudge match" else ""
@@ -273,6 +274,11 @@ class HubScene(Scene):
         if self.gym_btn.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_g):
             from .gym import GymScene
             self.app.goto(GymScene(self.app, self.c, lambda: HubScene(self.app, self.c, self.message)))
+            return
+        if self.code_btn.handle(e):
+            from .share import ShareScene
+            self.app.sounds.play("click")
+            self.app.goto(ShareScene(self.app, self.c.player, lambda: HubScene(self.app, self.c, self.message)))
             return
         if self.look_btn.handle(e):
             from .look import LookScene
@@ -506,6 +512,7 @@ class HubScene(Scene):
         self.shop_btn.draw(surf)
         self.trophy_btn.draw(surf)
         self.look_btn.draw(surf)
+        self.code_btn.draw(surf)
 
         # Rankings
         r3 = panel(surf, (860, 20, 400, 600), (22, 24, 34))

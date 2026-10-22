@@ -5,7 +5,9 @@
 - [ ] Music in the game: a menu theme, fight music that builds with the rounds, a walkout track
 - [ ] Check every animation is clear (strikes, defence, takedowns, ground, subs, KO and taps) and fix the muddy ones
 - [ ] New animations: more variety for existing moves, finishers, celebrations, walkouts
-- [ ] Accounts: sign in, keep career data on the account, and move a character between machines
+- [x] Fighter codes: your career fighter is in Quick fight and 2 player, and its code (career screen, Code)
+  brings it to any computer under Add fighter by code
+- [ ] Accounts: move a whole career (not just the fighter) between machines, maybe an export file
 
 - [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder).
       Press F1 in game to write a note, they land in ~/.stickfight/feedback.txt
@@ -36,6 +38,9 @@
 - [x] Money sinks: training points, deck points, restock, glove colours
 
 ## Fourth round (Oct 2026)
+
+- [x] Effect tips: ROCKED, CAUGHT, CHECKED and the rest are explained the first couple of times (Settings),
+  and How to play has an Effects page
 
 - [x] Over the top throws (Seoi Nage, Hip Toss, Uchi Mata, Tomoe Nage) land on the far side: the fighters swap
   sides until the round ends. Osoto, trips and the double leg still drop them in front

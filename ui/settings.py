@@ -17,6 +17,8 @@ DEFAULTS = {
     "card_pool": "all",   # quick fight decks: "all" cards or your "collection"
     "tutorial_done": False,
     "show_rules": True,   # the what beats what diagram during fights
+    "effect_tips": True,  # explain ROCKED, CAUGHT and the rest the first few times
+    "effects_seen": {},   # effect -> times it has been explained
 }
 
 

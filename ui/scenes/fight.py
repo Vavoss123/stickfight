@@ -22,6 +22,7 @@ from ..choreo import ACTION, IMPACT, SCALE, THROWS, throws_over, layout, hit_pos
 from ..common import (W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel,
                       bar, Button, font, text_block, wrap)
 from ..stickman import Figure
+from .. import effects
 from .base import Scene
 
 CLASS_COLOR = {STRIKE: (196, 70, 62), GRAPPLE: (58, 110, 205), SUB: (150, 80, 205),
@@ -145,6 +146,7 @@ class FightScene(Scene):
         self.history = []   # move names of recent exchanges, for feedback notes
         self.bubble = None  # [fighter, words, seconds left]
         self.flip = False   # red on the right: someone was thrown over the top. Back to normal each round
+        self.effect_tips = []   # [effect, seconds left]: explaining what just popped up
         self.hud_tips = []  # (rect, title, words) for hovering the health bars and tags
         self.world = pygame.Surface((W, H))
         self._intro()
@@ -181,6 +183,21 @@ class FightScene(Scene):
     def popup(self, i, s, color=WHITE, size=26, dy=0):
         f = self.figs[i]
         self.popups.append([s, f.x, f.y - 240 + dy, color, 1.1, size])
+        k = effects.key(s)
+        if k:
+            self._explain(k)
+
+    def _explain(self, k):
+        """A card saying what an effect means, the first couple of times it happens."""
+        st = self.app.settings
+        if not st["effect_tips"] or self.phase == "replay" or any(t[0] == k for t in self.effect_tips):
+            return
+        seen = st["effects_seen"]
+        if seen.get(k, 0) >= effects.TIMES_EXPLAINED:
+            return
+        seen[k] = seen.get(k, 0) + 1
+        st.save()
+        self.effect_tips.append([k, 5.0])
 
     def set_banner(self, big, small="", color=WHITE, dur=1.6):
         self.banner = [big, small, color, dur, dur]
@@ -1053,6 +1070,10 @@ class FightScene(Scene):
             self.bubble[2] -= real_dt
             if self.bubble[2] <= 0:
                 self.bubble = None
+        if self.effect_tips:
+            self.effect_tips[0][1] -= real_dt
+            if self.effect_tips[0][1] <= 0:
+                self.effect_tips.pop(0)
         hp = [f.hp for f in self.fight.state.f]
         for i in (0, 1):
             if self.ghost[i] > hp[i]:
@@ -1105,6 +1126,8 @@ class FightScene(Scene):
             text(surf, "Press SPACE to continue", (CX, 410), 20, WHITE, "center", bold=True)
         if self.bubble and not replay:
             self._draw_bubble(surf)
+        if self.effect_tips and not self.paused:
+            self._draw_effect_tip(surf)
         if not self.paused:
             self._draw_hud_tip(surf)
         if self.paused:
@@ -1209,6 +1232,21 @@ class FightScene(Scene):
             else:
                 pos = POS_NAME[st.pos]
             text(surf, pos.upper(), (CX, 96), 15, GOLD, "midtop", bold=True)
+
+    def _draw_effect_tip(self, surf):
+        k, left = self.effect_tips[0]
+        title, words = effects.EFFECTS[k]
+        lines = wrap(words, 15, 380)
+        h = 40 + 19 * len(lines) + (16 if len(self.effect_tips) > 1 else 0)
+        a = int(255 * min(1.0, left * 2))
+        r = panel(surf, (20, 104, 410, h), (14, 15, 22), alpha=min(235, a), border=GOLD)
+        text(surf, title.upper(), (r.x + 14, r.y + 10), 17, GOLD, bold=True, alpha=a)
+        y = r.y + 34
+        for ln in lines:
+            text(surf, ln, (r.x + 14, y), 15, WHITE, alpha=a)
+            y += 19
+        if len(self.effect_tips) > 1:
+            text(surf, f"{len(self.effect_tips) - 1} more", (r.right - 12, y), 12, GREY, "topright", alpha=a)
 
     def _draw_bubble(self, surf):
         """What the fighter says, in a bubble over their head."""

@@ -3,7 +3,7 @@
 import pygame
 
 from ..cards import draw_card
-from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, GREEN, text, text_block, panel, bar,
+from ..common import (W, H, CX, RED, BLUE, GOLD, WHITE, GREY, text, text_block, wrap, panel, bar,
                       Button)
 from ..diagrams import rules_triangle, arrow
 from ..stickman import Figure
@@ -40,6 +40,11 @@ PAGES = [
         "Body, leg and arm damage build up under the bars.",
         "",
         "In a fight, hover any bar or tag to see what it means.",
+    ]),
+    ("Effects", [
+        "Words pop up when something happens. These are the ones to know.",
+        "The first couple of times each one shows up in a fight, a card explains it.",
+        "Hover the ROCKED tag or any bar under a name for a reminder.",
     ]),
     ("The ground", [
         "On top: punch, pass, hold position or stand up.",
@@ -229,6 +234,21 @@ def pic_ground(surf, r):
 SUB_COLOR = (150, 80, 205)
 
 
+def pic_effects(surf, r):
+    """The main effects, with the first line of what each means."""
+    from .. import effects
+    col_w, row_h = r.w // 2, 66
+    for k, key in enumerate(effects.MAIN):
+        title, words = effects.EFFECTS[key]
+        x = r.x + (k % 2) * col_w
+        y = r.y + 4 + (k // 2) * row_h
+        text(surf, key + "!", (x + 6, y), 16, GOLD, bold=True)
+        short = ". ".join(words.split(". ")[:2]).rstrip(".") + "."
+        lines = wrap(short, 12, col_w - 16)[:3]
+        for n, ln in enumerate(lines):
+            text(surf, ln, (x + 6, y + 21 + n * 14), 12, WHITE)
+
+
 def pic_subs(surf, r):
     """The whole contest: what each pick does against each pick."""
     atk = [("Squeeze", SUB_COLOR), ("Adjust", SUB_COLOR), ("Ease off", SUB_COLOR)]
@@ -294,4 +314,4 @@ def pic_controls(surf, r):
         text(surf, what, (kr.right + 16, kr.centery), 17, WHITE, "midleft")
 
 
-PICTURES = [pic_basics, pic_reading, pic_feints, pic_bars, pic_ground, pic_subs, pic_cards, pic_controls]
+PICTURES = [pic_basics, pic_reading, pic_feints, pic_bars, pic_effects, pic_ground, pic_subs, pic_cards, pic_controls]

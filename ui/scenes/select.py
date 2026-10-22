@@ -2,7 +2,11 @@
 
 import pygame
 
+import copy
+
 from engine.constants import STAT_NAMES
+from engine import sharecode
+from engine.career import Career
 from engine.cards import signature_names
 from engine import personality
 from engine.loadouts import Loadout, apply_saved
@@ -19,14 +23,28 @@ LEVELS = ["easy", "normal", "hard"]
 
 
 class SelectScene(Scene):
-    def __init__(self, app, mode):
+    def __init__(self, app, mode, pick=None):
         super().__init__(app)
         self.mode = mode
         from engine.roster import unlocked
-        self.roster = quick_fighters() + division() + unlocked(set(app.record.unlocked))
+        # Your career fighter and friends' fighters from codes come first, with their own decks
+        self.own = {}                 # roster index -> "you" or "code"
+        mine = []
+        career = Career.load()
+        if career is not None:
+            mine.append((copy.deepcopy(career.player), "you"))
+        mine += [(p, "code") for _, p in sharecode.load_friends()]
+        rest = quick_fighters() + division() + unlocked(set(app.record.unlocked))
+        apply_saved(rest, pool=app.settings["card_pool"])
+        self.roster = [p for p, _ in mine] + rest
+        self.own = {k: tag for k, (_, tag) in enumerate(mine)}
         self.defaults = [(dict(p.deck), list(p.perks)) for p in self.roster]
-        apply_saved(self.roster, pool=app.settings["card_pool"])
         self.sel = [0, 1]
+        if pick:
+            # Just added by code: put them in blue
+            k = next((k for k, p in enumerate(self.roster) if p.name == pick), None)
+            if k is not None:
+                self.sel = [0 if k != 0 else 1, k]
         self.level = 1
         self.rounds = 3
         self.figs = [Figure(250, 400, 1, (0, 0, 0), glove=RED, scale=0.72),
@@ -38,7 +56,9 @@ class SelectScene(Scene):
             x = 20 if side == 0 else W - 20 - 300
             step = min(34, 560 // len(self.roster))
             for k, p in enumerate(self.roster):
-                b = Button((x, 96 + k * step, 300, step - 4), f"{p.name}", size=16 if step >= 30 else 14)
+                tag = {"you": "  (you)", "code": "  (code)"}.get(self.own.get(k), "")
+                b = Button((x, 96 + k * step, 300, step - 4), f"{p.name}{tag}", size=16 if step >= 30 else 14,
+                           color=(40, 70, 60) if tag else (52, 58, 78))
                 b.pick = k
                 self.lists[side].append(b)
         self.opts = []
@@ -54,6 +74,7 @@ class SelectScene(Scene):
             self.opts.append(b)
         self.start = Button((CX - 130, H - 62, 260, 50), "FIGHT", color=(170, 40, 40), size=26)
         self.back = Button((20, H - 56, 120, 40), "Back", size=18)
+        self.code_btn = Button((W - 320, H - 56, 300, 40), "Add fighter by code", size=17, color=(40, 90, 130))
         # The computer picks its own cards, so in quick fight only red gets a deck button
         self.deck_buttons = []
         for i in ((0,) if mode == "ai" else (0, 1)):
@@ -65,6 +86,8 @@ class SelectScene(Scene):
     def _edit_deck(self, side):
         from .deck import DeckScene
         k = self.sel[side]
+        if k in self.own:
+            return                    # career and code fighters bring their own deck
         self.app.sounds.play("click")
         lo = Loadout(self.roster[k], self.defaults[k], pool=self.app.settings["card_pool"])
         self.app.goto(DeckScene(self.app, lo, lambda: self))
@@ -112,6 +135,13 @@ class SelectScene(Scene):
                 return
         if self.start.handle(e):
             self._start()
+        if self.code_btn.handle(e):
+            from .share import CodeScene
+            mode, app = self.mode, self.app
+            self.app.sounds.play("click")
+            self.app.goto(CodeScene(app, lambda p: app.goto(SelectScene(app, mode, pick=p.name)),
+                                    lambda: SelectScene(app, mode)))
+            return
         if self.back.handle(e) or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
             from .menu import MenuScene
             self.app.goto(MenuScene(self.app))
@@ -198,6 +228,10 @@ class SelectScene(Scene):
         for b in self.opts:
             b.draw(surf)
         for b in self.deck_buttons:
+            own = self.own.get(self.sel[b.pick])
+            b.enabled = own is None
+            b.label = "Edit deck" if own is None else "Their own deck"
             b.draw(surf)
         self.start.draw(surf)
         self.back.draw(surf)
+        self.code_btn.draw(surf)

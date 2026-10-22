@@ -6,15 +6,17 @@ from ..common import W, H, CX, GOLD, WHITE, GREY, text, panel, bar, Button
 from ..settings import SPEEDS
 from .base import Scene
 
-ROWS = ["volume", "crowd", "fullscreen", "speed", "skip_walkouts", "show_rules"]
+ROWS = ["volume", "crowd", "fullscreen", "speed", "skip_walkouts", "show_rules", "effect_tips"]
 LABELS = {"volume": "Volume", "crowd": "Crowd noise", "fullscreen": "Fullscreen",
-          "speed": "Fight speed", "skip_walkouts": "Skip walkouts", "show_rules": "Rules diagram"}
+          "speed": "Fight speed", "skip_walkouts": "Skip walkouts", "show_rules": "Rules diagram",
+          "effect_tips": "Effect tips"}
 HELP = {"volume": "Every sound in the game.",
         "crowd": "The crowd, on top of the main volume.",
         "fullscreen": "F11 also switches it at any time.",
         "speed": "How fast exchanges play out. Knockout replays stay in slow motion.",
         "skip_walkouts": "Go straight to the fight instead of the ring announcer.",
-        "show_rules": "Show what beats what in the corner while you pick a move."}
+        "show_rules": "Show what beats what in the corner while you pick a move.",
+        "effect_tips": "Explain words like ROCKED or CAUGHT the first couple of times. On shows them again."}
 TOP = 150
 ROW_H = 68
 
@@ -47,6 +49,8 @@ class SettingsScene(Scene):
         if key in ("volume", "crowd"):
             s[key] = max(0, min(100, s[key] + value))
         else:
+            if key == "effect_tips" and value and not s[key]:
+                s["effects_seen"] = {}       # switched back on: explain everything again
             s[key] = value
         self.app.apply_settings()
         s.save()
