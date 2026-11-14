@@ -22,6 +22,25 @@ from ui.sound import Sounds, RATE
 from version import VERSION
 
 
+def window_size(desktop):
+    """The biggest window with the game's shape that fits the screen, leaving room for the taskbar."""
+    dw, dh = desktop
+    scale = min(dw * 0.92 / W, dh * 0.86 / H)
+    scale = max(0.4, scale)
+    return int(W * scale), int(H * scale)
+
+
+def fit_window():
+    """Size the window to the monitor, so it fits a small laptop and isn't tiny on a big screen."""
+    try:
+        desktop = pygame.display.get_desktop_sizes()[0]
+        win = pygame.Window.from_display_module()
+        win.size = window_size(desktop)
+        win.position = pygame.WINDOWPOS_CENTERED
+    except (AttributeError, IndexError, pygame.error):
+        pass
+
+
 class App:
     def __init__(self):
         updater.cleanup_old()
@@ -31,7 +50,11 @@ class App:
         pygame.display.set_caption(f"USC: Ultimate Stickfight Championship {VERSION}")
         from ui.logo import icon
         pygame.display.set_icon(icon())
+        # The game draws at W x H and SDL scales it to the window, keeping the shape
+        # (black bars on a screen of another shape) and mapping the mouse for us
+        os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "1")
         self.screen = pygame.display.set_mode((W, H), pygame.SCALED | pygame.RESIZABLE)
+        fit_window()
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
         self.settings = Settings()

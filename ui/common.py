@@ -153,10 +153,11 @@ def lighten(c, f=1.3):
 
 class Button:
     def __init__(self, rect, label, key=None, sub="", color=(52, 58, 78), enabled=True,
-                 size=22, sub_size=15, wrap=False):
+                 size=22, sub_size=15, wrap=False, sub_color=GREY):
         self.rect = pygame.Rect(rect)
         self.wrap = wrap     # long labels go on two lines instead of shrinking
         self.sub_size = sub_size
+        self.sub_color = sub_color
         self.label = label
         self.key = key
         self.sub = sub
@@ -208,7 +209,7 @@ class Button:
             text(surf, self.label, (self.rect.centerx, self.rect.centery - gap), self.size,
                  col, "center", bold=True, max_width=fit)
             text(surf, self.sub, (self.rect.centerx, self.rect.centery + gap + 4 * (self.sub_size >= 15)),
-                 self.sub_size, GREY, "center", max_width=fit)
+                 self.sub_size, self.sub_color if self.enabled else GREY, "center", max_width=fit)
         else:
             c = (self.rect.centerx + (8 if self.key else 0), self.rect.centery)
             text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)
