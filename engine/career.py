@@ -67,12 +67,6 @@ CAMPS = {
 }
 FILM_START = {"opening": "read", "hype": 45.0}
 
-CALLOUTS = [
-    '"{player} is not ready for the top. I want {player} next." - {rival}',
-    '"Everybody keeps talking about {player}. Put us in the cage and watch." - {rival}',
-    '"{player} got lucky last time. It will not happen twice." - {rival}',
-    '"Tell {player} to stop hiding. I am right here." - {rival}',
-]
 GRUDGE_LINES = [
     "{rival} has been calling you out all week. Grudge match.",
     "Bad blood. {rival} wants you, and the fans want to see it.",
@@ -123,6 +117,8 @@ class Career:
         self.gym_used = False         # one gym session between fights
         self.story_seen = set()       # story beats already shown
         self.story_queue = ["intro"]  # beats waiting for the hub
+        self.story_last = {}          # beat -> fight count when last shown, for cooldowns
+        self.new_scar = False         # permanent damage this fight, for the story
         self.injury = None            # {"name", "stats": {stat: points}, "fights"}
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
@@ -196,6 +192,7 @@ class Career:
         """Updates the record and rankings. Returns the rewards: purse, bonus, pack quality."""
         p = self.player
         before = self.rank_label()
+        self.new_scar = False
         kind = self.fight_kind()
         grudge = opp.name == self.rival and opp is not self.next_prospect
         if grudge and opp in self.ladder and self.ladder.index(opp) == 0:
@@ -291,7 +288,7 @@ class Career:
             if self.rival_profile() is None:
                 self.rival = None   # they dropped out of the rankings
             elif self.grudge_due():
-                out.append(self.rng.choice(CALLOUTS).format(player=p.name, rival=self.rival))
+                out.append(self._callout(self.rival_profile()))
             return out
         # A new rival: whoever just beat you, or someone up the ladder once you are ranked
         r = self.rank()
@@ -306,8 +303,14 @@ class Career:
             self.rival = candidate.name
             self.rival_record = [0, 0] if won or draw else [0, 1]
             self.since_grudge = 0
-            out.append(self.rng.choice(CALLOUTS).format(player=p.name, rival=self.rival))
+            out.append(self._callout(candidate))
         return out
+
+    def _callout(self, rival):
+        """The rival calls you out: they remember how the last meeting went."""
+        from . import story
+        last = next((h for h in reversed(self.history) if h["opponent"] == rival.name), None)
+        return story.callout(self.player.name, rival, self.rng, last)
 
     def grudge_line(self):
         return self.rng.choice(GRUDGE_LINES).format(rival=self.rival)
@@ -364,6 +367,7 @@ class Career:
         if method == "KO" and self.rng.random() < PERMANENT_KO_CHANCE and p.stats.chin > STAT_MIN:
             p.stats.chin -= 1
             reward["permanent"] = "chin"
+            self.new_scar = True
 
     def rehab_price(self):
         if not self.injury:
@@ -607,6 +611,7 @@ class Career:
             beat = self.story_queue.pop(0)
             if beat in story.BEATS and (beat not in self.story_seen or story.repeats(beat)):
                 self.story_seen.add(beat)
+                self.story_last[beat] = len(self.history)
                 return beat
         return None
 
@@ -674,6 +679,7 @@ class Career:
             "gym_used": self.gym_used,
             "story_seen": sorted(self.story_seen),
             "story_queue": self.story_queue,
+            "story_last": self.story_last,
             "injury": self.injury,
         }
 
@@ -705,6 +711,7 @@ class Career:
         c.story_seen = set(d.get("story_seen", []))
         # Old saves skip the intro, they have met the coach already
         c.story_queue = list(d.get("story_queue", []))
+        c.story_last = {k: int(v) for k, v in d.get("story_last", {}).items()}
         inj = d.get("injury")
         if inj and inj.get("stats") and inj.get("fights", 0) > 0:
             c.injury = {"name": inj.get("name", "Injury"),

@@ -66,6 +66,70 @@ class ActOne(unittest.TestCase):
         self.assertFalse(story.repeats("first_win"))
 
 
+class Reactive(unittest.TestCase):
+    def test_a_first_round_finish_gets_a_scene_with_a_cooldown(self):
+        c = career()
+        win(c)
+        beats_shown(c)
+        win(c)
+        self.assertIn("fast_finish", beats_shown(c))   # a round 1 KO is worth a word
+        win(c)
+        self.assertNotIn("fast_finish", beats_shown(c))   # but not after every single one
+
+    def test_winning_while_hurt_gets_lou_talking(self):
+        c = career()
+        win(c)
+        beats_shown(c)
+        c.injury = {"name": "Broken hand", "stats": {"striking": 1}, "fights": 3}
+        win(c)
+        self.assertIn("won_hurt", beats_shown(c))
+        joined = " ".join(l for _, l in story.lines("won_hurt", c.player, injury="Broken hand"))
+        self.assertIn("broken hand", joined)
+
+    def test_permanent_damage_gets_the_scar_scene(self):
+        c = career()
+        c.new_scar = True
+        self.assertIn("scar", story.after_fight(c, False, False, False, False, 1))
+        c.new_scar = False
+        self.assertNotIn("scar", story.after_fight(c, False, False, False, False, 1))
+
+
+class Callouts(unittest.TestCase):
+    def test_a_rival_remembers_beating_you(self):
+        import random
+        c = career()
+        rival = c.ladder[1]
+        got = story.callout("Sam Cole", rival, random.Random(1),
+                            last={"result": "Loss", "method": "KO"})
+        self.assertIn("knocked", got)
+        self.assertIn(rival.name, got)
+
+    def test_a_rival_remembers_a_close_decision(self):
+        import random
+        c = career()
+        got = story.callout("Sam Cole", c.ladder[1], random.Random(1),
+                            last={"result": "Win", "method": "Decision"})
+        self.assertIn("judges", got)
+
+    def test_a_new_rival_speaks_in_their_own_voice(self):
+        import random
+        c = career()
+        for rival in c.ladder[1:4]:
+            got = story.callout("Sam Cole", rival, random.Random(1))
+            self.assertIn("Sam Cole", got)
+            self.assertIn(rival.name, got)
+
+    def test_the_career_callout_uses_the_last_meeting(self):
+        c = career()
+        while c.rank() is None or c.rank() > 4:
+            win(c)
+        c.rival = None
+        opp, *_ = c.next_fight()
+        c.record_result(opp, False, False, "KO", "Power punch", 1)   # they knock you out
+        self.assertEqual(c.rival, opp.name)
+        self.assertTrue(any("knocked" in n for n in c.news), c.news)
+
+
 class Scripts(unittest.TestCase):
     def test_every_script_formats_and_speaks(self):
         c = career()

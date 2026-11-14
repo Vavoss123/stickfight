@@ -19,8 +19,13 @@ CHARACTERS = {
 }
 
 
-def _beat(when, *scripts, repeat=False):
-    return {"when": when, "scripts": scripts, "repeat": repeat}
+def _beat(when, *scripts, repeat=False, cooldown=0):
+    """cooldown: the fights a repeatable beat waits before it can show again."""
+    return {"when": when, "scripts": scripts, "repeat": repeat, "cooldown": cooldown}
+
+
+def _last(c):
+    return c.history[-1] if c.history else {}
 
 
 # In queue order. "intro" is queued once when a career starts, so its condition is never.
@@ -87,6 +92,33 @@ BEATS = {
         ((RAY, "It hurts. It's supposed to hurt."),
          (RAY, "You were the best in the world once. We'll get back there.")),
     ),
+    "fast_finish": _beat(
+        lambda c, x: (x["won"] and c.player.wins >= 2 and _last(c).get("round") == 1
+                      and _last(c).get("method") in ("KO", "TKO", "Submission")),
+        ((RAY, "Round one. They never laid a glove on you."),
+         (LOU, "Easiest night I've had all year. I taped my own hands for something to do."),
+         (RAY, "Don't fall in love with the quick ones. One day somebody survives.")),
+        ((RAY, "One round. The TV people are going to love you, {name}."),
+         (RAY, "Stay sharp. Short nights make soft fighters.")),
+        repeat=True, cooldown=5,
+    ),
+    "won_hurt": _beat(
+        lambda c, x: x["won"] and c.injury is not None,
+        ((LOU, "You won that carrying a {injury}. I watched you wince every round."),
+         (RAY, "Heart gets you through one fight. Health gets you through a career."),
+         (LOU, "Next time we heal up first. Promise me.")),
+        repeat=True, cooldown=4,
+    ),
+    "scar": _beat(
+        lambda c, x: getattr(c, "new_scar", False),
+        ((LOU, "That's the kind of knockout you don't fully come back from. I've seen it."),
+         (RAY, "He's being dramatic."),
+         (LOU, "I'm being honest. The chin is not what it was. Fight smarter.")),
+        ((LOU, "Another one. {name}, look at me. Follow my finger."),
+         (RAY, "...Take the week off. Take two."),
+         (LOU, "The gym will still be here. Make sure you are.")),
+        repeat=True,
+    ),
     "losing_streak": _beat(
         lambda c, x: x["streak"] == 3,
         ((RAY, "Three in a row. Sit down, we need to talk."),
@@ -110,19 +142,79 @@ def repeats(beat):
     return BEATS[beat]["repeat"]
 
 
-def lines(beat, player, rival=None, opp=None, champ=None):
+def lines(beat, player, rival=None, opp=None, champ=None, injury=None):
     """The beat's script as (speaker, line) pairs, names filled in."""
     scripts = BEATS[beat]["scripts"]
     script = scripts[(player.wins + player.losses) % len(scripts)]
     first = player.name.split()[0] if player.name else "kid"
     return [(who, t.format(name=first, rival=rival or "Your rival",
-                           opp=opp or "them", champ=champ or "the champ"))
+                           opp=opp or "them", champ=champ or "the champ",
+                           injury=(injury or "bad injury").lower()))
             for who, t in script]
 
 
 def after_fight(c, won, draw, was_champ, was_ranked, losses_in_a_row):
-    """Story beats a result has earned, that have not been seen yet."""
+    """Story beats a result has earned, that have not been seen yet (or are off cooldown)."""
     x = {"won": won, "draw": draw, "was_champ": was_champ, "was_ranked": was_ranked,
          "streak": losses_in_a_row}
-    return [b for b, d in BEATS.items()
-            if (b not in c.story_seen or d["repeat"]) and d["when"](c, x)]
+    last_shown = getattr(c, "story_last", {})
+    out = []
+    for b, d in BEATS.items():
+        if b in c.story_seen and not d["repeat"]:
+            continue
+        if d["repeat"] and len(c.history) - last_shown.get(b, -99) < d["cooldown"]:
+            continue
+        if d["when"](c, x):
+            out.append(b)
+    return out
+
+
+# What a rival says, in their own voice. {player} is the player's name.
+CALLOUT_VOICE = {
+    "balanced": ['"No hype. {player} is simply not ready for me." - {rival}',
+                 '"I want {player} next. Nothing personal. It\'s business." - {rival}'],
+    "pressure": ['"Tell {player} there is nowhere to run in a cage." - {rival}',
+                 '"{player} had better bring a gas tank. I come forward all night." - {rival}'],
+    "counter": ['"{player} makes mistakes. I get paid for mistakes." - {rival}',
+                '"Keep swinging, {player}. I\'ll be waiting." - {rival}'],
+    "grinder": ['"{player} is going to spend fifteen minutes on their back." - {rival}',
+                '"Nice record. Let\'s see it off the mat, {player}." - {rival}'],
+    "showboat": ['"{player} is a warm-up act for my highlight reel." - {rival}',
+                 '"Put {player} on my poster. Small letters." - {rival}'],
+    "headhunter": ['"They say {player} has a chin. I\'d like to test it." - {rival}',
+                   '"Somebody tell {player} to practise sleeping." - {rival}'],
+    "subartist": ['"{player} has two working arms. For now." - {rival}',
+                  '"Tap or nap, {player}. Your choice." - {rival}'],
+    "trashtalk": ['"My grandma could beat {player}, and she\'s retired." - {rival}',
+                  '"After I\'m done, nobody will remember {player}\'s name." - {rival}'],
+}
+
+# When they remember the last meeting: (your result, their method) -> the line
+CALLOUT_MEMORY = {
+    ("Loss", "KO"): '"I\'ve knocked {player} out before. This time I\'ll do it faster." - {rival}',
+    ("Loss", "TKO"): '"The referee saved {player} last time. Don\'t send a referee." - {rival}',
+    ("Loss", "Submission"): '"{player} tapped once. The body remembers." - {rival}',
+    ("Loss", "Decision"): '"I\'ve already beaten {player}. This time I won\'t leave it to the judges." - {rival}',
+    ("Win", "KO"): '"{player} caught me once. Lightning doesn\'t strike twice." - {rival}',
+    ("Win", "TKO"): '"{player} caught me once. Lightning doesn\'t strike twice." - {rival}',
+    ("Win", "Submission"): '"{player} took my arm home once. I want it back." - {rival}',
+    ("Win", "Decision"): '"The judges gave {player} that one. No judges this time." - {rival}',
+    ("Win", "Draw"): '"Nobody won last time. Somebody will this time." - {rival}',
+}
+
+
+def callout(player_name, rival, rng, last=None):
+    """A callout from a rival: what they remember of the last meeting, else their own voice.
+
+    rival is a Profile, last the player's history entry for their last meeting, if any.
+    """
+    from . import personality
+    line = None
+    if last and last.get("result") != "Draw":
+        line = CALLOUT_MEMORY.get((last.get("result"), last.get("method")))
+    if line is None:
+        pool = CALLOUT_VOICE.get(personality.of(rival))
+        line = rng.choice(pool) if pool else None
+    if line is None:
+        line = '"{player} is not ready for the top. I want {player} next." - {rival}'
+    return line.format(player=player_name, rival=rival.name)

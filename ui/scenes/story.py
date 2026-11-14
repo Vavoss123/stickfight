@@ -16,7 +16,8 @@ class StoryScene(Scene):
         super().__init__(app)
         self.c = career
         champ = career.ladder[0].name if career.ladder else None
-        self.lines = story.lines(beat, career.player, rival=career.rival, champ=champ)
+        injury = career.injury["name"] if career.injury else None
+        self.lines = story.lines(beat, career.player, rival=career.rival, champ=champ, injury=injury)
         self.then = then
         self.k = 0
         self.shown = 0.0
