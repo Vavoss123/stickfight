@@ -3,7 +3,9 @@
 import pygame
 
 from ..arena import Arena
-from ..common import W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, CORNER, text, panel, Button
+from engine import review
+
+from ..common import W, H, CX, FLOOR_Y, RED, BLUE, GOLD, WHITE, GREY, GREEN, CORNER, text, panel, Button, wrap
 from ..choreo import SCALE
 from ..stickman import Figure
 from .base import Scene
@@ -43,6 +45,11 @@ class ResultScene(Scene):
             b = Button((CX - 130, y, 260, 50), "Continue", color=(150, 110, 30))
             b.pick = "continue"
             self.buttons.append(b)
+        # Looking back: the moment that swung it, and what to try next time (your side only,
+        # and only against the computer, where there is one player to coach)
+        names = tuple(p.name.split()[-1] for p in profiles)
+        self.turning = review.turning_point(fight, names)
+        self.tips = review.tips(fight, 0, names) if cfg.mode == "cpu" else []
         if self.r.winner is not None:
             app.sounds.play("crowd", 0.8)
         if cfg.mode == "cpu" and not cfg.practice and hasattr(app, "award"):
@@ -127,15 +134,43 @@ class ResultScene(Scene):
             ("Knockdowns", t0.knockdowns, t1.knockdowns),
             ("Sub attempts", int(t0.sub_attempts), int(t1.sub_attempts)),
         ]
-        rect = panel(surf, (CX - 230, y, 460, 40 + len(rows) * 28), (12, 13, 20), alpha=230)
-        text(surf, p[0].name.split()[-1].upper(), (CX - 150, y + 10), 16, RED, "midtop", bold=True)
-        text(surf, "FIGHT STATS", (CX, y + 10), 16, GOLD, "midtop", bold=True)
-        text(surf, p[1].name.split()[-1].upper(), (CX + 150, y + 10), 16, BLUE, "midtop", bold=True)
-        yy = y + 38
+        step = 24 if r.cards else 27
+        rect = panel(surf, (CX - 230, y, 460, 36 + len(rows) * step), (12, 13, 20), alpha=230)
+        text(surf, p[0].name.split()[-1].upper(), (CX - 150, y + 8), 16, RED, "midtop", bold=True)
+        text(surf, "FIGHT STATS", (CX, y + 8), 16, GOLD, "midtop", bold=True)
+        text(surf, p[1].name.split()[-1].upper(), (CX + 150, y + 8), 16, BLUE, "midtop", bold=True)
+        yy = y + 34
         for label, a, b in rows:
-            text(surf, str(a), (CX - 150, yy), 19, WHITE, "midtop")
-            text(surf, label, (CX, yy), 16, GREY, "midtop")
-            text(surf, str(b), (CX + 150, yy), 19, WHITE, "midtop")
-            yy += 28
+            text(surf, str(a), (CX - 150, yy), 18, WHITE, "midtop")
+            text(surf, label, (CX, yy), 15, GREY, "midtop")
+            text(surf, str(b), (CX + 150, yy), 18, WHITE, "midtop")
+            yy += step
+        self._draw_review(surf, rect.bottom + 8)
         for b in self.buttons:
             b.draw(surf)
+
+    def _draw_review(self, surf, y):
+        """The turning point and a tip or two, in whatever room is left above the buttons."""
+        lines = []
+        if self.turning:
+            lines.append(("TURNING POINT", self.turning, GOLD))
+        for t in self.tips:
+            lines.append(("NEXT TIME", t, GREEN))
+        if not lines:
+            return
+        width = 640    # clear of the fighters standing either side
+        rows = []
+        for label, words, color in lines:
+            for n, ln in enumerate(wrap(words, 15, width - 156)):
+                rows.append((label if n == 0 else "", ln, color))
+        room = (self.buttons[0].rect.y - 8 - y - 16) // 20
+        rows = rows[:max(0, room)]
+        if not rows:
+            return
+        r = panel(surf, (CX - width // 2, y, width, 16 + 20 * len(rows)), (12, 13, 20), alpha=230)
+        yy = r.y + 8
+        for label, ln, color in rows:
+            if label:
+                text(surf, label, (r.x + 16, yy + 1), 13, color, bold=True)
+            text(surf, ln, (r.x + 140, yy), 15, WHITE)
+            yy += 20

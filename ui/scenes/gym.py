@@ -102,13 +102,18 @@ class GymScene(Scene):
         self.coach.draw(surf)
         c = self.c
         if self.state == "ready":
-            r = panel(surf, (CX - 300, 120, 600, 170), (20, 22, 32), alpha=235, border=GOLD)
-            text(surf, f"Free session. Difficulty: {c.gym_tier()}", (r.centerx, r.y + 16), 22, GOLD, "midtop",
+            # On the floor under the fighters, so it never covers them
+            r = panel(surf, (CX - 330, 416, 660, 176), (20, 22, 32), alpha=235, border=GOLD)
+            text(surf, f"Free session. Difficulty: {c.gym_tier()}", (r.centerx, r.y + 14), 22, GOLD, "midtop",
                  bold=True)
-            text_block(surf, f"Coach Ray picks a drill at random. {GYM_REPS} reps, score out of {GYM_REPS}. "
-                             f"7 or more is a deck point (all {GYM_REPS} adds a training point too), 5 or 6 is "
-                             "two training points, 3 or 4 is one. The bigger your deck budget, rank and bonus "
-                             "points, the tougher the drills.", (r.centerx, r.y + 52), 15, r.w - 40, WHITE)
+            text(surf, f"{GYM_REPS} reps, scored out of {GYM_REPS}. Tougher drills as your deck budget grows.",
+                 (r.centerx, r.y + 46), 15, GREY, "midtop")
+            rewards = [(f"all {GYM_REPS}", "a deck point and a training point"), ("7", "a deck point"),
+                       ("5 or 6", "two training points"), ("3 or 4", "one training point")]
+            for k, (score, prize) in enumerate(rewards):
+                y = r.y + 76 + k * 22
+                text(surf, score, (r.centerx - 20, y), 16, GOLD, "topright", bold=True)
+                text(surf, prize, (r.centerx, y), 16, WHITE)
             why = c.gym_open()
             self.start_btn.label = why or "Start the session"
             self.start_btn.enabled = why is None

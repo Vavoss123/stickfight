@@ -23,6 +23,20 @@ TRIGGER_LT, TRIGGER_RT = 1001, 1002
 if controller:
     PICK_BUTTONS += [TRIGGER_LT, TRIGGER_RT]
 PICK_LABELS = ["A", "B", "X", "Y", "Up", "Rt", "Dn", "Lt", "LB", "RB", "LT", "RT"]
+# The same buttons as a PlayStation pad prints them
+PS_SHAPES = ["✕", "○", "□", "△"]
+PS_REST = ["Up", "Rt", "Dn", "Lt", "L1", "R1", "L2", "R2"]
+PS_WORDS = ("dualsense", "dualshock", "playstation", "ps3", "ps4", "ps5")
+
+
+def is_playstation(pad_name):
+    n = (pad_name or "").lower()
+    return any(w in n for w in PS_WORDS) or n.startswith("wireless controller")
+
+
+def ps_labels():
+    """The PlayStation labels. The face buttons are drawn as shapes (see common.pad_shape)."""
+    return PS_SHAPES + PS_REST
 
 AS_KEYS = {
     "dpad_up": pygame.K_UP, "dpad_down": pygame.K_DOWN, "dpad_left": pygame.K_LEFT,
@@ -52,6 +66,7 @@ class Pads:
         self.pads = {}      # instance id -> Controller
         self.order = []     # instance ids in the order they were plugged in
         self.stick = {}     # instance id -> (x, y) direction the stick is held in
+        self.playstation = set()   # instance ids of PlayStation pads, for their button names
         if controller is None:
             return
         try:
@@ -70,6 +85,16 @@ class Pads:
         if iid not in self.pads:
             self.pads[iid] = c
             self.order.append(iid)
+            try:
+                if is_playstation(c.name):
+                    self.playstation.add(iid)
+            except (AttributeError, pygame.error):
+                pass
+
+    def labels(self, slot):
+        """Button names for the pad in this slot, in pick order."""
+        iid = self.order[slot] if slot is not None and slot < len(self.order) else None
+        return ps_labels() if iid in self.playstation else PICK_LABELS
 
     @property
     def count(self):
@@ -87,6 +112,7 @@ class Pads:
             return None
         if e.type == pygame.CONTROLLERDEVICEREMOVED:
             self.pads.pop(e.instance_id, None)
+            self.playstation.discard(e.instance_id)
             if e.instance_id in self.order:
                 self.order.remove(e.instance_id)
             return None

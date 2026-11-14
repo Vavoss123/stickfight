@@ -321,12 +321,13 @@ class FightScene(Scene):
             order = self.order[i]
             if self.cfg.mode == "cpu":
                 x0, width = 20, W - 40
-                keys = gamepad.PICK_LABELS if self._pad_for(0) is not None else LABEL_SOLO
+                slot = self._shows_pad(0)
+                keys = self.app.pads.labels(slot) if slot is not None else LABEL_SOLO
             else:
                 x0, width = (20, W // 2 - 30) if i == 0 else (W // 2 + 10, W // 2 - 30)
                 keys = LABEL_P1 if i == 0 else LABEL_P2
                 if self._pad_for(i) is not None:
-                    keys = gamepad.PICK_LABELS
+                    keys = self.app.pads.labels(self._pad_for(i))
             rows = self._rows(i, order)
             ys = [612, 670] if len(rows) == 2 else [612]
             hs = [44, 40] if len(rows) == 2 else [96]
@@ -352,6 +353,7 @@ class FightScene(Scene):
                         if z != last_zone:
                             self.zone_heads[i].append((ZONE_LABEL[z], x, y - 12))
                             last_zone = z
+        self._labels_pad = self._shows_pad(0) is not None
         # Buttons in key order, so key n presses button n
         for i in sides:
             self.buttons[i].sort(key=lambda b, i=i: self.order[i].index(b.pick))
@@ -372,6 +374,14 @@ class FightScene(Scene):
         if self.app.pads.count >= 2:
             return slot if slot in (0, 1) else None
         return 1
+
+    def _shows_pad(self, side):
+        """The pad slot whose buttons the move labels show, or None for the keyboard.
+        Against the computer that follows whatever the player last touched."""
+        slot = self._pad_for(side)
+        if slot is not None and self.cfg.mode == "cpu" and not getattr(self.app, "using_pad", False):
+            return None
+        return slot
 
     def _pad_for(self, side):
         """The pad slot playing this corner, or None if it is on the keyboard."""
@@ -477,20 +487,13 @@ class FightScene(Scene):
 
     def _verdict(self, ex):
         """(winner or None, why) for the ticker: who got the better of the exchange."""
+        from engine import review
         if ex.in_sub:
             return None
-        score = [0.0, 0.0]
-        for i in (0, 1):
-            o = 1 - i
-            score[i] += ex.dmg[i]
-            score[i] += 6 * ex.success[i] + 6 * ex.countered[i] + 4 * ex.blocked[i]
-            score[i] += 4 * ex.checked[i] + 4 * ex.slipped[i] + 5 * ex.feinted[i] + 3 * ex.stuffed[o]
-            score[i] += 10 * (ex.takedown_by == i) + 12 * (ex.knockdown == o)
-            score[i] += 8 * (getattr(ex, "sub_start", None) == i) + 8 * (getattr(ex, "reversal_by", None) == i)
-        if abs(score[0] - score[1]) < 3:
+        w = review.winner(ex)
+        if w is None:
             return (None, "")
-        w = 0 if score[0] > score[1] else 1
-        cls = [GRAPPLE if m.cls == SUB else m.cls for m in ex.moves]
+        cls = [review.kind(m) for m in ex.moves]
         why = ""
         if cls[w] == FEINT and cls[1 - w] == DEFEND:
             why = "Feint beats Defend"
@@ -1164,6 +1167,8 @@ class FightScene(Scene):
     def update(self, dt):
         if self.paused:
             return
+        if self.phase == "pick" and self.cfg.mode == "cpu" and self.picks[0] is None                 and (self._shows_pad(0) is not None) != getattr(self, "_labels_pad", False):
+            self._build_buttons()   # swapped between pad and keyboard: show the right labels
         real_dt = dt
         for s in self.sparks:
             s[3] += real_dt * (self.time_scale if self.phase == "replay" else 1.0)
@@ -1472,7 +1477,7 @@ class FightScene(Scene):
             self._draw_zone_heads(surf, 0)
             for b in self.buttons[0]:
                 b.draw(surf)
-            if self._pad_for(0) is not None:
+            if self._shows_pad(0) is not None:
                 how = "press the button in its corner"
             else:
                 how = "press its key or click it"

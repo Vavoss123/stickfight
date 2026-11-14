@@ -151,6 +151,29 @@ def lighten(c, f=1.3):
     return tuple(min(255, int(v * f)) for v in c)
 
 
+# PlayStation face buttons, drawn as shapes in their usual colours so no font has to have them
+PAD_SHAPES = {"✕": ("cross", (120, 160, 255)), "○": ("circle", (255, 100, 110)),
+              "□": ("square", (240, 130, 200)), "△": ("triangle", (90, 220, 170))}
+
+
+def pad_shape(surf, key, center, r=6):
+    """Draw a PlayStation face button symbol. Returns False if key is not one of them."""
+    if key not in PAD_SHAPES:
+        return False
+    shape, col = PAD_SHAPES[key]
+    x, y = center
+    if shape == "cross":
+        pygame.draw.line(surf, col, (x - r, y - r), (x + r, y + r), 3)
+        pygame.draw.line(surf, col, (x - r, y + r), (x + r, y - r), 3)
+    elif shape == "circle":
+        pygame.draw.circle(surf, col, (x, y), r + 1, 2)
+    elif shape == "square":
+        pygame.draw.rect(surf, col, (x - r, y - r, 2 * r, 2 * r), 2)
+    else:
+        pygame.draw.polygon(surf, col, [(x, y - r - 1), (x + r + 1, y + r), (x - r - 1, y + r)], 2)
+    return True
+
+
 class Button:
     def __init__(self, rect, label, key=None, sub="", color=(52, 58, 78), enabled=True,
                  size=22, sub_size=15, wrap=False, sub_color=GREY):
@@ -196,8 +219,8 @@ class Button:
         pygame.draw.rect(surf, border, self.rect, 3 if self.selected else 2, border_radius=8)
         col = WHITE if self.enabled else (110, 110, 120)
         fit = self.rect.w - 14
-        if self.key and not self.sub:
-            fit -= 4 if self.wrap else 24  # leave room for the key letter in the corner
+        if self.key:
+            fit -= 4 if self.wrap and not self.sub else 30  # leave room for the key letter in the corner
         lines = self._lines(fit) if self.wrap and not self.sub else None
         if lines and len(lines) == 2:
             cx = self.rect.centerx + (5 if self.key else 0)
@@ -206,14 +229,17 @@ class Button:
                      "center", bold=True, max_width=fit)
         elif self.sub:
             gap = 10 if self.sub_size >= 15 else 7
-            text(surf, self.label, (self.rect.centerx, self.rect.centery - gap), self.size,
+            lx = self.rect.centerx + (8 if self.key else 0)
+            text(surf, self.label, (lx, self.rect.centery - gap), self.size,
                  col, "center", bold=True, max_width=fit)
             text(surf, self.sub, (self.rect.centerx, self.rect.centery + gap + 4 * (self.sub_size >= 15)),
                  self.sub_size, self.sub_color if self.enabled else GREY, "center", max_width=fit)
         else:
             c = (self.rect.centerx + (8 if self.key else 0), self.rect.centery)
             text(surf, self.label, c, self.size, col, "center", bold=True, max_width=fit)
-        if self.key:
+        if self.key and pad_shape(surf, self.key, (self.rect.x + 14, self.rect.y + 13)):
+            pass
+        elif self.key:
             # Punctuation keys (, . ; /) are tiny at letter size
             big = not self.key.isalnum()
             text(surf, self.key, (self.rect.x + 8, self.rect.y + (1 if big else 5)), 20 if big else 15, GOLD,

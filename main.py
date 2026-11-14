@@ -71,6 +71,9 @@ class App:
         self.toasts = Toasts(self)
         self.record = achievements.Record()
         self.pads = gamepad.Pads()
+        # Which the player last touched: the keyboard and mouse, or a pad. Move buttons show
+        # the keys for one or the buttons for the other, not pad buttons just for being plugged in
+        self.using_pad = False
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
 
@@ -102,6 +105,7 @@ class App:
         got = self.pads.handle(e)
         if got is None or self.feedback.open:
             return
+        self.using_pad = True
         if got[0] == "button":
             _, slot, button = got
             handler = getattr(self.scene, "handle_pad", None)
@@ -129,6 +133,9 @@ class App:
             fps = 5 if self.minimized else 60 if self.focused else 15
             dt = min(self.clock.tick(fps) / 1000.0, 1 / 20)
             for e in pygame.event.get():
+                if e.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN) or (
+                        e.type == pygame.MOUSEMOTION and abs(e.rel[0]) + abs(e.rel[1]) > 4):
+                    self.using_pad = False
                 if e.type == pygame.QUIT:
                     self.running = False
                 elif e.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWFOCUSGAINED):
