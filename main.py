@@ -34,7 +34,11 @@ def fit_window():
     """Size the window to the monitor, so it fits a small laptop and isn't tiny on a big screen."""
     try:
         desktop = pygame.display.get_desktop_sizes()[0]
-        win = pygame.Window.from_display_module()
+        import warnings
+        with warnings.catch_warnings():
+            # Only the window's size and position are touched here, not its drawing
+            warnings.simplefilter("ignore", DeprecationWarning)
+            win = pygame.Window.from_display_module()
         win.size = window_size(desktop)
         win.position = pygame.WINDOWPOS_CENTERED
     except (AttributeError, IndexError, pygame.error):
