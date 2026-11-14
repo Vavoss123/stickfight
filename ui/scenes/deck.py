@@ -22,6 +22,7 @@ def money(n):
 
 
 class DeckScene(Scene):
+    music = "keep"     # opened between rounds of a fight too
     """career is a Career, or a Loadout for quick fight decks. Both have the same calls."""
 
     def __init__(self, app, career, back):

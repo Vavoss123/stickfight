@@ -102,6 +102,7 @@ class FightConfig:
 
 
 class FightScene(Scene):
+    music = "keep"     # each round picks its own fight loop
     def __init__(self, app, cfg):
         super().__init__(app)
         self.cfg = cfg
@@ -249,6 +250,9 @@ class FightScene(Scene):
         self.ref.set_pose("ref_fight", idle="ref_fight")
         title = "TITLE FIGHT" if self.cfg.title else self.cfg.event
         self.set_banner(f"ROUND {self.fight.round}", title, GOLD, 1.5)
+        # The music builds round by round, hardest in the last
+        from ..music import fight_level
+        self.app.music.play(f"fight{fight_level(self.fight.round, self.fight.rounds)}")
         if self.cpu and self.fight.round == self.fight.rounds and self.fight.rounds > 1:
             import random
             self.speak(1, personality.line(self.cpu.personality, "last_round", random))
@@ -921,6 +925,7 @@ class FightScene(Scene):
 
     def _round_end(self):
         self._sync_hp()
+        self.app.music.stop(1500)     # quiet in the corner
         self.phase = "round_end"
         self.corner_tips = [advice(self.fight, 0), advice(self.fight, 1)]
         if not self.fight.over:
@@ -1013,6 +1018,7 @@ class FightScene(Scene):
         self._intro()
 
     def _finish(self):
+        self.app.music.stop(300)      # the crowd and the bell take it from here
         self.phase = "finished"
         self.can_continue = False
         r = self.fight.result

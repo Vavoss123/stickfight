@@ -25,6 +25,7 @@ def intro_lines(p, corner):
 
 
 class WalkoutScene(Scene):
+    music = "walkout"
     def __init__(self, app, cfg, label=""):
         super().__init__(app)
         self.cfg = cfg

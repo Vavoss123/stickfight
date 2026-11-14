@@ -19,6 +19,7 @@ from ui.toast import Toasts
 from ui import gamepad
 from ui.settings import Settings
 from ui.sound import Sounds, RATE
+from ui.music import Music
 from version import VERSION
 
 
@@ -61,6 +62,7 @@ class App:
         fit_window()
         self.clock = pygame.time.Clock()
         self.sounds = Sounds()
+        self.music = Music(self.sounds)
         self.settings = Settings()
         self.fullscreen = False
         self.apply_settings()
@@ -76,9 +78,17 @@ class App:
         self.using_pad = False
         from ui.scenes.menu import MenuScene
         self.scene = MenuScene(self)
+        self._scene_music(self.scene)
 
     def goto(self, scene):
         self.scene = scene
+        self._scene_music(scene)
+
+    def _scene_music(self, scene):
+        """Each screen says what should play: a piece, or "keep" to leave it be."""
+        want = getattr(scene, "music", "menu")
+        if want != "keep":
+            self.music.play(want)
 
     def award(self, aids):
         """Unlock achievements and announce the new ones, and any fighter they unlock."""
@@ -98,6 +108,7 @@ class App:
 
     def toggle_mute(self):
         off = self.sounds.toggle_mute()
+        self.music.muted(off)
         self.toasts.push("SOUND OFF" if off else "SOUND ON", "M or F10 to switch it back" if off else "")
 
     def _pad(self, e):
@@ -120,6 +131,7 @@ class App:
     def apply_settings(self):
         s = self.settings
         self.sounds.set_volume(s["volume"] / 100, s["crowd"] / 100)
+        self.music.set_volume(s["volume"] / 100, s["music"] / 100)
         if s["fullscreen"] != self.fullscreen:
             try:
                 pygame.display.toggle_fullscreen()
@@ -152,6 +164,7 @@ class App:
                     self._pad(e)
                 elif not self.feedback.handle(e):
                     self.scene.handle(e)
+            self.music.update()
             if not self.feedback.open:
                 self.scene.update(dt)
             self.feedback.update(dt)

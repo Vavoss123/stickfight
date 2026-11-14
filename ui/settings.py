@@ -11,6 +11,7 @@ SPEEDS = [("Normal", 1.0), ("Fast", 1.6), ("Fastest", 2.5)]
 DEFAULTS = {
     "volume": 80,         # 0 to 100, every sound
     "crowd": 60,          # 0 to 100, the crowd on top of that
+    "music": 60,          # 0 to 100, the music on top of that
     "fullscreen": False,
     "speed": 0,           # index into SPEEDS
     "skip_walkouts": False,
@@ -36,6 +37,7 @@ class Settings:
             pass
         self.v["volume"] = max(0, min(100, self.v["volume"]))
         self.v["crowd"] = max(0, min(100, self.v["crowd"]))
+        self.v["music"] = max(0, min(100, self.v["music"]))
         self.v["speed"] = max(0, min(len(SPEEDS) - 1, self.v["speed"]))
 
     def __getitem__(self, k):

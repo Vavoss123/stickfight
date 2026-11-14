@@ -12,6 +12,7 @@ from .base import Scene
 
 
 class ResultScene(Scene):
+    music = "keep"     # the win sting, or quiet after a loss
     def __init__(self, app, fight, cfg):
         super().__init__(app)
         self.fight = fight
@@ -52,6 +53,11 @@ class ResultScene(Scene):
         self.tips = review.tips(fight, 0, names) if cfg.mode == "cpu" else []
         if self.r.winner is not None:
             app.sounds.play("crowd", 0.8)
+        # A fanfare for a win: yours against the computer, either side's in 2 player
+        if self.r.winner is not None and (cfg.mode != "cpu" or self.r.winner == 0):
+            app.music.sting("win")
+        else:
+            app.music.stop(600)
         if cfg.mode == "cpu" and not cfg.practice and hasattr(app, "award"):
             from engine import achievements
             app.award(achievements.for_fight(fight, 0, cfg.level, app.record))

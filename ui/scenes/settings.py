@@ -6,22 +6,26 @@ from ..common import W, H, CX, GOLD, WHITE, GREY, text, panel, bar, Button
 from ..settings import SPEEDS
 from .base import Scene
 
-ROWS = ["volume", "crowd", "fullscreen", "speed", "skip_walkouts", "show_rules", "effect_tips"]
-LABELS = {"volume": "Volume", "crowd": "Crowd noise", "fullscreen": "Fullscreen",
+ROWS = ["volume", "crowd", "music", "fullscreen", "speed", "skip_walkouts", "show_rules", "effect_tips"]
+LABELS = {"volume": "Volume", "crowd": "Crowd noise", "music": "Music", "fullscreen": "Fullscreen",
           "speed": "Fight speed", "skip_walkouts": "Skip walkouts", "show_rules": "Rules diagram",
           "effect_tips": "Effect tips"}
 HELP = {"volume": "Every sound in the game.",
         "crowd": "The crowd, on top of the main volume.",
+        "music": "Menu, walkout and fight music, on top of the main volume.",
         "fullscreen": "F11 also switches it at any time.",
         "speed": "How fast exchanges play out. Knockout replays stay in slow motion.",
         "skip_walkouts": "Go straight to the fight instead of the ring announcer.",
         "show_rules": "Show what beats what in the corner while you pick a move.",
         "effect_tips": "Explain words like ROCKED or CAUGHT the first couple of times. On shows them again."}
-TOP = 150
-ROW_H = 68
+TOP = 138
+ROW_H = 60
+SLIDERS = ("volume", "crowd", "music")
 
 
 class SettingsScene(Scene):
+    music = "keep"     # opened from a paused fight too
+
     def __init__(self, app, back):
         super().__init__(app)
         self.back_to = back
@@ -30,23 +34,23 @@ class SettingsScene(Scene):
         self.done = Button((CX - 120, H - 90, 240, 52), "Done", color=(40, 110, 60), size=22)
         self.controls = []   # (row, Button, value it sets or a step)
         for r, key in enumerate(ROWS):
-            y = TOP + r * ROW_H + 14
-            if key in ("volume", "crowd"):
+            y = TOP + r * ROW_H + 8
+            if key in SLIDERS:
                 for k, step in enumerate((-10, 10)):
-                    b = Button((CX + 20 + k * 300, y, 48, 44), "-" if step < 0 else "+", size=26)
+                    b = Button((CX + 20 + k * 300, y, 48, 40), "-" if step < 0 else "+", size=26)
                     self.controls.append((key, b, step))
             elif key == "speed":
                 for k, (name, _) in enumerate(SPEEDS):
-                    b = Button((CX + 20 + k * 118, y, 110, 44), name, size=18)
+                    b = Button((CX + 20 + k * 118, y, 110, 40), name, size=18)
                     self.controls.append((key, b, k))
             else:
                 for k, (name, v) in enumerate((("Off", False), ("On", True))):
-                    b = Button((CX + 20 + k * 118, y, 110, 44), name, size=18)
+                    b = Button((CX + 20 + k * 118, y, 110, 40), name, size=18)
                     self.controls.append((key, b, v))
 
     def _change(self, key, value):
         s = self.s
-        if key in ("volume", "crowd"):
+        if key in SLIDERS:
             s[key] = max(0, min(100, s[key] + value))
         else:
             if key == "effect_tips" and value and not s[key]:
@@ -59,7 +63,7 @@ class SettingsScene(Scene):
 
     def _nudge(self, key, d):
         """Arrow keys: step volume, or move to the next choice."""
-        if key in ("volume", "crowd"):
+        if key in SLIDERS:
             self._change(key, 10 * d)
         elif key == "speed":
             self._change(key, max(0, min(len(SPEEDS) - 1, self.s[key] + d)))
@@ -103,14 +107,14 @@ class SettingsScene(Scene):
             row = pygame.Rect(CX - 440, y, 880, ROW_H - 8)
             panel(surf, row, (30, 33, 46) if r == self.focus else (22, 24, 34),
                   border=GOLD if r == self.focus else None)
-            text(surf, LABELS[key], (row.x + 24, y + 12), 22, WHITE, bold=True)
-            text(surf, HELP[key], (row.x + 24, y + 40), 14, GREY, max_width=420)
-            if key in ("volume", "crowd"):
+            text(surf, LABELS[key], (row.x + 24, y + 6), 21, WHITE, bold=True)
+            text(surf, HELP[key], (row.x + 24, y + 32), 14, GREY, max_width=420)
+            if key in SLIDERS:
                 v = self.s[key]
-                bar(surf, (CX + 80, y + 28, 230, 16), v / 100, GOLD)
-                text(surf, f"{v}%", (CX + 380, y + 36), 20, WHITE, "midleft", bold=True)
+                bar(surf, (CX + 80, y + 20, 230, 16), v / 100, GOLD)
+                text(surf, f"{v}%", (CX + 380, y + 28), 20, WHITE, "midleft", bold=True)
         for key, b, v in self.controls:
-            if key not in ("volume", "crowd"):
+            if key not in SLIDERS:
                 b.selected = self.s[key] == v
             b.draw(surf)
         self.done.draw(surf)
