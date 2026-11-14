@@ -119,6 +119,14 @@ class Career:
         self.story_queue = ["intro"]  # beats waiting for the hub
         self.story_last = {}          # beat -> fight count when last shown, for cooldowns
         self.new_scar = False         # permanent damage this fight, for the story
+        # The three quiet meters that decide how a career ends, see engine/choices.py
+        self.loyalty = 50
+        self.fame = 50
+        self.health = 50
+        self.choice_last = {}         # choice id -> fight count when last dealt
+        self.last_choice = 0          # fight count when any choice was dealt
+        self.pending_start = {}       # how the next fight starts (stamina, hype)
+        self.pending_purse = 1.0      # next purse multiplier, from a short notice offer
         self.injury = None            # {"name", "stats": {stat: points}, "fights"}
         if not player.cards:
             deck, perks = STARTERS.get(player.archetype, ({}, []))
@@ -201,6 +209,9 @@ class Career:
         pers = personality.of(p)
         if pers == "showboat":
             purse = int(purse * 1.15)
+        purse = int(purse * self.pending_purse)      # a short notice deal pays double
+        self.pending_purse = 1.0
+        self.pending_start = {}
         finish = method in ("KO", "TKO", "Submission")
         reward = {"purse": purse, "bonus": 0, "pack": None, "story": [], "bill": 0, "injury": None,
                   "permanent": None}
@@ -250,6 +261,12 @@ class Career:
         if self.is_champ() and not was_champ:
             self.titles_won += 1
         self.most_defenses = max(self.most_defenses, self.defenses)
+        # The fight moves the quiet meters too
+        self._meter("fame", (10 if kind in ("title", "defence") else 5 if grudge else 2) if won else -3)
+        if reward["injury"]:
+            self._meter("health", -4)
+        if self.new_scar:
+            self._meter("health", -10)
         reward["story"] = self._story(opp, won, draw, grudge)
         from .story import after_fight
         streak = 0
@@ -334,8 +351,10 @@ class Career:
         return p
 
     def camp_start(self):
-        """How the player starts the next fight, for a film study camp."""
-        return dict(FILM_START) if self.camp == "film" else None
+        """How the player starts the next fight: film study, and anything a choice set up."""
+        out = dict(FILM_START) if self.camp == "film" else {}
+        out.update(self.pending_start)
+        return out or None
 
     def _hurt(self, method, purse, reward):
         """The hospital bill and the injury from a loss."""
@@ -604,6 +623,20 @@ class Career:
             return "Sloppy, but you worked. One training point."
         return "That was a waste of both our time. Nothing this week."
 
+    def _meter(self, name, d):
+        from .choices import METER_MIN, METER_MAX
+        setattr(self, name, max(METER_MIN, min(METER_MAX, getattr(self, name) + d)))
+
+    def next_choice(self):
+        """The choice card to deal at the hub, or None."""
+        from . import choices
+        return choices.next_for(self)
+
+    def apply_choice(self, cid, k):
+        """Take option k of a choice card. Returns the response line for the hub."""
+        from . import choices
+        return choices.apply(self, cid, k)
+
     def next_story(self):
         """The next story beat to show, marking it seen."""
         from . import story
@@ -680,6 +713,13 @@ class Career:
             "story_seen": sorted(self.story_seen),
             "story_queue": self.story_queue,
             "story_last": self.story_last,
+            "loyalty": self.loyalty,
+            "fame": self.fame,
+            "health": self.health,
+            "choice_last": self.choice_last,
+            "last_choice": self.last_choice,
+            "pending_start": self.pending_start,
+            "pending_purse": self.pending_purse,
             "injury": self.injury,
         }
 
@@ -712,6 +752,13 @@ class Career:
         # Old saves skip the intro, they have met the coach already
         c.story_queue = list(d.get("story_queue", []))
         c.story_last = {k: int(v) for k, v in d.get("story_last", {}).items()}
+        for meter in ("loyalty", "fame", "health"):
+            if isinstance(d.get(meter), int):
+                setattr(c, meter, max(0, min(100, d[meter])))
+        c.choice_last = {k: int(v) for k, v in d.get("choice_last", {}).items()}
+        c.last_choice = d.get("last_choice", len(c.history))
+        c.pending_start = d.get("pending_start") or {}
+        c.pending_purse = d.get("pending_purse", 1.0)
         inj = d.get("injury")
         if inj and inj.get("stats") and inj.get("fights", 0) > 0:
             c.injury = {"name": inj.get("name", "Injury"),

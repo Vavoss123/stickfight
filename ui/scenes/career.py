@@ -397,6 +397,12 @@ class HubScene(Scene):
                 c, msg = self.c, self.message
                 self.app.goto(StoryScene(self.app, c, beat, lambda: HubScene(self.app, c, msg)))
                 return
+            cid = self.c.next_choice()
+            if cid:
+                from .choice import ChoiceScene
+                c, msg = self.c, self.message
+                self.app.goto(ChoiceScene(self.app, c, cid, lambda: HubScene(self.app, c, msg)))
+                return
         self.fig.update(dt)
         if self.opp_fig:
             self.opp_fig.update(dt)
