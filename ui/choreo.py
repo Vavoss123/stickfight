@@ -51,6 +51,7 @@ ACTION = {
     "bstand": [("getup", 0.25)],
     "imanari": [("shoot", 0.15), ("sweep", 0.2)],
     "feint": [("cross_wind", 0.1), ("stance", 0.12), ("jab", 0.06), ("stance", 0.1)],
+    "hesitate": [("stance", 0.3)],
     "check": [("legkick_wind", 0.12), ("legkick_wind", 0.18), ("stance", 0.1)],
     "weave": [("sprawl", 0.1), ("sprawl", 0.14), ("stance", 0.12)],
     # Signature moves, each with its own animation

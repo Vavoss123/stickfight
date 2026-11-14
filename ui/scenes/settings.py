@@ -16,7 +16,7 @@ HELP = {"volume": "Every sound in the game.",
         "music": "Menu, walkout and fight music, on top of the main volume.",
         "fullscreen": "F11 also switches it at any time.",
         "speed": "How fast exchanges play out. Knockout replays stay in slow motion.",
-        "pick_timer": "How long you get to pick a move. Hesitate and one is picked for you.",
+        "pick_timer": "How long you get to pick a move. Hesitate and your fighter does nothing.",
         "skip_walkouts": "Go straight to the fight instead of the ring announcer.",
         "show_rules": "Show what beats what in the corner while you pick a move.",
         "effect_tips": "Explain words like ROCKED or CAUGHT the first couple of times. On shows them again."}

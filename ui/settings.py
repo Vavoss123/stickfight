@@ -17,7 +17,7 @@ DEFAULTS = {
     "music": 60,          # 0 to 100, the music on top of that
     "fullscreen": False,
     "speed": 0,           # index into SPEEDS
-    "pick_timer": 15,     # seconds to pick a move, 0 for no limit
+    "pick_timer": 10,     # seconds to pick a move, 0 for no limit
     "skip_walkouts": False,
     "card_pool": "all",   # quick fight decks: "all" cards or your "collection"
     "tutorial_done": False,

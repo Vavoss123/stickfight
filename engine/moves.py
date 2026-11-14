@@ -182,6 +182,12 @@ _ALL = [
 
 MOVES = {m.key: m for m in _ALL}
 
+# Frozen at the bell: what the move timer picks when it runs out. Never in a moveset,
+# so it can't be chosen: a hesitating fighter neither attacks nor defends.
+HESITATE = Move("hesitate", "Hesitate", DEFEND, "striking", 0,
+                desc="Did nothing at all.")
+MOVES[HESITATE.key] = HESITATE
+
 MOVESETS = {
     (STANDING, NEUTRAL): ["jab", "cross", "kick", "body", "knee", "clinch", "legkick", "takedown",
                           "block", "check", "weave", "feint"],

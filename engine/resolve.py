@@ -571,6 +571,11 @@ def resolve(st, picks, rng):
         _end_of_exchange(st, ex, rocked_before)
         return ex
 
+    if "hesitate" in (moves[0].key, moves[1].key):
+        _hesitate(st, ex, moves, rng)
+        _end_of_exchange(st, ex, rocked_before)
+        return ex
+
     rel = matchup(moves[0], moves[1])
     if rel != 0:
         w = 0 if rel > 0 else 1
@@ -650,6 +655,22 @@ def resolve(st, picks, rng):
 
     _end_of_exchange(st, ex, rocked_before)
     return ex
+
+
+def _hesitate(st, ex, moves, rng):
+    """The move timer ran out: a hesitating fighter neither attacks nor defends."""
+    if moves[0].key == moves[1].key:
+        ex.stall = True       # both froze, and the crowd lets them hear it
+        return
+    a = 0 if moves[1].key == "hesitate" else 1
+    m = moves[a]
+    cls = base_class(m)
+    if cls == STRIKE:
+        _strike(st, ex, a, m, rng, bonus_acc=0.25, mult=1.15)   # a flat-footed target
+    elif cls == GRAPPLE:
+        _grapple_uncontested(st, ex, a, m, rng, bonus=0.15)
+    else:
+        ex.stall = True       # they only defended, so nothing happened
 
 
 def _feint(st, ex, moves, rng):

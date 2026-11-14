@@ -284,13 +284,13 @@ class FightScene(Scene):
             self.picks[1] = self.cpu.choose(self.fight, 1)
 
     def _time_up(self):
-        """The move timer ran out: anyone still thinking gets a move picked for them."""
-        import random
+        """The move timer ran out: anyone still thinking does nothing at all."""
+        from engine.constants import SUB_CALM
         self.pick_left = None
         self.snd("buzzer", 0.9)
         for i in (0, 1):
             if self.picks[i] is None and not (self.cpu and i == 1):
-                self.picks[i] = random.choice(self.fight.options(i))
+                self.picks[i] = SUB_CALM if self.fight.state.sub else "hesitate"
                 self.popup(i, "TOO SLOW!", (255, 120, 90), 26, dy=-110)
         if self.picks[0] is not None and self.picks[1] is not None:
             self._reveal()
