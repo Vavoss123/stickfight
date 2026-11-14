@@ -1,7 +1,7 @@
 """Resolves one exchange: both picks are revealed and play out together.
 
 Everything here works on a FightState and a random.Random, with no UI, so it can be
-tested, simulated and used by the AI for lookahead. Moves come from each fighter's own
+tested, simulated and used by the computer for lookahead. Moves come from each fighter's own
 kit, so signature cards and perks apply.
 """
 

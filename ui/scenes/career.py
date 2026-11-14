@@ -380,7 +380,7 @@ class HubScene(Scene):
 
         if label == "Grudge match" and title:
             label = "Grudge match for the title"
-        cfg = FightConfig(p, opp_view, mode="ai", level=level, rounds=rounds, title=title,
+        cfg = FightConfig(p, opp_view, mode="cpu", level=level, rounds=rounds, title=title,
                           start=(c.camp_start(), None), deck_budget=c.budget(),
                           on_done=done, event=label)
         from .walkout import WalkoutScene
@@ -491,7 +491,7 @@ class HubScene(Scene):
         if sigs:
             text_block(surf, "Cards: " + ", ".join(sigs), (r2.centerx, r2.y + 462), 13, r2.w - 40,
                        (210, 190, 255))
-        text(surf, f"{rounds} rounds, {LEVEL_NAME[level]} AI", (r2.centerx, r2.bottom - 24), 15, GREY, "midtop")
+        text(surf, f"{rounds} rounds, {LEVEL_NAME[level]} opponent", (r2.centerx, r2.bottom - 24), 15, GREY, "midtop")
         grudge = label == "Grudge match"
         if grudge and self.grudge_text:
             text_block(surf, self.grudge_text, (r2.centerx, r2.y + 162), 15, r2.w - 40, (255, 120, 100),

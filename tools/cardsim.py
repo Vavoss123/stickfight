@@ -14,7 +14,7 @@ from multiprocessing import Pool
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.ai import AI
+from engine.cpu import CPU
 from engine.cards import CARDS, group_of
 from engine.fight import Fight
 from engine.roster import make
@@ -28,15 +28,15 @@ def _one(args):
     a, b, seed, card_red, level = args
     p0, p1 = (a, b) if card_red else (b, a)
     f = Fight(copy.deepcopy(p0), copy.deepcopy(p1), seed=seed)
-    ais = [AI(level, seed=seed * 3 + 1), AI(level, seed=seed * 3 + 2)]
+    cpus = [CPU(level, seed=seed * 3 + 1), CPU(level, seed=seed * 3 + 2)]
     while not f.over:
         if f.between_rounds:
             f.start_next_round()
             continue
         st = f.state
-        picks = (ais[0].choose(f, 0), ais[1].choose(f, 1))
-        ais[0].observe(st, 1, picks[1])
-        ais[1].observe(st, 0, picks[0])
+        picks = (cpus[0].choose(f, 0), cpus[1].choose(f, 1))
+        cpus[0].observe(st, 1, picks[1])
+        cpus[1].observe(st, 0, picks[0])
         f.play(picks)
     w = f.result.winner
     if w is None:

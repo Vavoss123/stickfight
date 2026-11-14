@@ -63,7 +63,7 @@ class SelectScene(Scene):
                 self.lists[side].append(b)
         self.opts = []
         y = 560
-        if mode == "ai":
+        if mode == "cpu":
             for k, lv in enumerate(LEVELS):
                 b = Button((CX - 165 + k * 112, y, 104, 40), lv.capitalize(), size=18)
                 b.pick = ("level", k)
@@ -77,7 +77,7 @@ class SelectScene(Scene):
         self.code_btn = Button((W - 320, H - 56, 300, 40), "Add fighter by code", size=17, color=(40, 90, 130))
         # The computer picks its own cards, so in quick fight only red gets a deck button
         self.deck_buttons = []
-        for i in ((0,) if mode == "ai" else (0, 1)):
+        for i in ((0,) if mode == "cpu" else (0, 1)):
             x = 340 if i == 0 else CX + 20
             b = Button((x + 30, 514, 220, 30), "Edit deck", size=16, color=(60, 50, 110))
             b.pick = i
@@ -165,11 +165,11 @@ class SelectScene(Scene):
 
     def draw(self, surf):
         surf.fill((14, 15, 22))
-        title = "QUICK FIGHT" if self.mode == "ai" else "LOCAL 2 PLAYER"
+        title = "QUICK FIGHT" if self.mode == "cpu" else "LOCAL 2 PLAYER"
         text(surf, title, (CX, 20), 44, WHITE, "midtop", display=True)
-        sub = "You are red. Pick your opponent in blue." if self.mode == "ai" else \
+        sub = "You are red. Pick your opponent in blue." if self.mode == "cpu" else \
             "Red uses Q W E R A S D F Z, blue uses U I O P J K L ; M"
-        if self.mode != "ai" and self.app.pads.count:
+        if self.mode != "cpu" and self.app.pads.count:
             sub = ("Controller 1 is red, controller 2 is blue" if self.app.pads.count >= 2 else
                    "Red uses Q W E R A S D F Z, the controller plays blue")
         a, b = self.roster[self.sel[0]], self.roster[self.sel[1]]
@@ -216,13 +216,13 @@ class SelectScene(Scene):
                 for ln in lines:
                     yy = text(surf, ln, (rect.centerx, yy), 13, (210, 190, 255), "midtop").bottom + 1
         text(surf, "VS", (CX, 300), 40, GOLD, "center", display=True)
-        if self.mode == "ai":
+        if self.mode == "cpu":
             from engine import coach
             expect, _ = coach.scout(self.roster[self.sel[1]], self.roster[self.sel[0]], 0)
             if expect:
                 text(surf, "Expect: " + expect[0], (CX + 20 + 140, 520), 13, (150, 200, 255), "midtop",
                      max_width=260)
-        if self.mode == "ai":
+        if self.mode == "cpu":
             text(surf, "Difficulty", (CX - 230, 570), 16, GREY, "topright")
         text(surf, "Length", (CX - 120, 618), 16, GREY, "topright")
         for b in self.opts:

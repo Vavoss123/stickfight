@@ -1,7 +1,7 @@
 """Advice from the corner between rounds.
 
 The coach looks at what the opponent keeps doing, what the fighter keeps doing (the
-AI is reading that too), injuries on both sides, and how the round went.
+computer is reading that too), injuries on both sides, and how the round went.
 """
 
 from collections import Counter

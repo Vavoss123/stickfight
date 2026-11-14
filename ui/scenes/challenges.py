@@ -28,7 +28,7 @@ def start_daily(app):
                "No score this time. You can try again as often as you like.")
         app.goto(ChallengesScene(app, msg))
 
-    cfg = FightConfig(ch.me, ch.opp, mode="ai", level=ch.level, rounds=ch.rounds, on_done=done,
+    cfg = FightConfig(ch.me, ch.opp, mode="cpu", level=ch.level, rounds=ch.rounds, on_done=done,
                       event="Daily challenge", start=ch.start())
     from .walkout import WalkoutScene
     app.goto(WalkoutScene(app, cfg, f"Daily challenge: {ch.twist[1]}"))
@@ -76,7 +76,7 @@ class ChallengesScene(Scene):
         tw = panel(surf, (r.x + 20, r.y + 222, r.w - 40, 110), (40, 34, 14), alpha=230)
         text(surf, ch.twist[1].upper(), (tw.centerx, tw.y + 12), 20, GOLD, "midtop", bold=True)
         text_block(surf, ch.twist[2], (tw.centerx, tw.y + 42), 15, tw.w - 30, WHITE)
-        text(surf, f"{ch.rounds} rounds, hard AI. Win to score.", (r.centerx, r.y + 346), 15, GREY, "midtop")
+        text(surf, f"{ch.rounds} rounds, hard opponent. Win to score.", (r.centerx, r.y + 346), 15, GREY, "midtop")
         text(surf, f"Best today: {self.best:,}" if self.best else "Not won yet today",
              (r.centerx, r.y + 376), 18, GREEN if self.best else WHITE, "midtop", bold=True)
         text(surf, f"Streak: {self.streak} day{'s' if self.streak != 1 else ''}", (r.centerx, r.y + 402),

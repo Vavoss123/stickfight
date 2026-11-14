@@ -159,7 +159,7 @@ class Career:
         return self.rival_profile() is not None and self.since_grudge >= GRUDGE_EVERY
 
     def next_fight(self):
-        """(opponent, rounds, title, ai_level, label)."""
+        """(opponent, rounds, title, cpu_level, label)."""
         r = self.rank()
         if self.grudge_due() and r is not None:
             opp = self.rival_profile()

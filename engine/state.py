@@ -1,4 +1,4 @@
-"""The minimal fight state the rules operate on. Cheap to clone for AI lookahead."""
+"""The minimal fight state the rules operate on. Cheap to clone for computer lookahead."""
 
 from .constants import STANDING, CLINCH, NEUTRAL, TOP, BOTTOM, SUB_OPTIONS
 

@@ -1,6 +1,6 @@
 """Record a knockout and its slow motion replay as a GIF for the README.
 
-Plays AI against AI fights in the real fight screen, without a window, until one ends
+Plays computer against computer fights in the real fight screen, without a window, until one ends
 in a knockout, then saves the end of it.
 
     python -m tools.make_gif --out docs/ko.gif
@@ -33,13 +33,13 @@ def grab(surf):
 
 
 def record(app, red, blue, max_tries=40):
-    from engine.ai import AI
+    from engine.cpu import CPU
     from ui.scenes.fight import FightScene, FightConfig
     dt = 1 / FPS
     for attempt in range(max_tries):
-        scene = FightScene(app, FightConfig(red, blue, mode="ai", level="hard"))
+        scene = FightScene(app, FightConfig(red, blue, mode="cpu", level="hard"))
         app.scene = scene
-        brain = AI("hard", seed=attempt, personality="pressure")
+        brain = CPU("hard", seed=attempt, personality="pressure")
         frames = deque(maxlen=int(BEFORE * FPS))
         after = []
         replayed = False

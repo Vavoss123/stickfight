@@ -187,7 +187,7 @@ class BracketScene(Scene):
                 msg = f"Out in the {name.lower()}. See how the rest of the night plays out."
             app.goto(BracketScene(app, t, msg))
 
-        cfg = FightConfig(me, opp_view, mode="ai", level=t.level, rounds=t.rounds(),
+        cfg = FightConfig(me, opp_view, mode="cpu", level=t.level, rounds=t.rounds(),
                           on_done=done, event=f"Tournament {name.lower()}", start=start)
         from .walkout import WalkoutScene
         self.app.goto(WalkoutScene(self.app, cfg, f"Tournament {name}"))

@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.ai import AI
+from engine.cpu import CPU
 from engine.career import Career, new_player
 from engine.cards import MAX_LEVEL
 from engine.constants import STANDING, CLINCH, GUARD, MOUNT, BACK, SUB_TAP
@@ -360,13 +360,13 @@ class FullFights(unittest.TestCase):
         r = quick_fighters()
         for seed in range(30):
             f = Fight(r[seed % 4], r[(seed + 1) % 4], seed=seed)
-            ais = [AI("normal", seed=seed), AI("easy", seed=seed + 100)]
+            cpus = [CPU("normal", seed=seed), CPU("easy", seed=seed + 100)]
             steps = 0
             while not f.over:
                 if f.between_rounds:
                     f.start_next_round()
                     continue
-                picks = (ais[0].choose(f, 0), ais[1].choose(f, 1))
+                picks = (cpus[0].choose(f, 0), cpus[1].choose(f, 1))
                 self.assertIn(picks[0], f.options(0))
                 self.assertIn(picks[1], f.options(1))
                 f.play(picks)

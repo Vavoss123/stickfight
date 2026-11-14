@@ -1,6 +1,6 @@
-"""AI personalities: how a computer fighter likes to fight, and what they say about it.
+"""Computer personalities: how a computer fighter likes to fight, and what they say about it.
 
-A personality is a small nudge on top of the AI's lookahead, so a pressure fighter
+A personality is a small nudge on top of the computer's lookahead, so a pressure fighter
 still blocks when blocking is clearly right, it just would rather not.
 """
 
@@ -110,7 +110,7 @@ def line(name, event, rng):
 # The usual personality for each style when a fighter does not have their own
 BY_STYLE = {"Striker": "counter", "Wrestler": "grinder", "BJJ": "balanced", "Brawler": "pressure"}
 
-# Score nudges, in the AI's points (about one point of health each)
+# Score nudges, in the computer's points (about one point of health each)
 NUDGE = 2.5
 
 

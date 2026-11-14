@@ -6,7 +6,7 @@ import math
 import pygame
 
 from engine import coach, personality
-from engine.ai import AI
+from engine.cpu import CPU
 from engine.commentary import describe, finish_line
 from engine.corner import advice
 from engine.constants import (STRIKE, GRAPPLE, SUB, DEFEND, FEINT, SUB_ATTACK_LABELS, SUB_DEFEND_LABELS,
@@ -83,7 +83,7 @@ def gloves_of(profile, corner):
 
 
 class FightConfig:
-    def __init__(self, p0, p1, mode="ai", level="normal", rounds=3, title=False,
+    def __init__(self, p0, p1, mode="cpu", level="normal", rounds=3, title=False,
                  on_done=None, event="", start=None, deck_budget=None, practice=False):
         self.p0, self.p1 = p0, p1
         self.mode = mode
@@ -104,13 +104,13 @@ class FightScene(Scene):
         # Copies, so swapping cards between rounds never changes a career or a saved deck
         self.fight = Fight(copy.deepcopy(cfg.p0), copy.deepcopy(cfg.p1), rounds=cfg.rounds,
                            title=cfg.title, start=cfg.start)
-        if cfg.mode == "ai":
+        if cfg.mode == "cpu":
             coach.give_bench(self.fight.profiles[1])   # the computer's corner has a few cards to bring in
         self.coach_cards = [[], []]     # card swaps the coach suggests at the break
         self.break_start = [None, None]
         self.coach_buttons = []
         self.their_swap = ""
-        self.ai = AI(cfg.level, personality=personality.of(cfg.p1)) if cfg.mode == "ai" else None
+        self.cpu = CPU(cfg.level, personality=personality.of(cfg.p1)) if cfg.mode == "cpu" else None
         self.names = (cfg.p0.name.split()[-1], cfg.p1.name.split()[-1])
         self.arena = Arena()
         self.figs = [
@@ -154,7 +154,7 @@ class FightScene(Scene):
     def feedback_context(self):
         """What a feedback note should remember about the fight."""
         f, st, cfg = self.fight, self.fight.state, self.cfg
-        mode = f"vs AI ({cfg.level})" if cfg.mode == "ai" else "2 player"
+        mode = f"vs CPU ({cfg.level})" if cfg.mode == "cpu" else "2 player"
         out = [f"{cfg.p0.name} ({cfg.p0.archetype}) vs {cfg.p1.name} ({cfg.p1.archetype}), {mode}",
                f"Round {f.round} {f.clock()}, {POS_NAME[st.pos]}"
                + (f", {self.names[st.top]} on top" if st.top is not None else "")]
@@ -231,9 +231,9 @@ class FightScene(Scene):
         self.ref.set_pose("ref_fight", idle="ref_fight")
         title = "TITLE FIGHT" if self.cfg.title else self.cfg.event
         self.set_banner(f"ROUND {self.fight.round}", title, GOLD, 1.5)
-        if self.ai and self.fight.round == self.fight.rounds and self.fight.rounds > 1:
+        if self.cpu and self.fight.round == self.fight.rounds and self.fight.rounds > 1:
             import random
-            self.speak(1, personality.line(self.ai.personality, "last_round", random))
+            self.speak(1, personality.line(self.cpu.personality, "last_round", random))
         self.at(1.5, self._fight_call)
 
     def _fight_call(self):
@@ -251,8 +251,8 @@ class FightScene(Scene):
         self.phase_t = 0.0
         self.picks = [None, None]
         self._build_buttons()
-        if self.ai:
-            self.picks[1] = self.ai.choose(self.fight, 1)
+        if self.cpu:
+            self.picks[1] = self.cpu.choose(self.fight, 1)
 
     def _option_label(self, i, k):
         st = self.fight.state
@@ -283,7 +283,7 @@ class FightScene(Scene):
     @property
     def m_is_move(self):
         """In 2 player M picks a move for blue, so it cannot mute (F10 still does)."""
-        return self.cfg.mode != "ai"
+        return self.cfg.mode != "cpu"
 
     def _rows(self, i, order):
         """Attacks on the top row, position, defence and tricks underneath."""
@@ -297,10 +297,10 @@ class FightScene(Scene):
         self.buttons = [[], []]
         self.order = [self._display_order(0), self._display_order(1)]
         self.zone_heads = [[], []]
-        sides = (0,) if self.cfg.mode == "ai" else (0, 1)
+        sides = (0,) if self.cfg.mode == "cpu" else (0, 1)
         for i in sides:
             order = self.order[i]
-            if self.cfg.mode == "ai":
+            if self.cfg.mode == "cpu":
                 x0, width = 20, W - 40
                 keys = gamepad.PICK_LABELS if self._pad_for(0) is not None else LABEL_SOLO
             else:
@@ -319,7 +319,7 @@ class FightScene(Scene):
                     j = order.index(k)
                     label, sub, color = self._option_label(i, k)
                     x = x0 + n * (bw + gap)
-                    two_p = self.cfg.mode != "ai"
+                    two_p = self.cfg.mode != "cpu"
                     b = Button((x, y, bw, h), label, key=keys[j] if j < len(keys) else None,
                                sub="" if two_p and not self.fight.state.sub else sub, color=color,
                                size=16 if two_p else (16 if len(rows) == 2 else 21),
@@ -347,7 +347,7 @@ class FightScene(Scene):
 
     def _side_for_pad(self, slot):
         """Which corner a pad plays. One pad in 2 player is blue, red keeps the keyboard."""
-        if self.cfg.mode == "ai":
+        if self.cfg.mode == "cpu":
             return 0
         if self.app.pads.count >= 2:
             return slot if slot in (0, 1) else None
@@ -413,7 +413,7 @@ class FightScene(Scene):
             return
         self.picks[i] = opts[idx]
         self.snd("click")
-        if self.cfg.mode == "ai":
+        if self.cfg.mode == "cpu":
             for b in self.buttons[0]:
                 b.selected = b.pick == opts[idx]
         if self.picks[0] is not None and self.picks[1] is not None:
@@ -426,8 +426,8 @@ class FightScene(Scene):
 
     def _resolve(self):
         before = self.fight.state.clone()
-        if self.ai:
-            self.ai.observe(self.fight.state, 0, self.picks[0])
+        if self.cpu:
+            self.cpu.observe(self.fight.state, 0, self.picks[0])
         hp_before = [f.hp for f in self.fight.state.f]
         self.snap = self._snapshot()
         self.last_before = before
@@ -603,7 +603,7 @@ class FightScene(Scene):
         down, and so on. Each in their own voice, and not every exchange. Against the
         computer your fighter talks too, a little less often."""
         import random
-        if not self.ai or ex.finish:
+        if not self.cpu or ex.finish:
             return
         self.taunt_wait = max(0, getattr(self, "taunt_wait", 0) - 1)
         if self.taunt_wait:
@@ -612,7 +612,7 @@ class FightScene(Scene):
             event = self._talk_event(ex, i, random)
             if event is None or random.random() > chance:
                 continue
-            name = self.ai.personality if i == 1 else personality.of(self.cfg.p0)
+            name = self.cpu.personality if i == 1 else personality.of(self.cfg.p0)
             if event == "big":
                 said = random.choice(personality.PERSONALITIES[name]["taunts"])
             else:
@@ -826,14 +826,14 @@ class FightScene(Scene):
         return max(BUDGET, deck_points(p))
 
     def _human(self, i):
-        return i == 0 or self.cfg.mode != "ai"
+        return i == 0 or self.cfg.mode != "cpu"
 
     def _coach_break(self):
         self.break_start = [copy.deepcopy(p) for p in self.fight.profiles]
         self.their_swap = ""
         for i in (0, 1):
             self.coach_cards[i] = coach.suggest(self.fight, i, self._budget(i)) if self._human(i) else []
-        if self.ai:
+        if self.cpu:
             ideas = coach.suggest(self.fight, 1, self._budget(1), limit=1)
             if ideas:
                 p = self.fight.profiles[1]
@@ -844,10 +844,10 @@ class FightScene(Scene):
 
     def _build_coach_buttons(self):
         self.coach_buttons = []
-        sides = (0,) if self.cfg.mode == "ai" else (0, 1)
+        sides = (0,) if self.cfg.mode == "cpu" else (0, 1)
         for i in sides:
-            x0 = 180 if self.cfg.mode == "ai" else (40 if i == 0 else CX + 20)
-            width = 920 if self.cfg.mode == "ai" else 580
+            x0 = 180 if self.cfg.mode == "cpu" else (40 if i == 0 else CX + 20)
+            width = 920 if self.cfg.mode == "cpu" else 580
             ideas = self.coach_cards[i]
             per = (width - 200 - 8 * len(ideas)) // max(1, len(ideas)) if ideas else 0
             for k, s in enumerate(ideas):
@@ -1012,7 +1012,7 @@ class FightScene(Scene):
             return
         if self.phase != "pick":
             return
-        if self.cfg.mode == "ai":
+        if self.cfg.mode == "cpu":
             for b in self.buttons[0]:
                 if b.handle(e):
                     self._lock(0, self.fight.options(0).index(b.pick))
@@ -1290,7 +1290,7 @@ class FightScene(Scene):
         r = panel(surf, (W - 250, 118, 230, 206), (10, 11, 16), alpha=215)
         text(surf, "WHAT BEATS WHAT", (r.centerx, r.y + 8), 13, GOLD, "midtop", bold=True)
         hover = None
-        hb = next((b for b in self.buttons[0] if b.hover), None) if self.cfg.mode == "ai" else None
+        hb = next((b for b in self.buttons[0] if b.hover), None) if self.cfg.mode == "cpu" else None
         if hb and not self.fight.state.sub:
             hover = self.mv(0, hb.pick).cls
             hover = GRAPPLE if hover == SUB else hover
@@ -1309,7 +1309,7 @@ class FightScene(Scene):
 
     def _draw_picks(self, surf):
         st = self.fight.state
-        if self.cfg.mode == "ai":
+        if self.cfg.mode == "cpu":
             panel(surf, (10, 584, W - 20, 132), (10, 11, 16), alpha=225)
             self._draw_zone_heads(surf, 0)
             for b in self.buttons[0]:
@@ -1457,14 +1457,14 @@ class FightScene(Scene):
                  "midtop", bold=True)
 
     def _draw_coach(self, surf):
-        ai = self.cfg.mode == "ai"
-        r = panel(surf, (160, 548, 960, 100) if ai else (20, 548, W - 40, 100), (12, 20, 16), alpha=235,
+        vs_cpu = self.cfg.mode == "cpu"
+        r = panel(surf, (160, 548, 960, 100) if vs_cpu else (20, 548, W - 40, 100), (12, 20, 16), alpha=235,
                   border=GREEN)
-        sides = (0,) if ai else (0, 1)
+        sides = (0,) if vs_cpu else (0, 1)
         for i in sides:
-            x = r.x + 20 if (ai or i == 0) else CX + 20
+            x = r.x + 20 if (vs_cpu or i == 0) else CX + 20
             left = self._swaps_left(i)
-            who = "COACH" if ai else f"{self.names[i].upper()}'S COACH"
+            who = "COACH" if vs_cpu else f"{self.names[i].upper()}'S COACH"
             ideas = "card ideas" if self.coach_cards[i] else "no card changes needed"
             text(surf, f"{who}: {ideas}, {left} change{'s' if left != 1 else ''} left this break",
                  (x, r.y + 12), 15, GREEN, bold=True)
@@ -1475,10 +1475,10 @@ class FightScene(Scene):
 
     def _draw_corner(self, surf, rect):
         pygame.draw.line(surf, (60, 60, 70), (rect.x - 6, rect.y), (rect.x - 6, rect.bottom), 2)
-        corners = [0] if self.cfg.mode == "ai" else [0, 1]
+        corners = [0] if self.cfg.mode == "cpu" else [0, 1]
         y = rect.y
         for i in corners:
-            who = "YOUR CORNER" if self.cfg.mode == "ai" else f"{self.names[i].upper()}'S CORNER"
+            who = "YOUR CORNER" if self.cfg.mode == "cpu" else f"{self.names[i].upper()}'S CORNER"
             text(surf, who, (rect.x + 10, y), 18, CORNER[i], bold=True)
             y += 32
             tips = self.corner_tips[i] if self.corner_tips else []

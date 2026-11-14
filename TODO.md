@@ -9,7 +9,7 @@
   brings it to any computer under Add fighter by code
 - [ ] Accounts: move a whole career (not just the fighter) between machines, maybe an export file
 
-- [ ] Play a few fights with the cards and note what feels off (pacing, AI, deck builder).
+- [ ] Play a few fights with the cards and note what feels off (pacing, computer, deck builder).
       Press F1 in game to write a note, they land in ~/.stickfight/feedback.txt
 - [x] Check the Showtime Kick, it was losing mirror matches
 - [x] Edit decks before quick fight and 2 player
@@ -49,14 +49,14 @@
   point, so free gym points priced the shop out)
 
 - [x] Judo throws for wrestlers: Osoto Gari, Seoi Nage, Tomoe Nage, Uchi Mata (plus the Hip Toss) and a Judo Black Belt perk.
-  Career wrestlers start with Osoto Gari. Kept out of the AI wrestler's default deck: with a better throw it
+  Career wrestlers start with Osoto Gari. Kept out of the computer wrestler's default deck: with a better throw it
   shoots more throws into Brawler knees and drops from 45% to 40%
 - [x] Own animations for the signature cards (Superman Punch, Spinning Back Fist, Showtime Kick, Flying Knee,
   Calf Kick, Liver Hook, Check Hook, Double Leg, Single Leg, Guard Pull, Plum, Spinning Elbow, Hammer Fists,
   Kimura, Gogoplata) and the throws, with the one thrown flying through the air
 
 - [x] Submissions are a tactical contest with no dice: squeeze, adjust angle, ease off against explode, hand fight, breathe
-  (gas, angle and grappling skill decide it; AI vs AI still about 25% subs)
+  (gas, angle and grappling skill decide it; computer vs computer still about 25% subs)
 - [x] How to play has a picture on every page, and a page for feints
 - [x] Look screen: skin, hair, beard, tattoos, shorts and stripe. Computer fighters get their own look
 - [x] You pick a personality too, with a small career perk. Headhunter, Submission artist, Trash talker added
@@ -103,7 +103,7 @@
 
 - [x] Interactive tutorial (press T on the menu)
 - [x] Momentum: hype meter, all in attacks, booing for stalling
-- [x] AI personalities with walkout quotes and taunts
+- [x] Computer personalities with walkout quotes and taunts
 - [x] Mind games: feints and follow up combos
 - [x] Fight variety: fouls and point deductions, ref breaking up the clinch, slow motion on big shots
 - [x] Reasons to come back: daily challenge, achievements, unlockable fighters
@@ -129,15 +129,15 @@
 
 - After knee, check, weave, arms and limb TKOs (1800 fights on hard): BJJ 51%, Striker 50%,
   Wrestler 48%, Brawler 48%. Subs 25%, KOs 11%, broken legs and cracked ribs under 1%.
-  The knee only beats takedowns (punches and tying up beat it) or the AI spammed it and
+  The knee only beats takedowns (punches and tying up beat it) or the computer spammed it and
   grapplers fell to 37%. BJJ grappling is back to 10
 
 - After feints, fouls and referee breaks (3600 fights on hard): Striker 54%, BJJ 48%,
   Brawler 47%, Wrestler 46%. Strikers are a touch ahead again, worth a look after playtesting
 
-- Momentum fills about 1.3 times a fight between two hard AIs. Turning it off moves the
+- Momentum fills about 1.3 times a fight between two hard computer fighters. Turning it off moves the
   styles by about 2 points, inside the noise
-- Personalities against a balanced AI in mirror matches: pressure 46%, showboat 50%,
+- Personalities against a balanced computer in mirror matches: pressure 46%, showboat 50%,
   counter 53%, grinder 52%. Nudges live in engine/personality.py
 
 - Styles on hard: BJJ 52%, Wrestler 51%, Striker 49%, Brawler 45% (Oct 2026)
@@ -145,7 +145,7 @@
   classes in mirror matches welter beats light 54%, heavy beats middle 68%, heavy beats
   light 76% (SIZE_* in engine/weights.py)
 - KOs end about 8% of fights, submissions about 23%
-- Showtime Kick: costs 8 now with less KO power (51% in mirror matches). At 12 the AI
+- Showtime Kick: costs 8 now with less KO power (51% in mirror matches). At 12 the computer
   chased the knockout and gassed itself out
 - Run `python -m tools.simulate --fights 100 --level hard` and
   `python -m tools.cardsim --fights 1000` after changing any numbers

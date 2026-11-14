@@ -1,4 +1,4 @@
-"""Run AI vs AI fights and print a balance report.
+"""Run computer vs computer fights and print a balance report.
 
     python -m tools.simulate --fights 200 --level normal
 """
@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from engine.ai import AI
+from engine.cpu import CPU
 from engine.fight import Fight
 from engine.cards import CARDS
 from engine.moves import MOVES
@@ -20,16 +20,16 @@ from engine.roster import quick_fighters
 
 def run_fight(p0, p1, level, seed):
     fight = Fight(p0, p1, seed=seed)
-    ais = [AI(level, seed=seed * 2 + 1), AI(level, seed=seed * 2 + 2)]
+    cpus = [CPU(level, seed=seed * 2 + 1), CPU(level, seed=seed * 2 + 2)]
     picks_used = []
     while not fight.over:
         if fight.between_rounds:
             fight.start_next_round()
             continue
         st = fight.state
-        picks = (ais[0].choose(fight, 0), ais[1].choose(fight, 1))
-        ais[0].observe(st, 1, picks[1])
-        ais[1].observe(st, 0, picks[0])
+        picks = (cpus[0].choose(fight, 0), cpus[1].choose(fight, 1))
+        cpus[0].observe(st, 1, picks[1])
+        cpus[1].observe(st, 0, picks[0])
         ex = fight.play(picks)
         if not ex.in_sub:
             for i in (0, 1):

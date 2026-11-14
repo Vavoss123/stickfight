@@ -57,7 +57,7 @@ class MenuScene(Scene):
         self.app.sounds.play("click")
         if pick == "quick":
             from .select import SelectScene
-            self.app.goto(SelectScene(self.app, "ai"))
+            self.app.goto(SelectScene(self.app, "cpu"))
         elif pick == "versus":
             from .select import SelectScene
             self.app.goto(SelectScene(self.app, "2p"))

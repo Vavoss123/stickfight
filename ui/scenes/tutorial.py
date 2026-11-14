@@ -86,10 +86,10 @@ class TutorialScene(FightScene):
             from .menu import MenuScene
             app.goto(MenuScene(app))
 
-        cfg = FightConfig(me, partner, mode="ai", level="easy", rounds=1, on_done=done,
+        cfg = FightConfig(me, partner, mode="cpu", level="easy", rounds=1, on_done=done,
                           event="Tutorial", practice=True)
         super().__init__(app, cfg)
-        self.ai = None
+        self.cpu = None
         self.lesson = 0
         self.coach = ""
         self.result = ""

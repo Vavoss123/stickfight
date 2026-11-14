@@ -1,6 +1,6 @@
 """Computer opponent.
 
-For each move it could pick, the AI simulates the exchange against what it expects
+For each move it could pick, the computer simulates the exchange against what it expects
 the opponent to do, scores the result, and picks with some randomness. Higher levels
 read the opponent's habits more and make fewer loose choices.
 """
@@ -42,7 +42,7 @@ def position_value(st, me):
 
 
 FINISH_VALUE = 400.0   # how much a finish is worth next to health and position
-REPEAT_COST = 14.0     # how much a smart AI avoids repeating itself
+REPEAT_COST = 14.0     # how much a smart computer avoids repeating itself
 OPENING_VALUE = {"read": 7.0, "follow": 2.5}   # a read or follow up is worth something next turn
 
 
@@ -77,7 +77,7 @@ def _class_prior(opts, kit):
     return {k: 1.0 / len(opts) for k in opts}
 
 
-class AI:
+class CPU:
     def __init__(self, level="normal", seed=None, personality="balanced"):
         self.level = level
         self.personality = personality

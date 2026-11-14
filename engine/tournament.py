@@ -1,13 +1,13 @@
 """One night tournament: eight fighters, three rounds of the bracket, damage carries over.
 
-The player fights their way through. Every other match is fought AI against AI. Whoever
+The player fights their way through. Every other match is fought computer against computer. Whoever
 wins goes into the next fight with part of the damage they took, so a war in the
 quarterfinal leaves you hurt for the semifinal.
 """
 
 import random
 
-from .ai import AI
+from .cpu import CPU
 from .fight import Fight
 
 STAGES = [("Quarterfinal", 3), ("Semifinal", 3), ("Final", 3)]   # name, rounds
@@ -135,17 +135,17 @@ class Tournament:
             self.player_out = True
 
     def sim(self, m):
-        """Fight a match AI against AI."""
+        """Fight a match computer against computer."""
         fight = self.fight_for(m, seed=self.rng.random())
-        ais = [AI(self.level, seed=self.rng.random()), AI(self.level, seed=self.rng.random())]
+        cpus = [CPU(self.level, seed=self.rng.random()), CPU(self.level, seed=self.rng.random())]
         while not fight.over:
             if fight.between_rounds:
                 fight.start_next_round()
                 continue
             st = fight.state
-            picks = (ais[0].choose(fight, 0), ais[1].choose(fight, 1))
-            ais[0].observe(st, 1, picks[1])
-            ais[1].observe(st, 0, picks[0])
+            picks = (cpus[0].choose(fight, 0), cpus[1].choose(fight, 1))
+            cpus[0].observe(st, 1, picks[1])
+            cpus[1].observe(st, 0, picks[0])
             fight.play(picks)
         self.record(m, fight)
 

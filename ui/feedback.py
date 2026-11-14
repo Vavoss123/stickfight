@@ -2,7 +2,7 @@
 
 Notes go to ~/.stickfight/feedback.txt with the game version and whatever the current
 screen reports about itself (the fight screen adds the score, stamina and last moves),
-so a note like "AI landed that while gassed" still makes sense later.
+so a note like "computer landed that while gassed" still makes sense later.
 """
 
 import datetime

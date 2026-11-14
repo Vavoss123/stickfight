@@ -10,20 +10,20 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from engine import achievements, daily
-from engine.ai import AI
+from engine.cpu import CPU
 from engine.fight import Fight
 from engine.roster import quick_fighters, division, unlocked, UNLOCKABLES
 
 
 def win_a_fight(p0, p1, seed=1, rounds=3, start=None):
-    """Play AI against a helpless opponent until red wins."""
+    """Play computer against a helpless opponent until red wins."""
     f = Fight(p0, p1, rounds=rounds, seed=seed, start=start)
-    ai = AI("hard", seed=seed)
+    cpu = CPU("hard", seed=seed)
     while not f.over:
         if f.between_rounds:
             f.start_next_round()
             continue
-        f.play((ai.choose(f, 0), f.options(1)[-1]))
+        f.play((cpu.choose(f, 0), f.options(1)[-1]))
     return f
 
 

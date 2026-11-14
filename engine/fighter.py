@@ -68,7 +68,7 @@ class Profile:
 
 
 class FighterState:
-    """Mutable per-fight numbers. Kept small so the AI can clone it cheaply."""
+    """Mutable per-fight numbers. Kept small so the computer can clone it cheaply."""
 
     __slots__ = ("profile", "stats", "hp", "stamina", "rocked", "body", "legs", "cut", "kit",
                  "combo", "wc", "hype", "surge", "passive", "opening", "fouls", "arms")
