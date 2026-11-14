@@ -602,9 +602,10 @@ class Career:
 
     def next_story(self):
         """The next story beat to show, marking it seen."""
+        from . import story
         while self.story_queue:
             beat = self.story_queue.pop(0)
-            if beat not in self.story_seen or beat == "losing_streak":
+            if beat in story.BEATS and (beat not in self.story_seen or story.repeats(beat)):
                 self.story_seen.add(beat)
                 return beat
         return None

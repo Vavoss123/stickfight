@@ -1,4 +1,4 @@
-"""Story scenes: Coach Ray talks you through the big moments of a career."""
+"""Story scenes: the people around the gym talk you through the big moments of a career."""
 
 import pygame
 
@@ -15,12 +15,23 @@ class StoryScene(Scene):
     def __init__(self, app, career, beat, then):
         super().__init__(app)
         self.c = career
-        self.lines = story.lines(beat, career.player, rival=career.rival)
+        champ = career.ladder[0].name if career.ladder else None
+        self.lines = story.lines(beat, career.player, rival=career.rival, champ=champ)
         self.then = then
         self.k = 0
         self.shown = 0.0
-        self.coach = Figure(300, 560, 1, (60, 60, 70), glove=(120, 120, 130), scale=1.5)
-        self.coach.set_pose("ref", idle="ref")
+        # Everyone who speaks stands on the left; you stand on the right
+        speakers = []
+        for who, _ in self.lines:
+            if who not in speakers:
+                speakers.append(who)
+        xs = {1: (300,), 2: (210, 410), 3: (150, 320, 490)}.get(len(speakers), (300,))
+        self.figs = []
+        for who, x in zip(speakers, xs):
+            color, hands = story.CHARACTERS.get(who, story.CHARACTERS[story.RAY])
+            f = Figure(x, 560, 1, color, glove=hands, scale=1.5)
+            f.set_pose("ref", idle="ref")
+            self.figs.append((who, f))
         self.me = Figure(W - 300, 560, -1, career.player.color, glove=career.player.gloves or (214, 48, 49),
                          scale=1.5).dress(career.player)
         self.me.set_pose("stance", idle="stance")
@@ -47,7 +58,8 @@ class StoryScene(Scene):
 
     def update(self, dt):
         self.shown += dt
-        self.coach.update(dt)
+        for _, f in self.figs:
+            f.update(dt)
         self.me.update(dt)
 
     def draw(self, surf):
@@ -56,8 +68,15 @@ class StoryScene(Scene):
         pygame.draw.rect(surf, (30, 32, 40), (0, 560, W, H - 560))
         pygame.draw.line(surf, (70, 60, 50), (CX, 120), (CX, 260), 3)
         pygame.draw.rect(surf, (120, 40, 40), (CX - 34, 260, 68, 170), border_radius=24)
-        self.coach.draw(surf)
+        for _, f in self.figs:
+            f.draw(surf)
         self.me.draw(surf)
+        speaking = self.lines[self.k][0] if self.k < len(self.lines) else None
+        for who, f in self.figs:
+            text(surf, who.upper(), (f.x, 580), 14, GOLD if who == speaking else GREY,
+                 "midtop", bold=True)
+        first = self.c.player.name.split()[0] if self.c.player.name else "YOU"
+        text(surf, first.upper(), (self.me.x, 580), 14, GREY, "midtop", bold=True)
         if self.k >= len(self.lines):
             return
         who, line = self.lines[self.k]
