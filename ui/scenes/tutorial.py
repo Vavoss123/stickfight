@@ -100,6 +100,9 @@ class TutorialScene(FightScene):
     def _current(self):
         return LESSONS[min(self.lesson, len(LESSONS) - 1)]
 
+    def _pick_seconds(self):
+        return 0     # no move timer while you're learning
+
     def _start_pick(self):
         self.fight.exchange = min(self.fight.exchange, 5)   # hold the clock, no round breaks
         st = self.fight.state

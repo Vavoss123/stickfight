@@ -3,23 +3,25 @@
 import pygame
 
 from ..common import W, H, CX, GOLD, WHITE, GREY, text, panel, bar, Button
-from ..settings import SPEEDS
+from ..settings import SPEEDS, PICK_TIMES
 from .base import Scene
 
-ROWS = ["volume", "crowd", "music", "fullscreen", "speed", "skip_walkouts", "show_rules", "effect_tips"]
+ROWS = ["volume", "crowd", "music", "fullscreen", "speed", "pick_timer", "skip_walkouts",
+        "show_rules", "effect_tips"]
 LABELS = {"volume": "Volume", "crowd": "Crowd noise", "music": "Music", "fullscreen": "Fullscreen",
-          "speed": "Fight speed", "skip_walkouts": "Skip walkouts", "show_rules": "Rules diagram",
-          "effect_tips": "Effect tips"}
+          "speed": "Fight speed", "pick_timer": "Move timer", "skip_walkouts": "Skip walkouts",
+          "show_rules": "Rules diagram", "effect_tips": "Effect tips"}
 HELP = {"volume": "Every sound in the game.",
         "crowd": "The crowd, on top of the main volume.",
         "music": "Menu, walkout and fight music, on top of the main volume.",
         "fullscreen": "F11 also switches it at any time.",
         "speed": "How fast exchanges play out. Knockout replays stay in slow motion.",
+        "pick_timer": "How long you get to pick a move. Hesitate and one is picked for you.",
         "skip_walkouts": "Go straight to the fight instead of the ring announcer.",
         "show_rules": "Show what beats what in the corner while you pick a move.",
         "effect_tips": "Explain words like ROCKED or CAUGHT the first couple of times. On shows them again."}
-TOP = 138
-ROW_H = 60
+TOP = 126
+ROW_H = 54
 SLIDERS = ("volume", "crowd", "music")
 
 
@@ -34,18 +36,22 @@ class SettingsScene(Scene):
         self.done = Button((CX - 120, H - 90, 240, 52), "Done", color=(40, 110, 60), size=22)
         self.controls = []   # (row, Button, value it sets or a step)
         for r, key in enumerate(ROWS):
-            y = TOP + r * ROW_H + 8
+            y = TOP + r * ROW_H + 5
             if key in SLIDERS:
                 for k, step in enumerate((-10, 10)):
-                    b = Button((CX + 20 + k * 300, y, 48, 40), "-" if step < 0 else "+", size=26)
+                    b = Button((CX + 20 + k * 300, y, 48, 38), "-" if step < 0 else "+", size=26)
                     self.controls.append((key, b, step))
             elif key == "speed":
                 for k, (name, _) in enumerate(SPEEDS):
-                    b = Button((CX + 20 + k * 118, y, 110, 40), name, size=18)
+                    b = Button((CX + 20 + k * 118, y, 110, 38), name, size=18)
                     self.controls.append((key, b, k))
+            elif key == "pick_timer":
+                for k, (name, secs) in enumerate(PICK_TIMES):
+                    b = Button((CX + 20 + k * 118, y, 110, 38), name, size=18)
+                    self.controls.append((key, b, secs))
             else:
                 for k, (name, v) in enumerate((("Off", False), ("On", True))):
-                    b = Button((CX + 20 + k * 118, y, 110, 40), name, size=18)
+                    b = Button((CX + 20 + k * 118, y, 110, 38), name, size=18)
                     self.controls.append((key, b, v))
 
     def _change(self, key, value):
@@ -67,6 +73,10 @@ class SettingsScene(Scene):
             self._change(key, 10 * d)
         elif key == "speed":
             self._change(key, max(0, min(len(SPEEDS) - 1, self.s[key] + d)))
+        elif key == "pick_timer":
+            times = [t for _, t in PICK_TIMES]
+            k = max(0, min(len(times) - 1, times.index(self.s[key]) + d))
+            self._change(key, times[k])
         else:
             self._change(key, d > 0)
 
@@ -107,8 +117,8 @@ class SettingsScene(Scene):
             row = pygame.Rect(CX - 440, y, 880, ROW_H - 8)
             panel(surf, row, (30, 33, 46) if r == self.focus else (22, 24, 34),
                   border=GOLD if r == self.focus else None)
-            text(surf, LABELS[key], (row.x + 24, y + 6), 21, WHITE, bold=True)
-            text(surf, HELP[key], (row.x + 24, y + 32), 14, GREY, max_width=420)
+            text(surf, LABELS[key], (row.x + 24, y + 4), 21, WHITE, bold=True)
+            text(surf, HELP[key], (row.x + 24, y + 28), 13, GREY, max_width=420)
             if key in SLIDERS:
                 v = self.s[key]
                 bar(surf, (CX + 80, y + 20, 230, 16), v / 100, GOLD)

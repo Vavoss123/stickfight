@@ -190,6 +190,8 @@ class Sounds:
                                          at=[0.0, 0.07]))
             notes = [_tone(0.3, f, 0.3, 10) for f in (523, 659, 784, 1047)]
             self.s["levelup"] = _sound(_mix(*notes, at=[0.0, 0.08, 0.16, 0.24]))
+            self.s["tick"] = _sound(_tone(0.06, 1100, 0.22, 70))      # the move timer running out
+            self.s["buzzer"] = _sound(_mix(_tone(0.3, 170, 0.5, 10), _tone(0.3, 226, 0.3, 10)))
             self.ok = True
             for name in self.s:
                 BASE_VOLUME.setdefault(name, 1.0)

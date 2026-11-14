@@ -8,12 +8,16 @@ PATH = os.path.join(os.path.expanduser("~"), ".stickfight", "settings.json")
 # Fight speed: how fast exchanges animate. Slow motion replays slow down from this.
 SPEEDS = [("Normal", 1.0), ("Fast", 1.6), ("Fastest", 2.5)]
 
+# How long you get to pick a move, in seconds. 0 is no limit.
+PICK_TIMES = [("Off", 0), ("10s", 10), ("15s", 15), ("20s", 20)]
+
 DEFAULTS = {
     "volume": 80,         # 0 to 100, every sound
     "crowd": 60,          # 0 to 100, the crowd on top of that
     "music": 60,          # 0 to 100, the music on top of that
     "fullscreen": False,
     "speed": 0,           # index into SPEEDS
+    "pick_timer": 15,     # seconds to pick a move, 0 for no limit
     "skip_walkouts": False,
     "card_pool": "all",   # quick fight decks: "all" cards or your "collection"
     "tutorial_done": False,
@@ -39,6 +43,8 @@ class Settings:
         self.v["crowd"] = max(0, min(100, self.v["crowd"]))
         self.v["music"] = max(0, min(100, self.v["music"]))
         self.v["speed"] = max(0, min(len(SPEEDS) - 1, self.v["speed"]))
+        if self.v["pick_timer"] not in [t for _, t in PICK_TIMES]:
+            self.v["pick_timer"] = DEFAULTS["pick_timer"]
 
     def __getitem__(self, k):
         return self.v[k]

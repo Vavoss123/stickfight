@@ -38,6 +38,8 @@ EFFECTS = {
     "DEFENDED": ("Defended", "The defender stopped that part of the submission."),
     "ESCAPED": ("Escaped", "Out of the submission."),
     "CRACKED RIBS": ("Cracked ribs", "Body damage reached 100%. The fight is stopped."),
+    "TOO SLOW": ("Too slow", "The move timer ran out, so a move was picked at random. Settings can "
+                             "give you longer, or turn the timer off."),
     "BROKEN LEG": ("Broken leg", "Leg damage reached 100%. The fight is stopped."),
 }
 

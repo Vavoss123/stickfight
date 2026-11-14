@@ -147,6 +147,7 @@ class FightScene(Scene):
         self.pause_buttons = []
         self.phase = None
         self.phase_t = 0.0
+        self.pick_left = None    # seconds left on the move timer, None when it is off
         self.last_ex = None
         self.can_continue = False
         self.time_scale = 1.0
@@ -268,14 +269,31 @@ class FightScene(Scene):
         self.snd("crowd", 0.6)
         self.at(0.7, self._start_pick)
 
+    def _pick_seconds(self):
+        return self.app.settings["pick_timer"]
+
     def _start_pick(self):
         self._sync_hp()
         self.phase = "pick"
         self.phase_t = 0.0
         self.picks = [None, None]
+        secs = self._pick_seconds()
+        self.pick_left = float(secs) if secs else None
         self._build_buttons()
         if self.cpu:
             self.picks[1] = self.cpu.choose(self.fight, 1)
+
+    def _time_up(self):
+        """The move timer ran out: anyone still thinking gets a move picked for them."""
+        import random
+        self.pick_left = None
+        self.snd("buzzer", 0.9)
+        for i in (0, 1):
+            if self.picks[i] is None and not (self.cpu and i == 1):
+                self.picks[i] = random.choice(self.fight.options(i))
+                self.popup(i, "TOO SLOW!", (255, 120, 90), 26, dy=-110)
+        if self.picks[0] is not None and self.picks[1] is not None:
+            self._reveal()
 
     def _option_label(self, i, k):
         st = self.fight.state
@@ -456,7 +474,7 @@ class FightScene(Scene):
     def _reveal(self):
         self.phase = "reveal"
         self.reveal = tuple(self.picks)
-        self.at(0.65, self._resolve)
+        self.at(0.9, self._resolve)
 
     def _resolve(self):
         before = self.fight.state.clone()
@@ -487,7 +505,8 @@ class FightScene(Scene):
         elif ex.round_over:
             self.at(dur, self._round_end)
         else:
-            self.at(dur, self._start_pick)
+            # A beat after the dust settles, so you can see how the exchange went
+            self.at(dur + 0.8, self._start_pick)
 
     def _verdict(self, ex):
         """(winner or None, why) for the ticker: who got the better of the exchange."""
@@ -1176,6 +1195,13 @@ class FightScene(Scene):
         if self.phase == "pick" and self.cfg.mode == "cpu" and self.picks[0] is None                 and (self._shows_pad(0) is not None) != getattr(self, "_labels_pad", False):
             self._build_buttons()   # swapped between pad and keyboard: show the right labels
         real_dt = dt
+        if self.phase == "pick" and self.pick_left is not None:
+            before = self.pick_left
+            self.pick_left -= real_dt
+            if self.pick_left <= 3.0 and int(max(0.0, self.pick_left)) != int(max(0.0, before)):
+                self.snd("tick", 0.8)
+            if self.pick_left <= 0:
+                self._time_up()
         for s in self.sparks:
             s[3] += real_dt * (self.time_scale if self.phase == "replay" else 1.0)
         self.sparks = [s for s in self.sparks if s[3] < s[4]]
@@ -1501,6 +1527,7 @@ class FightScene(Scene):
             panel(surf, (CX - w // 2, 550, w, 30), (20, 22, 30), alpha=235, radius=15,
                   border=tuple(int(c * (0.6 + 0.4 * pulse)) for c in GOLD))
             text(surf, label, (CX, 565), 16, WHITE, "center", bold=True)
+            self._draw_pick_timer(surf, CX + w // 2 + 46, 550)
             hb = next((b for b in self.buttons[0] if b.hover), None)
             if hb and not st.sub:
                 self._draw_target(surf, zone(self.mv(0, hb.pick)))
@@ -1526,6 +1553,20 @@ class FightScene(Scene):
                     panel(surf, (x0, 584, W // 2 - 10, 132), CORNER[i], alpha=255)
                     text(surf, "LOCKED IN", (x0 + (W // 2 - 10) // 2, 650), 34, WHITE, "center",
                          display=True)
+            self._draw_pick_timer(surf, CX, 518)
+
+    def _draw_pick_timer(self, surf, cx, y):
+        """The move timer: seconds left to pick, red and pulsing at the end."""
+        if self.pick_left is None or self.phase != "pick":
+            return
+        left = max(0.0, self.pick_left)
+        hot = left <= 3.05
+        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 110) if hot else 0.35
+        col = (235, 80, 55) if hot else GOLD
+        r = panel(surf, (cx - 30, y, 60, 30), (20, 22, 30), alpha=235, radius=15,
+                  border=tuple(int(c * (0.6 + 0.4 * pulse)) for c in col))
+        text(surf, f"{int(math.ceil(left))}", (r.centerx, r.centery), 18,
+             (255, 150, 130) if hot else WHITE, "center", bold=True)
 
     def _draw_move_card(self, surf):
         """What the move under the mouse does: its type, target, cost, what it beats and loses to.
