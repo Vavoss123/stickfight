@@ -13,6 +13,17 @@ def _ease(t):
     return t * t * (3 - 2 * t)
 
 
+def _snap(t):
+    """Fast out of the blocks, then settles: strikes and hits read as sharp instead of floaty."""
+    return 1 - (1 - t) ** 3
+
+
+SNAP_FRAME = 0.12      # key frames this short are strikes, hits and flinches
+TRAIL_LIMBS = ("fhand", "bhand", "ffoot", "bfoot")
+TRAIL_LEN = 6          # frames of history behind each hand and foot
+TRAIL_MIN = 34         # pixels the limb has to travel over that history to leave a streak
+
+
 def _lerp_angle(a, b, t):
     d = (b - a + 180) % 360 - 180
     return a + d * t
@@ -110,6 +121,8 @@ class Figure:
         self.beard = False
         self.trim = None
         self.tattoo = "none"
+        self.snappy = False
+        self.trails = {k: [] for k in TRAIL_LIMBS}
 
     def dress(self, profile=None, look=None):
         """Wear a fighter's shorts colour and look. A look dict can be passed straight in."""
@@ -139,7 +152,12 @@ class Figure:
         if self.t >= 1.0:
             self._next()
 
+    def clear_trail(self):
+        for k in self.trails:
+            self.trails[k] = []
+
     def set_pose(self, name, idle=None):
+        self.clear_trail()
         self.cur = self.src = self.dst = concrete(name)
         self.t = 1.0
         self.queue = []
@@ -153,6 +171,7 @@ class Figure:
         self.move_dur = dur
         if dur <= 0:
             self.x, self.y = self.move_dst
+            self.clear_trail()
 
     def place(self, x, y=None):
         self.move_to(x, y, 0)
@@ -168,13 +187,15 @@ class Figure:
             self.dst = concrete(name)
             self.dur = max(0.01, dur)
             self.t = 0.0
+            # Wind ups ease in and out (the anticipation); short frames after them snap
+            self.snappy = dur <= SNAP_FRAME and not name.endswith("_wind")
 
     # Frame
 
     def update(self, dt):
         if self.t < 1.0:
             self.t = min(1.0, self.t + dt / self.dur)
-            self.cur = blend(self.src, self.dst, _ease(self.t))
+            self.cur = blend(self.src, self.dst, (_snap if self.snappy else _ease)(self.t))
             if self.t >= 1.0:
                 self._next()
         elif not self.queue:
@@ -196,6 +217,42 @@ class Figure:
             self.y = self.move_src[1] + (self.move_dst[1] - self.move_src[1]) * e
         self.flash = max(0.0, self.flash - dt)
         self.shake = max(0.0, self.shake - dt * 30)
+
+    def _draw_trails(self, surf, j, w):
+        """A fading streak behind a fast hand or foot, so a strike's path is easy to follow."""
+        hips = self.trails.setdefault("_hip", [])
+        hips.append(j["hip"])
+        if len(hips) > TRAIL_LEN:
+            hips.pop(0)
+        for k in TRAIL_LIMBS:
+            pts = self.trails[k]
+            pts.append(j[k])
+            if len(pts) > TRAIL_LEN:
+                pts.pop(0)
+            if len(pts) < 3 or len(hips) < len(pts):
+                continue
+            # Only the limb's own swing counts, not the whole body sliding across the mat
+            h0, h1 = hips[-len(pts)], hips[-1]
+            swing = math.dist((pts[0][0] - h0[0], pts[0][1] - h0[1]), (pts[-1][0] - h1[0], pts[-1][1] - h1[1]))
+            if swing < TRAIL_MIN * self.scale:
+                continue
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
+            pad = w + 4
+            ox, oy = min(xs) - pad, min(ys) - pad
+            size = (int(max(xs) - ox + pad) + 1, int(max(ys) - oy + pad) + 1)
+            layer = pygame.Surface(size, pygame.SRCALPHA)
+            base = self.glove if k.endswith("hand") else self.body
+            col = tuple(min(255, int(c * 0.5 + 255 * 0.5)) for c in base)
+            n = len(pts) - 1
+            for idx in range(n):
+                a = (pts[idx][0] - ox, pts[idx][1] - oy)
+                b = (pts[idx + 1][0] - ox, pts[idx + 1][1] - oy)
+                f = (idx + 1) / n
+                width = max(2, int(w * (0.5 + 0.9 * f)))
+                pygame.draw.line(layer, (*col, int(150 * f)), a, b, width)
+                pygame.draw.circle(layer, (*col, int(150 * f)), b, width // 2)
+            surf.blit(layer, (ox, oy))
 
     def _blood(self, surf, j):
         """A gash over the eye and a trickle down the face, worse as the cut opens up."""
@@ -293,6 +350,7 @@ class Figure:
         shadow = pygame.Surface((90, 14), pygame.SRCALPHA)
         pygame.draw.ellipse(shadow, (0, 0, 0, 90), shadow.get_rect())
         surf.blit(shadow, (j["hip"][0] - 45, self.y - 6))
+        self._draw_trails(surf, j, w)
         # Back limbs first
         _line(surf, back, j["hip"], j["bknee"], w)
         _line(surf, back, j["bknee"], j["bfoot"], w)

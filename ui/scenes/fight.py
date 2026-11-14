@@ -136,6 +136,8 @@ class FightScene(Scene):
         self.hp_shown = list(self.ghost)
         self.hp_target = list(self.ghost)
         self.verdict = None     # who got the better of the last exchange, for the ticker
+        self.sparks = []        # [kind, x, y, age, life, size, color]: hit bursts and dust
+        self.hitstop = 0.0      # a few frames of freeze when a big shot lands
         self.banner = None
         self.picks = [None, None]
         self.buttons = [[], []]
@@ -190,7 +192,14 @@ class FightScene(Scene):
 
     def popup(self, i, s, color=WHITE, size=26, dy=0):
         f = self.figs[i]
-        y = max(180, f.y - 240 + dy * 0.6)
+        # Below the HUD, and never on top of another word that is still up near the same fighter
+        y = max(180, f.y - 240 + dy * 0.8)
+        for _ in range(40):
+            clash = next((p for p in self.popups if abs(p[1] - f.x) < 180
+                          and abs(p[2] - y) < (p[5] + size) * 0.5), None)
+            if clash is None:
+                break
+            y = clash[2] + (clash[5] + size) * 0.5 + 2
         self.popups.append([s, f.x, y, color, 1.1, size])
         k = effects.key(s)
         if k:
@@ -594,7 +603,7 @@ class FightScene(Scene):
             settle_at = 0.85
         if changed:
             if ground_now and before.pos in (STANDING, CLINCH) and ex.knockdown is None:
-                self.at(settle_at, lambda: (self.snd("slam"), self.arena.cheer(0.8)))
+                self.at(settle_at, lambda: (self.snd("slam"), self.arena.cheer(0.8), self._dust()))
                 self.at(settle_at, lambda: setattr(self, "shake", 6))
             if ex.reversal_by is not None:
                 self.at(settle_at, lambda: self.arena.cheer(0.8))
@@ -655,7 +664,8 @@ class FightScene(Scene):
             else:
                 said = personality.line(name, event, random)
             if said:
-                self.speak(i, said)
+                # After the hit words have floated away, so the bubble never covers them
+                self.at(0.9, lambda i=i, said=said: self.speak(i, said))
                 self.taunt_wait = 2
                 return
 
@@ -774,6 +784,7 @@ class FightScene(Scene):
                 # Knocked back a step by the blow, and settled back into place afterwards
                 t.move_to(t.x - t.facing * (7 + 5 * bool(power)) * t.scale, dur=0.1)
             t.play([(pose, 0.07), (pose, 0.14)])
+        self._burst(o, target, dmg)
         self.popup(o, f"-{dmg:.0f}", (255, 90, 80) if dmg >= 9 else (255, 180, 160),
                    34 if dmg >= 9 else 26)
         if target != "head":
@@ -791,6 +802,61 @@ class FightScene(Scene):
             self.arena.cheer(0.9)
         elif dmg >= 5:
             self.arena.cheer(0.3)
+
+    def _spot(self, i, where):
+        """Screen position of a target area on fighter i."""
+        from ..stickman import joints
+        f = self.figs[i]
+        j = joints(f.cur, f.x, f.y, f.facing, f.scale)
+        mid = lambda a, b: ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+        return {"head": j["head"], "neck": j["neck"], "body": mid(j["neck"], j["hip"]),
+                "legs": mid(j["fknee"], j["ffoot"]), "arms": j["felbow"]}.get(where, j["head"])
+
+    def _burst(self, i, where, dmg):
+        """A flash where the blow landed, bigger for harder shots, with a moment of hit stop."""
+        x, y = self._spot(i, where)
+        big = dmg >= 9
+        color = (255, 235, 150) if big else (255, 250, 230)
+        self.sparks.append(["burst", x, y, 0.0, 0.28 if big else 0.2, 46 if big else 28, color])
+        if big and self.phase != "replay":
+            self.hitstop = 0.07
+        elif dmg >= 5 and self.phase != "replay":
+            self.hitstop = 0.035
+
+    def _dust(self, *who):
+        """Dust kicked up off the mat where someone lands."""
+        import random
+        for i in who or (0, 1):
+            f = self.figs[i]
+            for k in range(7):
+                side = -1 if k % 2 else 1
+                self.sparks.append(["dust", f.x + random.uniform(-30, 30), FIGHT_Y + random.uniform(-4, 6),
+                                    0.0, random.uniform(0.4, 0.6), random.uniform(10, 18),
+                                    (side * random.uniform(40, 110), random.uniform(10, 30))])
+
+    def _draw_sparks(self, surf):
+        for kind, x, y, age, life, size, extra in self.sparks:
+            k = age / life
+            if kind == "burst":
+                r = int(size * (0.4 + 0.9 * k))
+                a = int(255 * (1 - k))
+                layer = pygame.Surface((r * 2 + 8, r * 2 + 8), pygame.SRCALPHA)
+                c = (r + 4, r + 4)
+                pygame.draw.circle(layer, (*extra, int(a * 0.35)), c, max(2, int(r * 0.7 * (1 - k))))
+                pygame.draw.circle(layer, (*extra, a), c, r, max(2, int(5 * (1 - k)) + 1))
+                for n in range(8):
+                    ang = n * math.pi / 4 + 0.3
+                    r0, r1 = r * 0.9, r * (1.25 + 0.3 * (n % 2))
+                    pygame.draw.line(layer, (*extra, a), (c[0] + math.cos(ang) * r0, c[1] + math.sin(ang) * r0),
+                                     (c[0] + math.cos(ang) * r1, c[1] + math.sin(ang) * r1), 3)
+                surf.blit(layer, (x - c[0], y - c[1]))
+            else:
+                vx, vy = extra
+                px, py = x + vx * age, y - vy * age
+                r = int(size * (0.6 + k))
+                layer = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+                pygame.draw.circle(layer, (200, 192, 178, int(150 * (1 - k))), (r, r), r)
+                surf.blit(layer, (px - r, py - r))
 
     def _ground_pose(self, i, before, kind):
         """A strike or cover pose for fighter i in a ground position, or None on the feet."""
@@ -819,6 +885,7 @@ class FightScene(Scene):
         self._sync_hp(o)
         hit = hit_pose(before.pos, before.top == i, "head") if ground else "hit"
         self.figs[o].play([(hit, 0.07), (hit, 0.12)])
+        self._burst(o, "head", ex.dmg[i])
         self.popup(i, "COUNTER!", GOLD, 28, dy=-30)
         self.popup(o, f"-{ex.dmg[i]:.0f}", (255, 120, 100), 28)
         self.snd("punch")
@@ -837,6 +904,8 @@ class FightScene(Scene):
                 fl.play([("rnc_def", 0.15), ("back_bot_hit", 0.3)], idle="back_bot_hit")
         else:
             fl.play([("hit", 0.08), ("ko", 0.45)], idle="ko")
+            self._burst(l, "head", 20)
+            self.at(0.5, lambda: self._dust(l))
             self.shake = 14
             self.snd("boom")
         self.ref.move_to(fl.x + fl.facing * 90, dur=0.35)
@@ -971,7 +1040,10 @@ class FightScene(Scene):
         return out
 
     def _restore(self, snap):
+        self.sparks = []
+        self.hitstop = 0.0
         for f, (cur, x, y, facing, idle) in zip(self.figs + [self.ref], snap):
+            f.clear_trail()
             f.cur = f.src = f.dst = dict(cur)
             f.t = 1.0
             f.queue = []
@@ -1093,6 +1165,14 @@ class FightScene(Scene):
         if self.paused:
             return
         real_dt = dt
+        for s in self.sparks:
+            s[3] += real_dt * (self.time_scale if self.phase == "replay" else 1.0)
+        self.sparks = [s for s in self.sparks if s[3] < s[4]]
+        if self.hitstop > 0:
+            # Everything holds still for a moment on a big hit, which sells the impact
+            self.hitstop -= real_dt
+            self.arena.update(real_dt)
+            return
         dt *= self.time_scale * self.app.settings.fight_speed
         if self.slowmo > 0:
             self.slowmo -= real_dt
@@ -1157,6 +1237,7 @@ class FightScene(Scene):
             order = (1 - st.top, st.top)
         for i in order:
             self.figs[i].draw(layer)
+        self._draw_sparks(layer)
         for s, x, y, c, t, size in self.popups:
             text(layer, s, (x, y), size, c, "center", bold=True, display=size >= 26,
                  alpha=int(255 * min(1.0, t * 2)))
@@ -1427,7 +1508,9 @@ class FightScene(Scene):
                     tip = f"{who}  keys {' '.join(LABEL_P1 if i == 0 else LABEL_P2)}"
                     if self._pad_for(i) is not None:
                         tip = f"{who}  controller: the button in each corner"
-                text(surf, tip, (x0 + 14, 588), 14, CORNER[i], bold=True)
+                tw = font(14, True).size(tip)[0] + 28
+                panel(surf, (x0 + 10, 554, tw, 26), (14, 15, 22), alpha=235, radius=13, border=CORNER[i])
+                text(surf, tip, (x0 + 24, 567), 14, WHITE, "midleft", bold=True)
                 if self.picks[i] is not None:
                     panel(surf, (x0, 584, W // 2 - 10, 132), CORNER[i], alpha=255)
                     text(surf, "LOCKED IN", (x0 + (W // 2 - 10) // 2, 650), 34, WHITE, "center",
