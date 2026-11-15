@@ -105,6 +105,8 @@ class RetireScene(Scene):
         text(surf, e["name"].upper(), (CX + 120, 96), 64, WHITE, "midtop", display=True, max_width=760)
         if e["nickname"]:
             text(surf, f'"{e["nickname"]}"', (CX + 120, 168), 22, GOLD, "midtop")
+        if e.get("ending"):
+            text(surf, e["ending"], (CX + 120, 200), 17, GREY, "midtop")
         rows = [("Record", e["record"]), ("Finishes", str(e["finishes"])),
                 ("World titles", str(e["titles"])), ("Most defences", str(e["defenses"])),
                 ("Best ranking", legacy.best_rank_label(e["best_rank"])),

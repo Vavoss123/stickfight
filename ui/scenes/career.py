@@ -313,13 +313,16 @@ class HubScene(Scene):
             return
         if self.retire_btn.handle(e):
             if self.confirm_retire:
-                from engine import legacy
+                from engine import legacy, story
                 from .legacy import RetireScene
+                from .story import StoryScene
                 entry = legacy.retire(self.c)
                 delete_save()
                 if entry["inducted"]:
                     self.app.award(["hall"])
-                self.app.goto(RetireScene(self.app, entry))
+                # The ending the meters earned, then the send off
+                app, c = self.app, self.c
+                app.goto(StoryScene(app, c, story.ending(c), lambda: RetireScene(app, entry)))
             else:
                 self.confirm_retire = True
                 self.retire_btn.label = "Sure? Click again"

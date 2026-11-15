@@ -134,7 +134,71 @@ BEATS = {
         ((RAY, "Three title defences. People are starting to say your name with the greats."),
          (RAY, "Don't listen to them yet.")),
     ),
+    # Retirement endings: queued by the retire button, never by a fight. See ending().
+    "end_one_too_many": _beat(
+        lambda c, x: False,
+        ((LOU, "I've taped your hands four hundred times, {name}. This was the last one."),
+         (RAY, "You gave this place everything you had."),
+         (LOU, "That's what worries me. Go home. Rest. Please."),
+         (RAY, "The door's always open. Just not the cage.")),
+    ),
+    "end_reconciled": _beat(
+        lambda c, x: False,
+        ((RAY, "Champion of the world, healthy, and you never once left this gym."),
+         (RAY, "My last champion called yesterday. First time in twenty years."),
+         (LOU, "He wants to hang his belt back on the wall. Next to yours."),
+         (RAY, "Two belts, one gym. Thank you, {name}.")),
+    ),
+    "end_redemption": _beat(
+        lambda c, x: False,
+        ((RAY, "Twenty years ago I stopped believing in this place. You fixed that."),
+         (RAY, "Your name's going on the wall, {name}. Right at the top."),
+         (LOU, "He practised that speech all week. It was longer.")),
+    ),
+    "end_famous": _beat(
+        lambda c, x: False,
+        ((DEZ, "Every cheque cleared, kid. Biggest star I ever built."),
+         (DEZ, "Don't look back at that gym. Legends don't look back."),
+         (RAY, "...")),
+    ),
+    "end_walked_away": _beat(
+        lambda c, x: False,
+        ((LOU, "Every fighter says they'll know when to stop. You actually did."),
+         (RAY, "Leaving this sport with your health is the rarest win there is."),
+         (LOU, "Go live, kid. That's an order from your cutman.")),
+    ),
+    "end_quiet": _beat(
+        lambda c, x: False,
+        ((RAY, "Not every career ends with a belt. Most don't."),
+         (RAY, "You fought everyone they put in front of you. That counts in here."),
+         (LOU, "The kids already ask about you. Come back and teach some time.")),
+    ),
 }
+
+# How the hall of fame remembers each ending
+ENDINGS = {
+    "end_one_too_many": "Gave it one fight too many",
+    "end_reconciled": "Brought the belts home, and the family back",
+    "end_redemption": "Put the gym back on the map",
+    "end_famous": "The biggest star Dez ever built",
+    "end_walked_away": "Left on their own terms",
+    "end_quiet": "Fought them all",
+}
+
+
+def ending(c):
+    """Which retirement ending the career has earned, from the meters and the belts."""
+    if c.health < 30:
+        return "end_one_too_many"
+    if c.titles_won and c.loyalty >= 70 and c.health >= 60:
+        return "end_reconciled"      # the secret one: champion, loyal, and whole
+    if c.titles_won and c.loyalty >= 60:
+        return "end_redemption"
+    if c.fame >= 65 and c.loyalty < 40:
+        return "end_famous"
+    if c.health >= 60:
+        return "end_walked_away"
+    return "end_quiet"
 
 
 def repeats(beat):

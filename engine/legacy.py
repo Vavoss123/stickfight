@@ -26,6 +26,7 @@ def legacy_score(c):
 
 
 def entry_for(c):
+    from .story import ending, ENDINGS
     p = c.player
     score = legacy_score(c)
     finishes = sum(1 for h in c.history
@@ -37,6 +38,7 @@ def entry_for(c):
         "finishes": finishes, "titles": c.titles_won, "defenses": c.most_defenses,
         "best_rank": c.best_rank, "score": score, "inducted": c.titles_won > 0 or score >= INDUCT_SCORE,
         "retired": date.today().isoformat(),
+        "ending": ENDINGS[ending(c)],
     }
 
 

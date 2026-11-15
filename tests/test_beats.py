@@ -130,6 +130,43 @@ class Callouts(unittest.TestCase):
         self.assertTrue(any("knocked" in n for n in c.news), c.news)
 
 
+class Endings(unittest.TestCase):
+    def pick(self, titles=0, loyalty=50, fame=50, health=50):
+        c = career()
+        c.titles_won = titles
+        c.loyalty, c.fame, c.health = loyalty, fame, health
+        return story.ending(c)
+
+    def test_the_meters_decide_the_ending(self):
+        self.assertEqual(self.pick(), "end_quiet")
+        self.assertEqual(self.pick(health=70), "end_walked_away")
+        self.assertEqual(self.pick(titles=1, loyalty=60), "end_redemption")
+        self.assertEqual(self.pick(titles=1, loyalty=75, health=65), "end_reconciled")
+        self.assertEqual(self.pick(fame=70, loyalty=30), "end_famous")
+        self.assertEqual(self.pick(titles=3, loyalty=90, health=20), "end_one_too_many")
+
+    def test_every_ending_has_a_scene_and_a_hall_line(self):
+        for eid, line in story.ENDINGS.items():
+            self.assertIn(eid, story.BEATS)
+            self.assertTrue(line)
+        c = career()
+        self.assertIn(story.ending(c), story.ENDINGS)
+
+    def test_the_hall_entry_remembers_the_ending(self):
+        from engine import legacy
+        c = career()
+        c.health = 20
+        e = legacy.entry_for(c)
+        self.assertEqual(e["ending"], story.ENDINGS["end_one_too_many"])
+
+    def test_endings_never_queue_from_fights(self):
+        c = career()
+        for _ in range(6):
+            win(c)
+            for b in beats_shown(c):
+                self.assertFalse(b.startswith("end_"), b)
+
+
 class Scripts(unittest.TestCase):
     def test_every_script_formats_and_speaks(self):
         c = career()
