@@ -23,7 +23,7 @@ PAGES = [
     ]),
     ("Reading them", [
         "A jab beats a power punch to the punch.",
-        "A takedown ducks under jabs, kicks and knees. Only a power punch stops it.",
+        "A takedown ducks under jabs and kicks. A knee or a power punch stops it.",
         "A check kick stops leg kicks and hurts the kicker.",
         "A weave dodges everything, or eats it for 1.5 times.",
     ]),
@@ -162,7 +162,7 @@ def _rows(surf, r, rows):
 
 def pic_reading(surf, r):
     _rows(surf, r, [("jab", "cross_wind", "Jab", "Power punch", "The jab gets there first", True),
-                    ("cross", "shoot", "Power punch", "Takedown", "The big punch stops the shot", True),
+                    ("knee", "shoot", "Knee", "Takedown", "The knee catches the shot", True),
                     ("legkick_wind", "legkick", "Check kick", "Leg kick", "The check hurts the kicker", True)])
 
 

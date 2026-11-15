@@ -74,19 +74,21 @@ class Weave(unittest.TestCase):
         self.assertLess(st.f[0].stamina, 100)
 
 
-class Takedowns(unittest.TestCase):
-    def test_only_the_power_punch_stops_a_shot(self):
+class Knee(unittest.TestCase):
+    def test_knee_always_beats_a_takedown_and_jab_does_not(self):
+        self.assertEqual(matchup(MOVES["knee"], MOVES["takedown"]), 1)
         self.assertEqual(matchup(MOVES["cross"], MOVES["takedown"]), 1)
-        for s in ("jab", "body", "kick", "legkick", "knee"):
+        for s in ("jab", "body", "kick", "legkick"):
             self.assertEqual(matchup(MOVES[s], MOVES["takedown"]), -1, s)
 
-    def test_a_caught_knee_gets_you_taken_down(self):
-        taken = 0
-        for seed in range(100):
+    def test_knee_catch_hits_hard(self):
+        knee = body = 0.0
+        for seed in range(200):
             st = fresh()
-            ex = resolve(st, ("knee", "takedown"), random.Random(seed))
-            taken += ex.takedown_by == 1
-        self.assertGreater(taken, 55)   # catching the knee makes the shot easier
+            knee += resolve(st, ("knee", "takedown"), random.Random(seed)).dmg[0]
+            st = fresh()
+            body += resolve(st, ("body", "clinch"), random.Random(seed)).dmg[0]
+        self.assertGreater(knee, body)
 
 
 class Limbs(unittest.TestCase):

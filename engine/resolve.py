@@ -613,7 +613,7 @@ def resolve(st, picks, rng):
                 ex.dmg[l] += chip
             _counter(st, ex, w, rng, mw, open_shot=ml.power)
         else:
-            caught_kick = ml.base in ("kick", "legkick", "knee")
+            caught_kick = ml.base in ("kick", "legkick")
             _grapple_uncontested(st, ex, w, mw, rng, bonus=0.15 if caught_kick else 0.0)
     else:
         c = base_class(moves[0])
