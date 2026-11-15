@@ -15,14 +15,14 @@ EVEN = 3          # closer than this and the exchange was even
 PLURAL = {STRIKE: "strikes", GRAPPLE: "grapples", DEFEND: "defending", FEINT: "feints"}
 BEATS = {STRIKE: GRAPPLE, GRAPPLE: DEFEND, DEFEND: STRIKE, FEINT: DEFEND}
 # When the move that should have won by the triangle lost anyway, the usual reason
-EXCEPTION = {(STRIKE, GRAPPLE): "Strikes should beat grapples, but kicks get caught and a jab won't stop a "
-                                "shot. A knee or a power punch will.",
+EXCEPTION = {(STRIKE, GRAPPLE): "Strikes should beat grapples, but a committed shot ducks under kicks, "
+                                "knees and jabs. Only a power punch stops it.",
              (GRAPPLE, DEFEND): "Grapples should beat defending, but some defences are built for it: "
                                 "a sprawl or a good base stuffs a tired shot.",
              (DEFEND, STRIKE): "Defending should beat strikes, but blocking power shots still hurts, and "
                                "kicks go round a high guard. Try a check or a weave.",
              (DEFEND, FEINT): "A feint freezes anyone waiting to defend. Attack instead."}
-ANSWER = {STRIKE: "Defending beats strikes", GRAPPLE: "A strike catches a grapple",
+ANSWER = {STRIKE: "Defending beats strikes", GRAPPLE: "A power punch stops a shot, quick punches beat a clinch",
           DEFEND: "A grapple beats someone waiting to defend", FEINT: "Any real attack beats a feint"}
 
 

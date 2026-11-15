@@ -53,7 +53,7 @@ ACTION = {
     "feint": [("cross_wind", 0.1), ("stance", 0.12), ("jab", 0.06), ("stance", 0.1)],
     "hesitate": [("stance", 0.3)],
     "check": [("legkick_wind", 0.12), ("legkick_wind", 0.18), ("stance", 0.1)],
-    "weave": [("sprawl", 0.1), ("sprawl", 0.14), ("stance", 0.12)],
+    "weave": [("weave", 0.1), ("weave", 0.16), ("stance", 0.12)],
     # Signature moves, each with its own animation
     "superman": [("superman_wind", 0.12), ("superman", 0.12), ("superman", 0.08)],
     "spinfist": [("spin_wind", 0.14), ("spinfist", 0.1), ("spinfist", 0.1)],

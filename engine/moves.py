@@ -91,8 +91,8 @@ _ALL = [
          desc="Shoot for the legs. Beats jabs and kicks, eats power shots."),
     Move("clinch", "Clinch up", GRAPPLE, "wrestling", 5, to="clinch",
          desc="Tie up against the fence. Smothers power shots."),
-    Move("knee", "Knee", STRIKE, "striking", 10, dmg=8, acc=0.72, target=BODY, catch=1.8, anim="knees",
-         desc="A knee up the middle. Catches a shooting takedown hard, but punches beat it to the spot."),
+    Move("knee", "Knee", STRIKE, "striking", 10, dmg=8, acc=0.72, target=BODY, anim="knees",
+         desc="A knee up the middle. Big damage, but a takedown ducks it and punches beat it to the spot."),
     Move("check", "Check kick", DEFEND, "striking", -3,
          desc="Lift the shin. Stops leg kicks and hurts their leg. Punches and head kicks get through."),
     Move("weave", "Weave", DEFEND, "striking", 4,
@@ -207,14 +207,14 @@ OVERRIDES = {
     ("cross", "clinch"): -1,    # closing the distance smothers a wide power shot
     ("legkick", "block"): 1,    # a high guard does nothing for the legs
     ("legkick", "takedown"): -1,  # kick gets caught
+    ("knee", "takedown"): -1,     # the shot ducks under the knee and takes the standing leg
     ("body", "takedown"): -1,   # dipping to the body opens up the shot
     ("kick", "clinch"): -1,
     # The check is a shin block for leg kicks, nothing more
     ("legkick", "check"): -1,
     ("jab", "check"): 1, ("cross", "check"): 1, ("body", "check"): 1, ("kick", "check"): 1,
     ("knee", "check"): 1,
-    # The knee is a read on a takedown. Punches at range get there first, and tying up
-    # (or pulling guard) smothers it
+    # Punches at range beat the knee to the spot, and tying up (or pulling guard) smothers it
     ("jab", "knee"): 1, ("cross", "knee"): 1, ("knee", "clinch"): -1,
     # Under mount and back control, throwing strikes gives the bottom fighter a way out.
     # In guard, escapes can scramble out through the punches instead (see resolve.py).

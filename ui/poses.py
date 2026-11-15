@@ -46,6 +46,9 @@ POSES = {
                fth=62, fsh=110, bth=116, bsh=88),
     "counter": P(hip=(4, 0), torso=-70, head=-74, fua=-10, ffa=-12, bua=40, bfa=-100,
                  fth=62, fsh=100, bth=118, bsh=96),
+    # Ducking under a punch: knees bent, torso dipped forward, head off the line, guard up
+    "weave": P(hip=(6, 0), torso=-38, head=-20, fua=25, ffa=-100, bua=42, bfa=-108,
+               fth=48, fsh=118, bth=128, bsh=82),
     "shoot": P(hip=(34, 0), torso=-15, head=-5, fua=30, ffa=20, bua=40, bfa=10,
                fth=40, fsh=125, bth=150, bsh=172),
     "sprawl": P(hip=(-12, 0), torso=5, head=40, fua=80, ffa=100, bua=90, bfa=110,

@@ -257,15 +257,11 @@ class CardSystem(unittest.TestCase):
         # A made up card that gives up the power punch's takedown defence
         weak = replace(MOVES["cross"], key="testweak", base="cross", loses_to=("takedown",))
         ec.CARDS["testweak"] = ec.Card("testweak", "Test", "common", "", move=weak)
-        # The knee stops takedowns too, so swap that out for a weak one as well
-        weak_knee = replace(MOVES["knee"], key="testknee", base="knee", loses_to=("takedown",))
-        ec.CARDS["testknee"] = ec.Card("testknee", "Test", "common", "", move=weak_knee)
         try:
-            self.assertEqual(ec.warnings(self._fighter({"cross": "testweak"})), [])
-            self.assertTrue(ec.warnings(self._fighter({"cross": "testweak", "knee": "testknee"})))
+            # The power punch is the only strike that stops a shot now
+            self.assertTrue(ec.warnings(self._fighter({"cross": "testweak"})))
         finally:
             del ec.CARDS["testweak"]
-            del ec.CARDS["testknee"]
 
 
 class CareerCards(unittest.TestCase):
