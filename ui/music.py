@@ -20,7 +20,7 @@ from functools import lru_cache
 import pygame
 
 RATE = 22050
-VERSION = 2          # bump when the music changes, so old cached files are not used
+VERSION = 3          # bump when the music changes, so old cached files are not used
 CACHE = os.path.join(os.path.expanduser("~"), ".stickfight", "music")
 TWO_PI = 2 * math.pi
 FADE_MS = 900
@@ -158,6 +158,22 @@ def lead(note, dur, gain=1.0):
 
 
 @lru_cache(maxsize=None)
+def chug(note, dur, gain=1.0):
+    """A distorted, palm muted power chord: detuned saws into a soft clip. The fight guitar."""
+    n = int(RATE * dur)
+    out = []
+    freqs = [hz(note) * d for d in (0.995, 1.0, 1.005)] + [hz(note + 7)]
+    for i in range(n):
+        t = i / RATE
+        s = 0.0
+        for f in freqs:
+            s += sum(math.sin(TWO_PI * f * k * t) / k for k in range(1, 7))
+        s = math.tanh(s * 0.9)                      # the drive
+        out.append(s * math.exp(-t * 9) * _env(i, n, 15, 140) * gain)
+    return out
+
+
+@lru_cache(maxsize=None)
 def stab(notes, dur, gain=1.0):
     """Brassy chord hit."""
     n = int(RATE * dur)
@@ -228,13 +244,16 @@ MENU_TUNE = [
     [(0, 79, 1), (1, 76, 1), (2, 74, .5), (2.5, 72, .5), (3, 74, 1)],
     [(0, 74, 1.5), (1.5, 71, .5), (2, 67, 2)],
 ]
+# Everything in the fight sits on the eighth note grid: no dotted rhythms, the drive
+# comes from straight eighths with accents on the beat.
+CHUG_LINE = (0, 0, 3, 0, 5, 3, 0, -2)   # semitones off the bar's root, one chug per eighth
 FIGHT_RIFF = [
-    [(0, 76, .75), (.75, 79, .75), (1.5, 76, .5), (2, 74, 1), (3, 71, 1)],
-    [(0, 72, .75), (.75, 76, .75), (1.5, 79, .5), (2, 76, 2)],
-    [(0, 74, .75), (.75, 79, .75), (1.5, 83, .5), (2, 81, 1), (3, 79, 1)],
-    [(0, 78, 1.5), (1.5, 76, .5), (2, 74, 2)],
+    [(0, 76, .5), (.5, 76, .5), (1, 79, .5), (1.5, 76, .5), (2, 81, 1), (3, 79, 1)],
+    [(0, 72, .5), (.5, 72, .5), (1, 76, .5), (1.5, 72, .5), (2, 79, 2)],
+    [(0, 74, .5), (.5, 74, .5), (1, 79, .5), (1.5, 74, .5), (2, 81, 1), (3, 83, 1)],
+    [(0, 79, 1), (1, 78, .5), (1.5, 76, .5), (2, 74, 2)],
 ]
-FIGHT_RIFF_END = [(0, 78, .5), (.5, 79, .5), (1, 81, 1), (2, 83, 2)]
+FIGHT_RIFF_END = [(0, 79, .5), (.5, 81, .5), (1, 83, 1), (2, 86, 2)]
 
 
 def menu():
@@ -261,31 +280,39 @@ def menu():
 
 
 def fight(level):
-    """The fight loop. 1: drums and bass. 2: snare, arpeggio and pads join. 3: the riff,
-    brighter bass, stabs and crashes."""
+    """The fight loop: a driving chug riff on a straight grid, heavier every round.
+    1: chugs, kick on every beat, backbeat snare. 2: octave bass, open hats and stabs.
+    3: the lead riff over the top, a sixteenth gallop into each bar and crashes."""
     bars = 8
-    tr = Track(128, bars)
+    tr = Track(140, bars)
     b = tr.beat
     for bar in range(bars):
         notes, root = FIGHT_CHORDS[bar % 4]
-        for k in range(8):
-            note = root + (12 if k % 2 and level >= 2 else 0)
-            tr.add(bass(note, 0.42 * b, bright=level >= 3), tr.at(bar, k * .5), 0.5)
+        # The chug riff: one power chord per eighth, accents on the beat
+        for k, off in enumerate(CHUG_LINE):
+            if level >= 3 and k == 7:
+                # A sixteenth gallop into the next bar
+                for g in range(2):
+                    tr.add(chug(root + off, 0.2 * b), tr.at(bar, 3.5 + g * 0.25), 0.4)
+            else:
+                tr.add(chug(root + off, 0.4 * b if k % 2 == 0 else 0.3 * b),
+                       tr.at(bar, k * .5), 0.5 if k % 2 == 0 else 0.36)
         if level >= 2:
-            tr.add(pad(notes, 4 * b), tr.at(bar, 0), 0.12)
-            arp = [notes[0] + 12, notes[1] + 12, notes[2] + 12, notes[0] + 24]
-            for k in range(16):
-                tr.add(pluck(arp[k % 4], 0.25 * b), tr.at(bar, k * .25), 0.1 if level == 2 else 0.07)
+            for k in range(4):
+                tr.add(bass(root + 12, 0.4 * b, bright=True), tr.at(bar, k), 0.3)
+            tr.add(stab(tuple(n + 12 for n in notes), 0.5 * b), tr.at(bar, 0), 0.26)
+            if bar % 2 == 1:
+                tr.add(stab(tuple(n + 12 for n in notes), 0.5 * b), tr.at(bar, 2), 0.2)
         if level >= 3:
             riff = FIGHT_RIFF_END if bar == 7 else FIGHT_RIFF[bar % 4]
             for beat, note, dur in riff:
                 tr.add(lead(note, dur * b), tr.at(bar, beat), 0.24)
-            tr.add(stab(tuple(n + 12 for n in notes), 0.5 * b), tr.at(bar, 0), 0.3)
-    hats = [k * .5 + .5 for k in range(0, 8, 2)] if level == 1 else [k * .25 for k in range(16)]
-    kicks = (0, 1, 2, 3) + ((3.75,) if level >= 3 else ())
-    _drums(tr, bars, kicks=kicks, snares=(1, 3) if level >= 2 else (), hats=hats,
-           kick_gain=0.85, snare_gain=0.5 if level == 2 else 0.62, hat_gain=0.15 if level == 1 else 0.11,
-           crashes=(0, 4) if level >= 3 else ())
+    hats = [k * .5 for k in range(8)] if level == 1 else [k * .25 for k in range(16)]
+    kicks = (0, 1, 2, 3)
+    _drums(tr, bars, kicks=kicks, snares=(1, 3), hats=hats,
+           kick_gain=0.95, snare_gain=0.55 if level == 1 else 0.68,
+           hat_gain=0.13 if level == 1 else 0.1,
+           crashes=(0, 4) if level >= 3 else (0,))
     if level >= 2:
         for bar in range(bars):
             tr.add(hat(open_=True), tr.at(bar, 3.5), 0.1)
@@ -305,7 +332,7 @@ def walkout():
         tr.add(stab(notes, 1.2 * b), tr.at(bar, 0), 0.45)
         tr.add(stab(notes, 0.5 * b), tr.at(bar, 1.5), 0.32)
         tr.add(pad(tuple(n - 12 for n in notes), 4 * b), tr.at(bar, 0), 0.12)
-    _drums(tr, bars, kicks=(0, 0.75, 2.5), snares=(2,), hats=[k * .5 for k in range(8)],
+    _drums(tr, bars, kicks=(0, 2.5), snares=(2,), hats=[k * .5 for k in range(8)],
            kick_gain=1.0, snare_gain=0.85, hat_gain=0.12, crashes=(0, 4))
     return tr
 
@@ -326,7 +353,7 @@ def win():
 
 
 # How loud each piece sits: the fight builds round by round
-LOUDNESS = {"menu": 0.12, "walkout": 0.15, "fight1": 0.14, "fight2": 0.16, "fight3": 0.18, "win": 0.15}
+LOUDNESS = {"menu": 0.12, "walkout": 0.15, "fight1": 0.15, "fight2": 0.17, "fight3": 0.19, "win": 0.15}
 PIECES = {"menu": menu, "walkout": walkout, "fight1": lambda: fight(1), "fight2": lambda: fight(2),
           "fight3": lambda: fight(3), "win": win}
 ORDER = ["menu", "fight1", "walkout", "fight2", "fight3", "win"]   # what is needed first
